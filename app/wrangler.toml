@@ -1,0 +1,11 @@
+name = "sindbadbookmarks"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".vercel/output/static"
+
+[vars]
+NEXT_PUBLIC_SUPABASE_URL = "https://kawiaabwfdjwvlxcbwul.supabase.co"
+
+# シークレット（Anon Key）は wrangler secret put で設定するか
+# Cloudflare Pages ダッシュボードの Environment Variables に登録してください
+# NEXT_PUBLIC_SUPABASE_ANON_KEY は公開キーなので vars に入れてもOK

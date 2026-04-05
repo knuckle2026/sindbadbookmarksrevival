@@ -28,16 +28,28 @@ export default async function ListingDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: listing }, { data: { user } }] = await Promise.all([
-    supabase
-      .from("listings")
-      .select(`*, listing_categories(categories(id, name, group_type))`)
-      .eq("id", id)
-      .single(),
-    supabase.auth.getUser(),
-  ]);
+  const { data: listingRaw } = await supabase
+    .from("listings")
+    .select("*")
+    .eq("id", id)
+    .single();
 
-  if (!listing) notFound();
+  if (!listingRaw) notFound();
+
+  const listing = listingRaw as typeof listingRaw & {
+    listing_categories?: { categories: { id: string; name: string; group_type: string } | null }[];
+  };
+
+  const { data: lcData } = await supabase
+    .from("listing_categories")
+    .select("categories(id, name, group_type)")
+    .eq("listing_id", id);
+
+  listing.listing_categories = (lcData ?? []) as typeof listing.listing_categories;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const isOwner = user?.id === listing.user_id;
 

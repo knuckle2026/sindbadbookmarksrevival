@@ -4,4 +4,7 @@ node_modules/
 .env*
 *.pem
 .DS_Store
+# Ignore build output PNGs but allow app icons
 *.png
+!app/src/app/icon.png
+!app/src/app/apple-icon.png

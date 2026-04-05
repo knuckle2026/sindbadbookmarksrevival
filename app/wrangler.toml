@@ -1,10 +1,12 @@
 name = "sindbadbookmarks"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = ".open-next/assets"
+main = ".open-next/worker.js"
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
 
 [vars]
 NEXT_PUBLIC_SUPABASE_URL = "https://kawiaabwfdjwvlxcbwul.supabase.co"
-
-# NEXT_PUBLIC_SUPABASE_ANON_KEY は Cloudflare Pages ダッシュボードの
-# Settings → Environment Variables に追加してください
+NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imthd2lhYWJ3ZmRqd3ZseGNid3VsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDg1MDAsImV4cCI6MjA5MDg4NDUwMH0.bNvsplcJJpPKntsr32GwKwwtJ1k4cFJtoDXyT2lU_5I"

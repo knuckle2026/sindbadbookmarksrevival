@@ -1,0 +1,7 @@
+{
+  "name": "sindbadbookmarksrevival",
+  "private": true,
+  "dependencies": {
+    "next": "^15.5.14"
+  }
+}

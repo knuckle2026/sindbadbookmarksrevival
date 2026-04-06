@@ -1,14 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 export default function AgeGatePage() {
-  const router = useRouter();
-
   function handleEnter() {
     document.cookie = "age_verified=1; path=/; max-age=86400; SameSite=Lax";
-    router.push("/");
+    window.location.href = "/";
   }
 
   function handleExit() {

@@ -1,11 +1,26 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
+function getPageTitle(pathname: string): string {
+  if (pathname === "/") return "ダッシュボード";
+  if (pathname === "/listings") return "登録情報一覧";
+  if (pathname === "/listings/new") return "情報を登録";
+  if (pathname.startsWith("/listings/")) return "詳細";
+  if (pathname === "/login") return "ログイン";
+  if (pathname === "/signup") return "サインアップ";
+  if (pathname === "/reset-password") return "パスワードリセット";
+  if (pathname === "/profile") return "プロフィール";
+  if (pathname.startsWith("/admin")) return "管理者パネル";
+  return "sindbadbookmarks";
+}
+
 export function Header() {
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const supabase = createClient();
 
@@ -26,51 +41,49 @@ export function Header() {
     window.location.href = "/";
   };
 
+  const title = getPageTitle(pathname ?? "/");
+
   return (
-    <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-xl font-bold tracking-tight text-primary">
-            sindbad
-          </span>
-          <span className="text-xl font-light tracking-tight text-zinc-600 dark:text-zinc-400">
+    <header
+      className="flex h-24 items-center justify-between px-6 text-white shadow-md"
+      style={{ backgroundColor: "#B21000" }}
+    >
+      <div className="flex items-center gap-6">
+        <Link href="/" className="flex items-baseline gap-1">
+          <span className="text-2xl font-bold tracking-tight">sindbad</span>
+          <span className="text-lg font-light tracking-tight opacity-90">
             bookmarks
           </span>
         </Link>
-
-        <nav className="flex items-center gap-4">
-          <Link
-            href="/listings"
-            className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-          >
-            一覧
-          </Link>
-
-          {user ? (
-            <div className="flex items-center gap-3">
-              <Link
-                href="/listings/new"
-                className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-light transition-colors"
-              >
-                情報を登録
-              </Link>
-              <button
-                onClick={handleSignOut}
-                className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-              >
-                ログアウト
-              </button>
-            </div>
-          ) : (
-            <Link
-              href="/login"
-              className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-light transition-colors"
-            >
-              ログイン
-            </Link>
-          )}
-        </nav>
+        <span className="hidden h-10 w-px bg-white/30 sm:inline-block" />
+        <h1 className="hidden text-2xl font-semibold sm:block">{title}</h1>
       </div>
+
+      <nav className="flex items-center gap-4 text-sm">
+        {user ? (
+          <>
+            <Link
+              href="/listings/new"
+              className="rounded-full bg-white/15 px-4 py-2 font-medium text-white ring-1 ring-white/40 transition-colors hover:bg-white/25"
+            >
+              情報を登録
+            </Link>
+            <button
+              onClick={handleSignOut}
+              className="text-white/90 hover:text-white"
+            >
+              ログアウト
+            </button>
+          </>
+        ) : (
+          <Link
+            href="/login"
+            className="rounded-full bg-white/15 px-4 py-2 font-medium text-white ring-1 ring-white/40 transition-colors hover:bg-white/25"
+          >
+            ログイン
+          </Link>
+        )}
+      </nav>
     </header>
   );
 }

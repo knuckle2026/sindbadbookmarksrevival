@@ -115,25 +115,23 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
               key={l.id}
               className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
             >
-              <Link
-                href={`/listings/${l.id}`}
-                className="block text-base font-semibold text-zinc-900 hover:underline dark:text-zinc-50"
-              >
-                {l.title}
-              </Link>
-              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-                {l.description}
-              </p>
-              {l.website_url && (
+              {l.website_url ? (
                 <a
                   href={l.website_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-1 inline-block text-xs text-red-700 hover:underline dark:text-red-400"
+                  className="block text-base font-semibold text-zinc-900 hover:underline dark:text-zinc-50"
                 >
-                  {l.website_url}
+                  {l.title}
                 </a>
+              ) : (
+                <span className="block text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                  {l.title}
+                </span>
               )}
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                {l.description}
+              </p>
             </li>
           ))}
         </ul>

@@ -1,89 +1,62 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
 
-function getPageTitle(pathname: string): string {
-  if (pathname === "/") return "ダッシュボード";
-  if (pathname === "/listings") return "登録情報一覧";
-  if (pathname === "/listings/new") return "情報を登録";
-  if (pathname.startsWith("/listings/")) return "詳細";
-  if (pathname === "/login") return "ログイン";
-  if (pathname === "/signup") return "サインアップ";
-  if (pathname === "/reset-password") return "パスワードリセット";
-  if (pathname === "/profile") return "プロフィール";
-  if (pathname.startsWith("/admin")) return "管理者パネル";
-  return "sindbadbookmarks";
+interface HeaderProps {
+  onToggleSidebar: () => void;
+  isLoggedIn: boolean;
 }
 
-export function Header() {
-  const pathname = usePathname();
-  const [user, setUser] = useState<User | null>(null);
-  const supabase = createClient();
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    window.location.href = "/";
-  };
-
-  const title = getPageTitle(pathname ?? "/");
-
+export function Header({ onToggleSidebar, isLoggedIn }: HeaderProps) {
   return (
     <header
-      className="flex h-24 items-center justify-between px-6 text-white shadow-md"
+      className="flex h-20 items-center gap-4 px-4 text-white shadow-md"
       style={{ backgroundColor: "#B21000" }}
     >
-      <div className="flex items-center gap-6">
-        <Link href="/" className="flex items-baseline gap-1">
-          <span className="text-2xl font-bold tracking-tight">sindbad</span>
-          <span className="text-lg font-light tracking-tight opacity-90">
-            bookmarks
-          </span>
-        </Link>
-        <span className="hidden h-10 w-px bg-white/30 sm:inline-block" />
-        <h1 className="hidden text-2xl font-semibold sm:block">{title}</h1>
-      </div>
+      {/* Hamburger */}
+      <button
+        type="button"
+        onClick={onToggleSidebar}
+        aria-label="メニューを開く"
+        className="flex h-10 w-10 items-center justify-center rounded hover:bg-white/15"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
 
-      <nav className="flex items-center gap-4 text-sm">
-        {user ? (
-          <>
-            <Link
-              href="/listings/new"
-              className="rounded-full bg-white/15 px-4 py-2 font-medium text-white ring-1 ring-white/40 transition-colors hover:bg-white/25"
-            >
-              情報を登録
-            </Link>
-            <button
-              onClick={handleSignOut}
-              className="text-white/90 hover:text-white"
-            >
-              ログアウト
-            </button>
-          </>
-        ) : (
-          <Link
-            href="/login"
-            className="rounded-full bg-white/15 px-4 py-2 font-medium text-white ring-1 ring-white/40 transition-colors hover:bg-white/25"
-          >
-            ログイン
-          </Link>
-        )}
-      </nav>
+      {/* Logo + Title */}
+      <Link href="/" className="flex items-center gap-3">
+        <Image
+          src="/images/sbbm_logo.jpg"
+          alt="sindbadbookmarks revival"
+          width={160}
+          height={64}
+          className="h-14 w-auto rounded"
+          priority
+        />
+        <span className="hidden text-xl font-bold tracking-tight sm:inline">
+          sindbadbookmarks revival
+        </span>
+      </Link>
+
+      <div className="flex-1" />
+
+      {/* Register button */}
+      <Link
+        href={isLoggedIn ? "/listings/new" : "/listings/new"}
+        className="rounded-full bg-white px-5 py-2 text-sm font-bold text-[#B21000] shadow hover:bg-white/90"
+      >
+        情報を登録
+      </Link>
     </header>
   );
 }

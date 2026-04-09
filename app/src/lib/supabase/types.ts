@@ -1,7 +1,4 @@
-export type ListingType = "shop" | "organization" | "media";
-export type FriendlinessLevel = "Dedicated" | "Friendly" | "Ally";
 export type ListingStatus = "published" | "hidden";
-export type CategoryGroup = "purpose" | "industry";
 export type UserRole = "visitor" | "contributor" | "admin";
 export type ReportStatus = "pending" | "reviewed";
 
@@ -29,51 +26,30 @@ export interface Database {
           is_suspended?: boolean;
         };
       };
-      listings: {
+      genres: {
         Row: {
           id: string;
-          user_id: string;
-          type: ListingType;
-          title: string;
-          description: string | null;
-          address: string | null;
-          latitude: number | null;
-          longitude: number | null;
-          website_url: string | null;
-          friendliness: FriendlinessLevel | null;
-          status: ListingStatus;
+          slug: string;
+          name: string;
+          sort_order: number;
           created_at: string;
-          updated_at: string;
         };
         Insert: {
           id?: string;
-          user_id: string;
-          type: ListingType;
-          title: string;
-          description?: string | null;
-          address?: string | null;
-          latitude?: number | null;
-          longitude?: number | null;
-          website_url?: string | null;
-          friendliness?: FriendlinessLevel | null;
-          status?: ListingStatus;
+          slug: string;
+          name: string;
+          sort_order?: number;
         };
         Update: {
-          type?: ListingType;
-          title?: string;
-          description?: string | null;
-          address?: string | null;
-          latitude?: number | null;
-          longitude?: number | null;
-          website_url?: string | null;
-          friendliness?: FriendlinessLevel | null;
-          status?: ListingStatus;
+          slug?: string;
+          name?: string;
+          sort_order?: number;
         };
       };
       categories: {
         Row: {
           id: string;
-          group_type: CategoryGroup;
+          genre_id: string;
           name: string;
           slug: string;
           sort_order: number;
@@ -81,16 +57,62 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          group_type: CategoryGroup;
+          genre_id: string;
           name: string;
           slug: string;
           sort_order?: number;
         };
         Update: {
-          group_type?: CategoryGroup;
+          genre_id?: string;
           name?: string;
           slug?: string;
           sort_order?: number;
+        };
+      };
+      listings: {
+        Row: {
+          id: string;
+          user_id: string;
+          genre_id: string | null;
+          title: string;
+          description: string;
+          website_url: string;
+          prefecture: string | null;
+          ward: string | null;
+          address: string | null;
+          service_areas: string[] | null;
+          status: ListingStatus;
+          created_by: string | null;
+          updated_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          genre_id?: string | null;
+          title: string;
+          description: string;
+          website_url: string;
+          prefecture?: string | null;
+          ward?: string | null;
+          address?: string | null;
+          service_areas?: string[] | null;
+          status?: ListingStatus;
+          created_by?: string | null;
+          updated_by?: string | null;
+        };
+        Update: {
+          genre_id?: string | null;
+          title?: string;
+          description?: string;
+          website_url?: string;
+          prefecture?: string | null;
+          ward?: string | null;
+          address?: string | null;
+          service_areas?: string[] | null;
+          status?: ListingStatus;
+          updated_by?: string | null;
         };
       };
       listing_categories: {
@@ -111,6 +133,7 @@ export interface Database {
         Row: {
           id: string;
           listing_id: string;
+          reporter_user_id: string | null;
           reason: string;
           status: ReportStatus;
           created_at: string;
@@ -118,6 +141,7 @@ export interface Database {
         Insert: {
           id?: string;
           listing_id: string;
+          reporter_user_id?: string | null;
           reason: string;
           status?: ReportStatus;
         };
@@ -127,38 +151,39 @@ export interface Database {
         };
       };
     };
-    Views: {
-      dashboard_counts: {
-        Row: {
-          total_published: number;
-          shop_count: number;
-          org_count: number;
-          media_count: number;
-        };
-      };
-      dashboard_category_counts: {
-        Row: {
-          category_id: string;
-          group_type: CategoryGroup;
-          name: string;
-          slug: string;
+    Views: Record<string, never>;
+    Functions: {
+      get_genre_counts: {
+        Args: Record<string, never>;
+        Returns: {
+          genre_slug: string;
+          genre_name: string;
           sort_order: number;
           listing_count: number;
-        };
+        }[];
       };
-      dashboard_friendliness_counts: {
-        Row: {
-          friendliness: FriendlinessLevel;
+      get_category_counts_all: {
+        Args: Record<string, never>;
+        Returns: {
+          genre_slug: string;
+          genre_name: string;
+          genre_sort: number;
+          category_slug: string;
+          category_name: string;
+          category_sort: number;
           listing_count: number;
-        };
+        }[];
+      };
+      get_prefecture_counts_by_genre: {
+        Args: { p_genre_slug: string };
+        Returns: {
+          prefecture: string;
+          listing_count: number;
+        }[];
       };
     };
-    Functions: Record<string, never>;
     Enums: {
-      listing_type: ListingType;
-      friendliness_level: FriendlinessLevel;
       listing_status: ListingStatus;
-      category_group: CategoryGroup;
       user_role: UserRole;
       report_status: ReportStatus;
     };

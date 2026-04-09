@@ -1,44 +1,100 @@
 // @ts-nocheck
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { GENRES } from "@/lib/constants/genres";
+import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
+import { TOKYO_WARDS } from "@/lib/constants/tokyo-wards";
+import { SERVICE_AREAS } from "@/lib/constants/service-areas";
 
-interface Category {
+export interface GenreOption {
   id: string;
-  group_type: "purpose" | "industry";
+  slug: string;
   name: string;
 }
 
-export default function ListingForm({ categories }: { categories: Category[] }) {
+export interface CategoryOption {
+  id: string;
+  slug: string;
+  name: string;
+  sortOrder: number;
+  genreSlug: string;
+}
+
+interface Props {
+  genres: GenreOption[];
+  categories: CategoryOption[];
+}
+
+const TITLE_MAX = 20;
+const DESCRIPTION_MAX = 100;
+const URL_RE = /^https?:\/\/.+/;
+
+export default function ListingForm({ genres, categories }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const purposeCategories = categories.filter((c) => c.group_type === "purpose");
-  const industryCategories = categories.filter((c) => c.group_type === "industry");
-
   const [title, setTitle] = useState("");
-  const [type, setType] = useState<"shop" | "organization" | "media">("shop");
   const [description, setDescription] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
-  const [address, setAddress] = useState("");
-  const [friendliness, setFriendliness] = useState<
-    "" | "Dedicated" | "Friendly" | "Ally"
-  >("");
+  const [genreId, setGenreId] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [prefecture, setPrefecture] = useState("");
+  const [ward, setWard] = useState("");
+  const [serviceAreas, setServiceAreas] = useState<string[]>([]);
+  const [address, setAddress] = useState("");
+
+  const selectedGenreSlug = useMemo(
+    () => genres.find((g) => g.id === genreId)?.slug ?? "",
+    [genres, genreId],
+  );
+
+  const genreMeta = useMemo(
+    () => GENRES.find((g) => g.slug === selectedGenreSlug),
+    [selectedGenreSlug],
+  );
+
+  const visibleCategories = useMemo(
+    () =>
+      categories
+        .filter((c) => c.genreSlug === selectedGenreSlug)
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+    [categories, selectedGenreSlug],
+  );
 
   const toggleCategory = (id: string) => {
     setSelectedCategories((prev) =>
-      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
     );
+  };
+
+  const toggleServiceArea = (slug: string) => {
+    setServiceAreas((prev) =>
+      prev.includes(slug) ? prev.filter((c) => c !== slug) : [...prev, slug],
+    );
+  };
+
+  const validate = (): string | null => {
+    if (!title.trim()) return "名称は必須です";
+    if (title.trim().length > TITLE_MAX) return `名称は${TITLE_MAX}文字以内です`;
+    if (!description.trim()) return "説明は必須です";
+    if (description.trim().length > DESCRIPTION_MAX)
+      return `説明は${DESCRIPTION_MAX}文字以内です`;
+    if (!websiteUrl.trim()) return "ウェブサイトURLは必須です";
+    if (!URL_RE.test(websiteUrl.trim()))
+      return "ウェブサイトURLは http(s):// から始まる必要があります";
+    if (!genreId) return "ジャンルを選択してください";
+    return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) {
-      setError("名称は必須です");
+    const v = validate();
+    if (v) {
+      setError(v);
       return;
     }
     setError("");
@@ -54,16 +110,24 @@ export default function ListingForm({ categories }: { categories: Category[] }) 
       return;
     }
 
+    const showWard = prefecture === "tokyo";
+    const showServiceAreas = !!genreMeta?.hasServiceAreas;
+
     const { data: listing, error: insertError } = await supabase
       .from("listings")
       .insert({
         user_id: user.id,
-        type,
+        genre_id: genreId,
         title: title.trim(),
-        description: description.trim() || null,
+        description: description.trim(),
+        website_url: websiteUrl.trim(),
+        prefecture: prefecture || null,
+        ward: showWard && ward ? ward : null,
+        service_areas:
+          showServiceAreas && serviceAreas.length > 0 ? serviceAreas : null,
         address: address.trim() || null,
-        website_url: websiteUrl.trim() || null,
-        friendliness: friendliness || null,
+        created_by: user.id,
+        updated_by: user.id,
       })
       .select("id")
       .single();
@@ -75,149 +139,217 @@ export default function ListingForm({ categories }: { categories: Category[] }) 
     }
 
     if (selectedCategories.length > 0) {
-      await supabase.from("listing_categories").insert(
-        selectedCategories.map((categoryId) => ({
-          listing_id: listing.id,
-          category_id: categoryId,
-        }))
-      );
+      const { error: catError } = await supabase
+        .from("listing_categories")
+        .insert(
+          selectedCategories.map((categoryId) => ({
+            listing_id: listing.id,
+            category_id: categoryId,
+          })),
+        );
+      if (catError) {
+        setError(`カテゴリ保存エラー: ${catError.message}`);
+        setLoading(false);
+        return;
+      }
     }
 
     router.push(`/listings/${listing.id}`);
   };
 
   const inputClass =
-    "w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
-  const labelClass = "block text-sm font-medium text-gray-700 mb-1";
+    "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100";
+  const labelClass =
+    "mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200";
+
+  const showWard = prefecture === "tokyo";
+  const showServiceAreas = !!genreMeta?.hasServiceAreas;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       {/* 名称 */}
       <div>
         <label className={labelClass}>
           名称 <span className="text-red-500">*</span>
+          <span className="ml-2 text-xs text-zinc-500">
+            ({title.length}/{TITLE_MAX})
+          </span>
         </label>
         <input
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="例：新宿二丁目 ○○バー"
+          maxLength={TITLE_MAX}
           className={inputClass}
           required
         />
       </div>
 
-      {/* 種別 */}
-      <div>
-        <label className={labelClass}>
-          種別 <span className="text-red-500">*</span>
-        </label>
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value as typeof type)}
-          className={inputClass}
-        >
-          <option value="shop">店舗</option>
-          <option value="organization">団体・コミュニティ・NPO</option>
-          <option value="media">メディア・Webサービス・アプリ</option>
-        </select>
-      </div>
-
       {/* 説明 */}
       <div>
-        <label className={labelClass}>説明</label>
+        <label className={labelClass}>
+          説明 <span className="text-red-500">*</span>
+          <span className="ml-2 text-xs text-zinc-500">
+            ({description.length}/{DESCRIPTION_MAX})
+          </span>
+        </label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="どんな場所・サービスかを簡単に説明してください"
-          rows={4}
+          maxLength={DESCRIPTION_MAX}
+          rows={3}
           className={inputClass}
+          required
         />
       </div>
 
-      {/* ウェブサイト */}
+      {/* URL */}
       <div>
-        <label className={labelClass}>ウェブサイトURL</label>
+        <label className={labelClass}>
+          ウェブサイトURL <span className="text-red-500">*</span>
+        </label>
         <input
           type="url"
           value={websiteUrl}
           onChange={(e) => setWebsiteUrl(e.target.value)}
-          placeholder="https://..."
+          placeholder="https://example.com"
           className={inputClass}
+          required
         />
       </div>
 
+      {/* ジャンル */}
+      <div>
+        <label className={labelClass}>
+          ジャンル <span className="text-red-500">*</span>
+        </label>
+        <select
+          value={genreId}
+          onChange={(e) => {
+            setGenreId(e.target.value);
+            setSelectedCategories([]);
+            setServiceAreas([]);
+          }}
+          className={inputClass}
+          required
+        >
+          <option value="">選択してください</option>
+          {genres.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* カテゴリ (複数選択) */}
+      {selectedGenreSlug && visibleCategories.length > 0 && (
+        <div>
+          <label className={labelClass}>カテゴリ（複数選択可）</label>
+          <div className="flex flex-wrap gap-2">
+            {visibleCategories.map((c) => {
+              const active = selectedCategories.includes(c.id);
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => toggleCategory(c.id)}
+                  className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                    active
+                      ? "border-red-600 bg-red-600 text-white"
+                      : "border-zinc-300 bg-white text-zinc-700 hover:border-red-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+                  }`}
+                >
+                  {c.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 都道府県 */}
+      <div>
+        <label className={labelClass}>都道府県（任意）</label>
+        <select
+          value={prefecture}
+          onChange={(e) => {
+            setPrefecture(e.target.value);
+            setWard("");
+          }}
+          className={inputClass}
+        >
+          <option value="">選択しない（オンライン等）</option>
+          {PREFECTURE_REGIONS.map((region) => (
+            <optgroup key={region.slug} label={region.name}>
+              {region.prefectures.map((p) => (
+                <option key={p.slug} value={p.slug}>
+                  {p.name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </div>
+
+      {/* 区 (東京のみ) */}
+      {showWard && (
+        <div>
+          <label className={labelClass}>区（任意）</label>
+          <select
+            value={ward}
+            onChange={(e) => setWard(e.target.value)}
+            className={inputClass}
+          >
+            <option value="">選択しない</option>
+            {TOKYO_WARDS.map((w) => (
+              <option key={w.slug} value={w.slug}>
+                {w.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* 出張エリア (hasServiceAreas=true ジャンルのみ) */}
+      {showServiceAreas && (
+        <div>
+          <label className={labelClass}>出張エリア（複数選択可）</label>
+          <div className="flex flex-wrap gap-2">
+            {SERVICE_AREAS.map((a) => {
+              const active = serviceAreas.includes(a.slug);
+              return (
+                <button
+                  key={a.slug}
+                  type="button"
+                  onClick={() => toggleServiceArea(a.slug)}
+                  className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                    active
+                      ? "border-red-600 bg-red-600 text-white"
+                      : "border-zinc-300 bg-white text-zinc-700 hover:border-red-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+                  }`}
+                >
+                  {a.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* 住所 */}
       <div>
-        <label className={labelClass}>住所・所在地</label>
+        <label className={labelClass}>住所（任意）</label>
         <input
           type="text"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          placeholder="例：東京都新宿区新宿2丁目（オンライン専用の場合は空欄）"
           className={inputClass}
         />
       </div>
 
-      {/* フレンドリー度 */}
-      <div>
-        <label className={labelClass}>フレンドリー度</label>
-        <select
-          value={friendliness}
-          onChange={(e) => setFriendliness(e.target.value as typeof friendliness)}
-          className={inputClass}
-        >
-          <option value="">選択しない</option>
-          <option value="Dedicated">専門（LGBTを主な対象としたサービス）</option>
-          <option value="Friendly">フレンドリー（LGBT対応を明示的に掲げている）</option>
-          <option value="Ally">アライ（理解・協力を表明している）</option>
-        </select>
-      </div>
-
-      {/* 目的別カテゴリ */}
-      <div>
-        <label className={labelClass}>目的別カテゴリ（複数選択可）</label>
-        <div className="flex flex-wrap gap-2">
-          {purposeCategories.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => toggleCategory(cat.id)}
-              className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
-                selectedCategories.includes(cat.id)
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"
-              }`}
-            >
-              {cat.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 業態別カテゴリ */}
-      <div>
-        <label className={labelClass}>業態別カテゴリ（複数選択可）</label>
-        <div className="flex flex-wrap gap-2">
-          {industryCategories.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => toggleCategory(cat.id)}
-              className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
-                selectedCategories.includes(cat.id)
-                  ? "bg-green-600 text-white border-green-600"
-                  : "bg-white text-gray-700 border-gray-300 hover:border-green-400"
-              }`}
-            >
-              {cat.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {error && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
           {error}
         </p>
       )}
@@ -226,14 +358,15 @@ export default function ListingForm({ categories }: { categories: Category[] }) 
         <button
           type="button"
           onClick={() => router.back()}
-          className="flex-1 border border-gray-300 text-gray-700 py-2.5 rounded-lg text-sm hover:bg-gray-50 transition-colors"
+          className="flex-1 rounded-lg border border-zinc-300 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
           キャンセル
         </button>
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          className="flex-1 rounded-lg py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          style={{ backgroundColor: "#B21000" }}
         >
           {loading ? "登録中..." : "登録する"}
         </button>

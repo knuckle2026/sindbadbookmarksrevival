@@ -11,7 +11,7 @@ const BARE_PATHS = ["/age-gate"];
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
   const isBare = BARE_PATHS.some((p) => pathname.startsWith(p));
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (isBare) {
     return <>{children}</>;

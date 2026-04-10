@@ -56,11 +56,13 @@ export function Header({ onHamburgerClick }: HeaderProps) {
         </Link>
 
         {/* サイトタイトル */}
-        <Link href="/" className="hidden sm:block">
-          <span className="text-lg font-bold leading-tight tracking-tight">
+        <Link href="/" className="leading-tight">
+          <span className="text-lg font-bold tracking-tight">
             sindbadbookmarks
-            <br />
-            <span className="text-sm font-light opacity-90">revival</span>
+          </span>
+          <br />
+          <span className="text-sm font-light tracking-tight opacity-90">
+            revival
           </span>
         </Link>
       </div>

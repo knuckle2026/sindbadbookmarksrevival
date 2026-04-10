@@ -167,58 +167,7 @@ export default function ListingForm({ genres, categories }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-      {/* 名称 */}
-      <div>
-        <label className={labelClass}>
-          名称 <span className="text-red-500">*</span>
-          <span className="ml-2 text-xs text-zinc-500">
-            ({title.length}/{TITLE_MAX})
-          </span>
-        </label>
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          maxLength={TITLE_MAX}
-          className={inputClass}
-          required
-        />
-      </div>
-
-      {/* 説明 */}
-      <div>
-        <label className={labelClass}>
-          説明 <span className="text-red-500">*</span>
-          <span className="ml-2 text-xs text-zinc-500">
-            ({description.length}/{DESCRIPTION_MAX})
-          </span>
-        </label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          maxLength={DESCRIPTION_MAX}
-          rows={3}
-          className={inputClass}
-          required
-        />
-      </div>
-
-      {/* URL */}
-      <div>
-        <label className={labelClass}>
-          ウェブサイトURL <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="url"
-          value={websiteUrl}
-          onChange={(e) => setWebsiteUrl(e.target.value)}
-          placeholder="https://example.com"
-          className={inputClass}
-          required
-        />
-      </div>
-
-      {/* ジャンル */}
+      {/* 1. ジャンル */}
       <div>
         <label className={labelClass}>
           ジャンル <span className="text-red-500">*</span>
@@ -240,6 +189,57 @@ export default function ListingForm({ genres, categories }: Props) {
             </option>
           ))}
         </select>
+      </div>
+
+      {/* 2. 名称 */}
+      <div>
+        <label className={labelClass}>
+          名称 <span className="text-red-500">*</span>
+          <span className="ml-2 text-xs text-zinc-500">
+            ({title.length}/{TITLE_MAX})
+          </span>
+        </label>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          maxLength={TITLE_MAX}
+          className={inputClass}
+          required
+        />
+      </div>
+
+      {/* 3. ウェブサイトURL */}
+      <div>
+        <label className={labelClass}>
+          ウェブサイトURL <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="url"
+          value={websiteUrl}
+          onChange={(e) => setWebsiteUrl(e.target.value)}
+          placeholder="https://example.com"
+          className={inputClass}
+          required
+        />
+      </div>
+
+      {/* 4. 説明 */}
+      <div>
+        <label className={labelClass}>
+          説明 <span className="text-red-500">*</span>
+          <span className="ml-2 text-xs text-zinc-500">
+            ({description.length}/{DESCRIPTION_MAX})
+          </span>
+        </label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          maxLength={DESCRIPTION_MAX}
+          rows={3}
+          className={inputClass}
+          required
+        />
       </div>
 
       {/* カテゴリ (複数選択) */}
@@ -311,6 +311,17 @@ export default function ListingForm({ genres, categories }: Props) {
         </div>
       )}
 
+      {/* 住所 (自由入力) */}
+      <div>
+        <label className={labelClass}>住所（任意）</label>
+        <input
+          type="text"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          className={inputClass}
+        />
+      </div>
+
       {/* 出張エリア (hasServiceAreas=true ジャンルのみ) */}
       {showServiceAreas && (
         <div>
@@ -336,17 +347,6 @@ export default function ListingForm({ genres, categories }: Props) {
           </div>
         </div>
       )}
-
-      {/* 住所 */}
-      <div>
-        <label className={labelClass}>住所（任意）</label>
-        <input
-          type="text"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          className={inputClass}
-        />
-      </div>
 
       {error && (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">

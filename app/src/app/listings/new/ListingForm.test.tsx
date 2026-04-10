@@ -103,7 +103,7 @@ describe("ListingForm", () => {
     fireEvent.input(screen.getAllByRole("textbox")[0], {
       target: { value: "テストバー" },
     });
-    fireEvent.input(screen.getAllByRole("textbox")[1], {
+    fireEvent.input(screen.getAllByRole("textbox")[2], {
       target: { value: "説明テキスト" },
     });
     fireEvent.input(
@@ -124,7 +124,7 @@ describe("ListingForm", () => {
     fireEvent.input(screen.getAllByRole("textbox")[0], {
       target: { value: "T" },
     });
-    fireEvent.input(screen.getAllByRole("textbox")[1], {
+    fireEvent.input(screen.getAllByRole("textbox")[2], {
       target: { value: "D" },
     });
     fireEvent.input(
@@ -171,7 +171,7 @@ describe("ListingForm", () => {
     fireEvent.input(screen.getAllByRole("textbox")[0], {
       target: { value: "テストバー" },
     });
-    fireEvent.input(screen.getAllByRole("textbox")[1], {
+    fireEvent.input(screen.getAllByRole("textbox")[2], {
       target: { value: "説明テキスト" },
     });
     fireEvent.input(

@@ -327,7 +327,7 @@ get_dashboard_friendliness_counts() → フレンドリー度別件数
 | # | 内容 | 優先度 |
 |---|---|---|
 | 1 | Supabase join クエリの TypeScript 型推論が `never` → `@ts-nocheck` で暫定対応 | 中 |
-| 2 | `/listings/[id]/edit` 編集ページ未実装 | 高 |
+| 2 | ~~`/listings/[id]/edit` 編集ページ未実装~~ ✅ 実装済み | ~~高~~ |
 | 3 | 検索: キーワード全文検索未実装（タイトル部分一致のみ） | 中 |
 | 4 | ページネーション未実装 | 中 |
 | 5 | 画像アップロード未実装 | 中 |
@@ -598,19 +598,31 @@ get_prefecture_counts_by_genre(genre_slug text) RETURNS TABLE (
 | 変更 | `app/src/lib/supabase/types.ts` — `Genre` 型新規、`Category` に `genre_id` |
 | 新規 | `supabase/migrations/xxx_add_genres_and_categories.sql` — `genres` テーブル作成、`categories.genre_id` 追加、`listings.genre_id`／`prefecture` 追加、RPC、初期データ投入 |
 
-### 15.8 未決事項
+### 15.8 未決事項（確定済みは ✅ マーク）
 
-| # | 項目 | 備考 |
+| # | 項目 | 決定 |
 |---|---|---|
-| 1 | バー・飲食店／マッサージ以外9ジャンルのカテゴリ | 後で管理画面から追加。Phase 実装時は空でも可 |
-| 2 | 都道府県リストの並び順 | 件数順 / 北から南順 / 50音順 のいずれか |
+| 1 | ✅ 全11ジャンルのカテゴリ定義 | **確定**: Section 23.2 参照 |
+| 2 | ✅ 都道府県リストの並び順 | **北から南順** |
 | 3 | 既存の `categories.group_type`（purpose/industry）の扱い | 廃止 / 併存 / マイグレーション |
 | 4 | 既存リスティングの `prefecture` 欠損データの扱い | バッチ補完 or 段階的に手動入力 |
-| 5 | カテゴリチェックの検索方式 | OR検索（いずれか含む）／ AND検索（全て含む） |
-| 6 | カテゴリ未選択時の挙動 | 全件表示（ジャンルのみで絞り込み） |
-| 7 | 件数 0 ジャンルの表示有無 | 灰色表示 or 非表示 |
+| 5 | ✅ カテゴリチェックの検索方式 | **OR検索**。ただしマッサージ・売り専の「ニューハーフマッサージ」は特殊扱い（後述 §15.8.1） |
+| 6 | ✅ カテゴリ未選択時の挙動 | **全件表示**（ジャンルのみで絞り込み） |
+| 7 | ✅ 件数 0 ジャンルの表示有無 | **0件でも表示、クリック可能**（ジャンル一覧画面を表示） |
 | 8 | 管理画面 `/admin/categories` の権限制御 | RLS or Service Role Key |
 | 9 | リスティング登録時のジャンル変更時、カテゴリの扱い | 旧カテゴリを自動削除 or 警告のみ |
+
+#### 15.8.1 マッサージ・売り専のニューハーフマッサージ除外ロジック
+
+マッサージ・売り専ジャンルのカテゴリ絞り込みには **特殊ルール** がある:
+
+- **基本**: カテゴリ絞り込みは OR 検索（いずれかに該当すれば表示）
+- **例外**: 「ニューハーフマッサージ」カテゴリを **選択していない** 場合、ニューハーフマッサージに該当するリスティングは **検索結果から除外される（AND NOT 条件）**
+- つまり、ニューハーフマッサージの結果を見るには、ユーザーが明示的に「ニューハーフマッサージ」チェックボックスをONにする必要がある
+- 何もカテゴリを選択していない状態（全件表示）でも、ニューハーフマッサージは除外される
+- ニューハーフマッサージ **のみ** を選択した場合は、ニューハーフマッサージのリスティングだけが表示される
+
+**実装方針**: クエリ側で `category != 'newhalf'` 条件をデフォルトで付与し、「ニューハーフマッサージ」チェック時のみ解除する
 
 ---
 
@@ -1151,8 +1163,11 @@ Section 18.8 のステップ1に以下を追加：
 
 ### 22.4 カテゴリ絞り込みロジック
 
-- **OR 条件**（複数カテゴリチェック時はいずれかに該当すれば表示）
+- **基本: OR 条件**（複数カテゴリチェック時はいずれかに該当すれば表示）
 - SQL: `WHERE listing_categories.category_id IN (選択カテゴリID配列)` + `DISTINCT listings.id`
+- **例外: マッサージ・売り専の「ニューハーフマッサージ」除外ルール**（詳細は §15.8.1 参照）
+  - 「ニューハーフマッサージ」を明示的に選択しない限り、ニューハーフマッサージのリスティングは検索結果から除外される（AND NOT 条件）
+  - カテゴリ未選択（全件表示）時もニューハーフマッサージは除外
 
 ### 22.5 認証方式
 
@@ -1348,7 +1363,7 @@ Section 15/17/18.3 で「カテゴリ定義済みはバー・飲食店とマッ�
 | 3 | マッサージ・売り専 | `massage-urisen` | 整体 / オイルマッサージ / タイ古式マッサージ / ジャップカサイ / 出張 / ストレッチ / カイロプラクティック / ニューハーフマッサージ |
 | 4 | 公式動画配信・ギャラリー | `video-gallery` | 日本 / 海外 / アジア |
 | 5 | 個人サイト | `personal-site` | ブログ / 体験記 / ギャラリー |
-| 6 | 団体・相談先 | `org-consult` | NPO法人 / ボランティア |
+| 6 | 団体・相談先 | `org-consult` | NPO / 行政 |
 | 7 | 出会い | `matching` | マッチングアプリ / サービス / 掲示板 |
 | 8 | 女装・ニューハーフ | `crossdress-newhalf` | ドラッグ / ショップ / サロン / ショーパブ |
 | 9 | ファッション・美容 | `fashion-beauty` | ヘアサロン / メイク / エステ / 脱毛 / タンニング |
@@ -1365,7 +1380,12 @@ Section 15/17/18.3 で「カテゴリ定義済みはバー・飲食店とマッ�
 - Section 17.1 の「マッサージ・売り専」カテゴリ例を以下のとおり更新:
   - 旧: 整体/オイルマッサージ/ニューハーフマッサージ/ゲイマッサージ/タイ古式マッサージ/売り専
   - 新: **整体/オイルマッサージ/タイ古式マッサージ/ジャップカサイ/出張/ストレッチ/カイロプラクティック/ニューハーフマッサージ**
+- 「団体・相談先」カテゴリを更新:
+  - 旧: NPO法人 / ボランティア
+  - 新: **NPO / 行政**
 - 「その他」ジャンルは 18.3 に従い **カテゴリセクション非表示**（管理画面から追加され次第表示）
+
+> **注意**: DB上の「団体・相談先」カテゴリは旧データ（NPO法人/ボランティア）のまま。マイグレーションで「NPO / 行政」に更新が必要。
 
 ### 23.4 シード SQL（案）
 
@@ -1414,8 +1434,8 @@ INSERT INTO categories (genre_id, slug, name) SELECT id, 'blog',       'ブロ�
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'experience', '体験記'   FROM genres WHERE slug='personal-site';
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'gallery',    'ギャラリー' FROM genres WHERE slug='personal-site';
 -- org-consult
-INSERT INTO categories (genre_id, slug, name) SELECT id, 'npo',       'NPO法人'   FROM genres WHERE slug='org-consult';
-INSERT INTO categories (genre_id, slug, name) SELECT id, 'volunteer', 'ボランティア' FROM genres WHERE slug='org-consult';
+INSERT INTO categories (genre_id, slug, name) SELECT id, 'npo',        'NPO'     FROM genres WHERE slug='org-consult';
+INSERT INTO categories (genre_id, slug, name) SELECT id, 'government', '行政'    FROM genres WHERE slug='org-consult';
 -- matching (出会い)
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'app',     'マッチングアプリ' FROM genres WHERE slug='matching';
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'service', 'サービス'         FROM genres WHERE slug='matching';
@@ -1467,7 +1487,7 @@ Section 6 / Section 22.1 を以下で上書き。
 
 1. **ハンバーガーメニューアイコン**（☰）
    - 押下で左サイドバーを表示/非表示トグル
-   - デフォルト状態は「表示」or「非表示」→ **要確認（暫定: 表示）**
+   - デフォルト状態は **「非表示（閉じた状態）」で確定**（§24.7 #1）
    - モバイル対応は Phase 4 だが、ハンバーガー自体は Phase 2 で実装
 2. **ロゴ画像**（24.1 のロゴ）
 3. **サイトタイトル**「sindbadbookmarks revival」（テキスト、白文字）
@@ -1516,13 +1536,13 @@ Section 18.5 を以下で上書き。
 | 変更 | `app/src/app/page.tsx` | 11ジャンル×カテゴリ件数ツリー表示 |
 | 新規 | RPC `get_category_counts_all()` | 全ジャンル×カテゴリの件数を1クエリで返す |
 
-### 24.7 未決事項
+### 24.7 未決事項（全て確定済み ✅）
 
-| # | 項目 | 備考 |
+| # | 項目 | 決定 |
 |---|---|---|
-| 1 | サイドバー初期表示状態 | **閉じた状態**でスタート（ユーザーがハンバーガーで開く） |
-| 2 | ダッシュボードのジャンル並び | **3列グリッド**（PC想定、11ジャンルを3列で配置） |
-| 3 | ロゴ画像ファイル名 | **`sbbm_logo.jpg`** （`app/public/images/sbbm_logo.jpg`） |
-| 4 | ロゴクリック時の遷移先 | `/`（トップ）で確定 |
-| 5 | 「その他」ジャンルのダッシュボード表示 | **カテゴリ0件時は非表示**（セクションごと表示しない） |
-| 6 | ハンバーガーメニューの位置 | ロゴの左、ヘッダー最左端 |
+| 1 | ✅ サイドバー初期表示状態 | **閉じた状態**でスタート（実装済み） |
+| 2 | ✅ ダッシュボードのジャンル並び | **3列グリッド**（PC想定、11ジャンルを3列で配置） |
+| 3 | ✅ ロゴ画像ファイル名 | **`sbbm_logo.jpg`**（実装済み） |
+| 4 | ✅ ロゴクリック時の遷移先 | `/`（トップ）（実装済み） |
+| 5 | ✅ 「その他」ジャンルのダッシュボード表示 | **カテゴリ0件時は非表示** |
+| 6 | ✅ ハンバーガーメニューの位置 | ロゴの左、ヘッダー最左端（実装済み） |

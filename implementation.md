@@ -741,7 +741,7 @@ get_prefecture_counts_by_genre(genre_slug text) RETURNS TABLE (
 |---|---|---|
 | 1 | ✅ `listings.friendliness` カラムの最終処理 | **次回実装着手時の最初のマイグレーションで DROP**（`categories.group_type` も同時に DROP） |
 | 2 | ✅ ログイン案内画面のボタン構成 | **「アカウント新規作成」ボタンを表示する**。「情報を登録」ボタンは不要（ログイン後にヘッダーから遷移可能） |
-| 3 | `/login?redirect=...` の URLパラメータ仕様 | オープンリダイレクト脆弱性対策（allowlist チェック） |
+| 3 | ✅ `/login?next=...` のオープンリダイレクト対策 | **実装済み**: `safeRedirectPath()` で `/` 始まり（`//` 除外）のみ許可。login/signup/auth/callback 全箇所に適用 |
 | 4 | ✅ ダッシュボードの代替コンテンツ | **ジャンル×カテゴリ件数ツリー（§24.4）で確定・実装済み** |
 
 ---
@@ -828,7 +828,7 @@ get_prefecture_counts_by_genre(genre_slug text) RETURNS TABLE (
 | 2 | サービス提供地域の選択肢マスタ化 | 固定配列 vs `service_areas` テーブル化 |
 | 3 | ✅ 都道府県の保存形式 | **スラッグ**（`tokyo` 等）で確定・実装済み |
 | 4 | マッサージ・売り専以外でも将来サービス提供地域が欲しくなった場合の拡張方針 | ジャンル別フラグで有効化 |
-| 5 | 同一ジャンル内でカテゴリ未定義の場合の UI | セクションごと非表示 or 「カテゴリなし」注記 |
+| 5 | ✅ 同一ジャンル内でカテゴリ未定義の場合の UI | **セクションごと非表示**（カテゴリが0件なら表示しない。実装済み） |
 
 ---
 
@@ -1369,7 +1369,7 @@ Section 15/17/18.3 で「カテゴリ定義済みはバー・飲食店とマッ�
 | 8 | 女装・ニューハーフ | `crossdress-newhalf` | ドラッグ / ショップ / サロン / ショーパブ |
 | 9 | ファッション・美容 | `fashion-beauty` | ヘアサロン / メイク / エステ / 脱毛 / タンニング |
 | 10 | マニア系 | `mania` | SM / 露出 / デブ専 / フケ専 / 緊縛 / ゼンタイ |
-| 11 | その他 | `other` | （未定・管理画面から追加） |
+| 11 | その他 | `other` | 占い / 出版 / 便利サイト |
 
 ### 23.3 変更点のまとめ
 
@@ -1384,7 +1384,7 @@ Section 15/17/18.3 で「カテゴリ定義済みはバー・飲食店とマッ�
 - 「団体・相談先」カテゴリを更新:
   - 旧: NPO法人 / ボランティア
   - 新: **NPO / 行政**
-- 「その他」ジャンルは 18.3 に従い **カテゴリセクション非表示**（管理画面から追加され次第表示）
+- 「その他」ジャンルのカテゴリを確定: **占い / 出版 / 便利サイト**
 
 > **注意**: DB上の「団体・相談先」カテゴリは旧データ（NPO法人/ボランティア）のまま。マイグレーションで「NPO / 行政」に更新が必要。
 
@@ -1459,7 +1459,10 @@ INSERT INTO categories (genre_id, slug, name) SELECT id, 'chubby',   'デブ専'
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'mature',   'フケ専'   FROM genres WHERE slug='mania';
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'bondage',  '緊縛'     FROM genres WHERE slug='mania';
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'zentai',   'ゼンタイ' FROM genres WHERE slug='mania';
--- other: 未定（シードなし）
+-- other
+INSERT INTO categories (genre_id, slug, name) SELECT id, 'fortune',     '占い'       FROM genres WHERE slug='other';
+INSERT INTO categories (genre_id, slug, name) SELECT id, 'publishing',  '出版'       FROM genres WHERE slug='other';
+INSERT INTO categories (genre_id, slug, name) SELECT id, 'useful-site', '便利サイト' FROM genres WHERE slug='other';
 ```
 
 ### 23.5 注意事項

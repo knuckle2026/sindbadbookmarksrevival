@@ -1,89 +1,77 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
 
-function getPageTitle(pathname: string): string {
-  if (pathname === "/") return "ダッシュボード";
-  if (pathname === "/listings") return "登録情報一覧";
-  if (pathname === "/listings/new") return "情報を登録";
-  if (pathname.startsWith("/listings/")) return "詳細";
-  if (pathname === "/login") return "ログイン";
-  if (pathname === "/signup") return "サインアップ";
-  if (pathname === "/reset-password") return "パスワードリセット";
-  if (pathname === "/profile") return "プロフィール";
-  if (pathname.startsWith("/admin")) return "管理者パネル";
-  return "sindbadbookmarks";
+interface HeaderProps {
+  onHamburgerClick?: () => void;
 }
 
-export function Header() {
-  const pathname = usePathname();
-  const [user, setUser] = useState<User | null>(null);
-  const supabase = createClient();
+export function Header({ onHamburgerClick }: HeaderProps) {
+  const router = useRouter();
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
-
+  const handleRegister = async () => {
+    const supabase = createClient();
     const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    window.location.href = "/";
+    if (user) {
+      router.push("/listings/new");
+    } else {
+      router.push("/login?next=/listings/new");
+    }
   };
-
-  const title = getPageTitle(pathname ?? "/");
 
   return (
     <header
-      className="flex h-24 items-center justify-between px-6 text-white shadow-md"
+      className="flex h-24 shrink-0 items-center justify-between px-4 text-white shadow-md"
       style={{ backgroundColor: "#B21000" }}
     >
-      <div className="flex items-center gap-6">
-        <Link href="/" className="flex items-baseline gap-1">
-          <span className="text-2xl font-bold tracking-tight">sindbad</span>
-          <span className="text-lg font-light tracking-tight opacity-90">
-            bookmarks
+      {/* 左: ハンバーガー + ロゴ + テキスト */}
+      <div className="flex items-center gap-3">
+        {/* ハンバーガーボタン */}
+        <button
+          onClick={onHamburgerClick}
+          aria-label="サイドバーを開閉"
+          className="flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-lg hover:bg-white/10"
+        >
+          <span className="block h-0.5 w-6 bg-white" />
+          <span className="block h-0.5 w-6 bg-white" />
+          <span className="block h-0.5 w-6 bg-white" />
+        </button>
+
+        {/* ロゴ画像 */}
+        <Link href="/" className="shrink-0">
+          <Image
+            src="/images/sbbm_logo.jpg"
+            alt="sindbadbookmarks revival logo"
+            width={64}
+            height={64}
+            className="rounded object-contain"
+            priority
+          />
+        </Link>
+
+        {/* サイトタイトル */}
+        <Link href="/" className="hidden sm:block">
+          <span className="text-lg font-bold leading-tight tracking-tight">
+            sindbadbookmarks
+            <br />
+            <span className="text-sm font-light opacity-90">revival</span>
           </span>
         </Link>
-        <span className="hidden h-10 w-px bg-white/30 sm:inline-block" />
-        <h1 className="hidden text-2xl font-semibold sm:block">{title}</h1>
       </div>
 
-      <nav className="flex items-center gap-4 text-sm">
-        {user ? (
-          <>
-            <Link
-              href="/listings/new"
-              className="rounded-full bg-white/15 px-4 py-2 font-medium text-white ring-1 ring-white/40 transition-colors hover:bg-white/25"
-            >
-              情報を登録
-            </Link>
-            <button
-              onClick={handleSignOut}
-              className="text-white/90 hover:text-white"
-            >
-              ログアウト
-            </button>
-          </>
-        ) : (
-          <Link
-            href="/login"
-            className="rounded-full bg-white/15 px-4 py-2 font-medium text-white ring-1 ring-white/40 transition-colors hover:bg-white/25"
-          >
-            ログイン
-          </Link>
-        )}
-      </nav>
+      {/* 右: 情報を登録ボタン（常時表示） */}
+      <button
+        onClick={handleRegister}
+        className="rounded-full bg-white/15 px-5 py-2.5 text-sm font-medium text-white ring-1 ring-white/40 transition-colors hover:bg-white/25"
+      >
+        情報を登録
+      </button>
     </header>
   );
 }

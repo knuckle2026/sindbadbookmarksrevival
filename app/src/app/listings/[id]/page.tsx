@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { GENRES } from "@/lib/constants/genres";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import { TOKYO_WARDS } from "@/lib/constants/tokyo-wards";
-import { SERVICE_AREAS } from "@/lib/constants/service-areas";
+import { SERVICE_AREA_MAP } from "@/lib/constants/service-areas";
 
 function prefectureName(slug: string | null): string | null {
   if (!slug) return null;
@@ -61,7 +61,7 @@ export default async function ListingDetailPage({
   const pref = prefectureName(listing.prefecture);
   const w = wardName(listing.ward);
   const serviceAreaNames = (listing.service_areas ?? [])
-    .map((s: string) => SERVICE_AREAS.find((a) => a.slug === s)?.name ?? s);
+    .map((s: string) => SERVICE_AREA_MAP[s] ?? s);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">

@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { GENRES } from "@/lib/constants/genres";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import { TOKYO_WARDS } from "@/lib/constants/tokyo-wards";
-import { SERVICE_AREAS } from "@/lib/constants/service-areas";
+import { SERVICE_AREA_GROUPS } from "@/lib/constants/service-areas";
 
 export interface GenreOption {
   id: string;
@@ -367,24 +367,30 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
       {showServiceAreas && (
         <div>
           <label className={labelClass}>出張エリア（複数選択可）</label>
-          <div className="flex flex-wrap gap-2">
-            {SERVICE_AREAS.map((a) => {
-              const active = serviceAreas.includes(a.slug);
-              return (
-                <button
-                  key={a.slug}
-                  type="button"
-                  onClick={() => toggleServiceArea(a.slug)}
-                  className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                    active
-                      ? "border-red-600 bg-red-600 text-white"
-                      : "border-zinc-300 bg-white text-zinc-700 hover:border-red-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
-                  }`}
-                >
-                  {a.name}
-                </button>
-              );
-            })}
+          <div className="space-y-4">
+            {SERVICE_AREA_GROUPS.map((group) => (
+              <div key={group.label}>
+                <p className="mb-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                  {group.label}
+                </p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                  {group.areas.map((a) => {
+                    const active = serviceAreas.includes(a.slug);
+                    return (
+                      <label key={a.slug} className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={active}
+                          onChange={() => toggleServiceArea(a.slug)}
+                          className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
+                        />
+                        <span className="text-sm text-zinc-800 dark:text-zinc-200">{a.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

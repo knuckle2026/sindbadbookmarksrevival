@@ -760,10 +760,10 @@ get_prefecture_counts_by_genre(genre_slug text) RETURNS TABLE (
      - `listings.prefecture`（例: `"tokyo"`）
      - `listings.ward`（新規カラム案、東京23区のみ使用）
      - `listings.address`（番地以降の自由入力）
-6. **サービス提供地域**（条件付き・複数選択可）
+6. **サービス提供地域（出張エリア）**（条件付き・複数選択可・チェックボックス）
    - **ジャンルが「マッサージ・売り専」の場合のみ表示**
-   - 選択肢例: 関東 / 東京23区 / 東京23区外 / 関西 / 東海 / 北海道 / 東北 / 中国 / 四国 / 九州・沖縄 / 全国対応 など
-   - 保存先: `listings.service_areas`（新規カラム案、`text[]` 配列）
+   - 選択肢: **東京23区 / 東京23区外 + 46道府県**（全48エリア、地域グループ別にチェックボックス表示）
+   - 保存先: `listings.service_areas`（`text[]` 配列）
    - マッサージ以外のジャンルでは DB に NULL/空配列を保存
 
 ### 17.2 削除される項目
@@ -838,25 +838,22 @@ Section 15〜17 の未決事項および追加論点について、以下のと�
 
 ### 18.2 サービス提供地域 選択肢（確定）
 
-マッサージ・売り専ジャンル選択時のみ表示。複数選択可。`listings.service_areas text[]` に配列で保存。
+マッサージ・売り専ジャンル選択時のみ表示。**チェックボックスで複数選択可**。`listings.service_areas text[]` に配列で保存。
 
-- 関東
-- 東京23区
-- 東京23区外
-- 関西
-- 東海
-- 北海道
-- 東北
-- 中部
-- 中国
-- 四国
-- 九州
-- 沖縄
-- 全国対応
+全48エリア: **東京23区 + 東京23区外 + 46道府県**（東京都を除く全道府県）
 
-保存形式はスラッグ（例: `kanto`, `tokyo-23`, `tokyo-out23`, `kansai`, `tokai`, `hokkaido`, `tohoku`, `chubu`, `chugoku`, `shikoku`, `kyushu`, `okinawa`, `nationwide`）。
+- **東京**: 東京23区 (`tokyo-23`) / 東京23区外 (`tokyo-out23`)
+- **北海道・東北**: 北海道 / 青森県 / 岩手県 / 宮城県 / 秋田県 / 山形県 / 福島県
+- **関東**: 茨城県 / 栃木県 / 群馬県 / 埼玉県 / 千葉県 / 神奈川県
+- **中部**: 新潟県 / 富山県 / 石川県 / 福井県 / 山梨県 / 長野県 / 岐阜県 / 静岡県 / 愛知県
+- **関西**: 三重県 / 滋賀県 / 京都府 / 大阪府 / 兵庫県 / 奈良県 / 和歌山県
+- **中国**: 鳥取県 / 島根県 / 岡山県 / 広島県 / 山口県
+- **四国**: 徳島県 / 香川県 / 愛媛県 / 高知県
+- **九州・沖縄**: 福岡県 / 佐賀県 / 長崎県 / 熊本県 / 大分県 / 宮崎県 / 鹿児島県 / 沖縄県
 
-実装上は固定配列（TypeScript const）として `app/src/lib/constants/service-areas.ts` に定義し、将来マスタ化が必要になったらテーブル化する。
+保存形式はスラッグ（例: `tokyo-23`, `tokyo-out23`, `hokkaido`, `osaka`, `fukuoka` 等）。道府県スラッグは `prefectures.ts` と共通。
+
+フォーム表示は地域グループ別にチェックボックスを並べる（`SERVICE_AREA_GROUPS` 定数で定義）。実装上は固定配列（TypeScript const）として `app/src/lib/constants/service-areas.ts` に定義。
 
 ### 18.3 カテゴリ未定義ジャンルの UI
 
@@ -1229,11 +1226,11 @@ Section 18.8 に 20/21/22 の追加要件を統合した最終的な実装手順
 3. **RPC 関数**
    - `get_genre_counts()` 11ジャンルの件数
    - `get_prefecture_counts_by_genre(genre_slug text)` 47都道府県件数（0件含む）
-   - `get_service_area_counts()` マッサージ用13地域件数
+   - `get_service_area_counts()` マッサージ用48エリア件数
 4. **共通定数**
    - `app/src/lib/constants/prefectures.ts` 47都道府県スラッグ + 地域グループ（北海道東北/関東/中部/関西/中国/四国/九州沖縄）
    - `app/src/lib/constants/tokyo-wards.ts` 東京23区
-   - `app/src/lib/constants/service-areas.ts` 13地域
+   - `app/src/lib/constants/service-areas.ts` 48エリア（東京23区/23区外+46道府県、地域グループ付き）
    - `app/src/lib/constants/genres.ts` 11ジャンル
 5. **認証拡張**
    - Email+Password（既存）+ **Google OAuth** 追加（Supabase設定 + ログイン画面ボタン）

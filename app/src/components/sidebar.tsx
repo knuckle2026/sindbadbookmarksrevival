@@ -1,26 +1,7 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { GENRES } from "@/lib/constants/genres";
-import { createClient } from "@/lib/supabase/client";
 
 export function Sidebar() {
-  const [isAuthed, setIsAuthed] = useState(false);
-
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      setIsAuthed(!!data.user);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
-      setIsAuthed(!!session?.user);
-    });
-    return () => {
-      sub.subscription.unsubscribe();
-    };
-  }, []);
-
   return (
     <aside
       className="w-44 shrink-0 overflow-y-auto text-white"
@@ -36,14 +17,12 @@ export function Sidebar() {
             {g.name}
           </Link>
         ))}
-        {isAuthed && (
-          <Link
-            href="/my-listings"
-            className="mt-2 block border-y border-white/20 bg-white/10 px-3 py-2.5 text-sm font-semibold hover:bg-white/20"
-          >
-            マイリスティング
-          </Link>
-        )}
+        <Link
+          href="/my-listings"
+          className="mt-2 block border-y border-white/20 bg-white/10 px-3 py-2.5 text-sm font-semibold hover:bg-white/20"
+        >
+          マイリスティング
+        </Link>
       </nav>
     </aside>
   );

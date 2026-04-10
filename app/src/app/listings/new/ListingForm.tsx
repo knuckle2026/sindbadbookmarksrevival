@@ -23,29 +23,44 @@ export interface CategoryOption {
   genreSlug: string;
 }
 
+export interface InitialValues {
+  id?: string;
+  title?: string;
+  description?: string;
+  websiteUrl?: string;
+  genreId?: string;
+  selectedCategories?: string[];
+  prefecture?: string;
+  ward?: string;
+  serviceAreas?: string[];
+  address?: string;
+}
+
 interface Props {
   genres: GenreOption[];
   categories: CategoryOption[];
+  mode?: "new" | "edit";
+  initialValues?: InitialValues;
 }
 
 const TITLE_MAX = 20;
 const DESCRIPTION_MAX = 100;
 const URL_RE = /^https?:\/\/.+/;
 
-export default function ListingForm({ genres, categories }: Props) {
+export default function ListingForm({ genres, categories, mode = "new", initialValues }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [websiteUrl, setWebsiteUrl] = useState("");
-  const [genreId, setGenreId] = useState("");
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [prefecture, setPrefecture] = useState("");
-  const [ward, setWard] = useState("");
-  const [serviceAreas, setServiceAreas] = useState<string[]>([]);
-  const [address, setAddress] = useState("");
+  const [title, setTitle] = useState(initialValues?.title ?? "");
+  const [description, setDescription] = useState(initialValues?.description ?? "");
+  const [websiteUrl, setWebsiteUrl] = useState(initialValues?.websiteUrl ?? "");
+  const [genreId, setGenreId] = useState(initialValues?.genreId ?? "");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(initialValues?.selectedCategories ?? []);
+  const [prefecture, setPrefecture] = useState(initialValues?.prefecture ?? "");
+  const [ward, setWard] = useState(initialValues?.ward ?? "");
+  const [serviceAreas, setServiceAreas] = useState<string[]>(initialValues?.serviceAreas ?? []);
+  const [address, setAddress] = useState(initialValues?.address ?? "");
 
   const selectedGenreSlug = useMemo(
     () => genres.find((g) => g.id === genreId)?.slug ?? "",
@@ -113,29 +128,58 @@ export default function ListingForm({ genres, categories }: Props) {
     const showWard = prefecture === "tokyo";
     const showServiceAreas = !!genreMeta?.hasServiceAreas;
 
-    const { data: listing, error: insertError } = await supabase
-      .from("listings")
-      .insert({
-        user_id: user.id,
-        genre_id: genreId,
-        title: title.trim(),
-        description: description.trim(),
-        website_url: websiteUrl.trim(),
-        prefecture: prefecture || null,
-        ward: showWard && ward ? ward : null,
-        service_areas:
-          showServiceAreas && serviceAreas.length > 0 ? serviceAreas : null,
-        address: address.trim() || null,
-        created_by: user.id,
-        updated_by: user.id,
-      })
-      .select("id")
-      .single();
+    const payload = {
+      genre_id: genreId,
+      title: title.trim(),
+      description: description.trim(),
+      website_url: websiteUrl.trim(),
+      prefecture: prefecture || null,
+      ward: showWard && ward ? ward : null,
+      service_areas:
+        showServiceAreas && serviceAreas.length > 0 ? serviceAreas : null,
+      address: address.trim() || null,
+      updated_by: user.id,
+    };
 
-    if (insertError || !listing) {
-      setError(insertError?.message ?? "登録に失敗しました");
-      setLoading(false);
-      return;
+    let listingId: string;
+
+    if (mode === "edit" && initialValues?.id) {
+      // 更新モード
+      const { error: updateError } = await supabase
+        .from("listings")
+        .update(payload)
+        .eq("id", initialValues.id);
+
+      if (updateError) {
+        setError(updateError.message ?? "更新に失敗しました");
+        setLoading(false);
+        return;
+      }
+      listingId = initialValues.id;
+
+      // カテゴリを差し替え: 既存を削除して再挿入
+      await supabase
+        .from("listing_categories")
+        .delete()
+        .eq("listing_id", listingId);
+    } else {
+      // 新規登録モード
+      const { data: listing, error: insertError } = await supabase
+        .from("listings")
+        .insert({
+          ...payload,
+          user_id: user.id,
+          created_by: user.id,
+        })
+        .select("id")
+        .single();
+
+      if (insertError || !listing) {
+        setError(insertError?.message ?? "登録に失敗しました");
+        setLoading(false);
+        return;
+      }
+      listingId = listing.id;
     }
 
     if (selectedCategories.length > 0) {
@@ -143,7 +187,7 @@ export default function ListingForm({ genres, categories }: Props) {
         .from("listing_categories")
         .insert(
           selectedCategories.map((categoryId) => ({
-            listing_id: listing.id,
+            listing_id: listingId,
             category_id: categoryId,
           })),
         );
@@ -154,7 +198,7 @@ export default function ListingForm({ genres, categories }: Props) {
       }
     }
 
-    router.push(`/listings/${listing.id}`);
+    router.push(`/listings/${listingId}`);
   };
 
   const inputClass =
@@ -242,26 +286,23 @@ export default function ListingForm({ genres, categories }: Props) {
         />
       </div>
 
-      {/* カテゴリ (複数選択) */}
+      {/* カテゴリ (チェックボックス複数選択) */}
       {selectedGenreSlug && visibleCategories.length > 0 && (
         <div>
           <label className={labelClass}>カテゴリ（複数選択可）</label>
-          <div className="flex flex-wrap gap-2">
+          <div className="space-y-2">
             {visibleCategories.map((c) => {
               const active = selectedCategories.includes(c.id);
               return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => toggleCategory(c.id)}
-                  className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                    active
-                      ? "border-red-600 bg-red-600 text-white"
-                      : "border-zinc-300 bg-white text-zinc-700 hover:border-red-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
-                  }`}
-                >
-                  {c.name}
-                </button>
+                <label key={c.id} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={active}
+                    onChange={() => toggleCategory(c.id)}
+                    className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
+                  />
+                  <span className="text-sm text-zinc-800 dark:text-zinc-200">{c.name}</span>
+                </label>
               );
             })}
           </div>
@@ -368,7 +409,7 @@ export default function ListingForm({ genres, categories }: Props) {
           className="flex-1 rounded-lg py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           style={{ backgroundColor: "#B21000" }}
         >
-          {loading ? "登録中..." : "登録する"}
+          {loading ? (mode === "edit" ? "更新中..." : "登録中...") : (mode === "edit" ? "更新する" : "登録する")}
         </button>
       </div>
     </form>

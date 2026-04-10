@@ -144,10 +144,10 @@ describe("ListingForm", () => {
     fireEvent.change(screen.getAllByRole("combobox")[0], {
       target: { value: "g-bar" },
     });
-    expect(screen.getByRole("button", { name: "バー" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "居酒屋" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "バー" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "居酒屋" })).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "マッサージ" }),
+      screen.queryByRole("checkbox", { name: "マッサージ" }),
     ).toBeNull();
   });
 
@@ -181,7 +181,7 @@ describe("ListingForm", () => {
     fireEvent.change(screen.getAllByRole("combobox")[0], {
       target: { value: "g-bar" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "バー" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "バー" }));
     fireEvent.click(screen.getByRole("button", { name: "登録する" }));
 
     await waitFor(() => {

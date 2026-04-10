@@ -2,24 +2,24 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { GENRES } from "@/lib/constants/genres";
+import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
+import { TOKYO_WARDS } from "@/lib/constants/tokyo-wards";
+import { SERVICE_AREAS } from "@/lib/constants/service-areas";
 
-const TYPE_LABELS: Record<string, string> = {
-  shop: "店舗",
-  organization: "団体・コミュニティ",
-  media: "メディア・Webサービス",
-};
+function prefectureName(slug: string | null): string | null {
+  if (!slug) return null;
+  for (const r of PREFECTURE_REGIONS) {
+    const p = r.prefectures.find((p) => p.slug === slug);
+    if (p) return p.name;
+  }
+  return slug;
+}
 
-const FRIENDLINESS_LABELS: Record<string, string> = {
-  Dedicated: "専門",
-  Friendly: "フレンドリー",
-  Ally: "アライ",
-};
-
-const FRIENDLINESS_COLORS: Record<string, string> = {
-  Dedicated: "bg-purple-100 text-purple-700",
-  Friendly: "bg-pink-100 text-pink-700",
-  Ally: "bg-indigo-100 text-indigo-700",
-};
+function wardName(slug: string | null): string | null {
+  if (!slug) return null;
+  return TOKYO_WARDS.find((w) => w.slug === slug)?.name ?? slug;
+}
 
 export default async function ListingDetailPage({
   params,
@@ -29,24 +29,28 @@ export default async function ListingDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: listingRaw } = await supabase
+  const { data: listing } = await supabase
     .from("listings")
     .select("*")
     .eq("id", id)
     .single();
 
-  if (!listingRaw) notFound();
+  if (!listing) notFound();
 
-  const listing = listingRaw as typeof listingRaw & {
-    listing_categories?: { categories: { id: string; name: string; group_type: string } | null }[];
-  };
+  // ジャンル名を取得
+  const { data: genre } = listing.genre_id
+    ? await supabase.from("genres").select("slug, name").eq("id", listing.genre_id).single()
+    : { data: null };
 
+  // カテゴリを取得
   const { data: lcData } = await supabase
     .from("listing_categories")
-    .select("categories(id, name, group_type)")
+    .select("categories(id, name)")
     .eq("listing_id", id);
 
-  listing.listing_categories = (lcData ?? []) as typeof listing.listing_categories;
+  const categoryNames = (lcData ?? [])
+    .map((lc: any) => lc.categories?.name)
+    .filter(Boolean) as string[];
 
   const {
     data: { user },
@@ -54,30 +58,23 @@ export default async function ListingDetailPage({
 
   const isOwner = user?.id === listing.user_id;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const purposeCategories = listing.listing_categories
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ?.filter((lc: any) => lc.categories?.group_type === "purpose")
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .map((lc: any) => lc.categories)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .filter(Boolean) as { id: string; name: string }[];
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const industryCategories = listing.listing_categories
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ?.filter((lc: any) => lc.categories?.group_type === "industry")
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .map((lc: any) => lc.categories)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .filter(Boolean) as { id: string; name: string }[];
+  const pref = prefectureName(listing.prefecture);
+  const w = wardName(listing.ward);
+  const serviceAreaNames = (listing.service_areas ?? [])
+    .map((s: string) => SERVICE_AREAS.find((a) => a.slug === s)?.name ?? s);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <div className="mb-6">
-        <Link href="/listings" className="text-sm text-blue-600 hover:underline">
-          ← 一覧に戻る
-        </Link>
+        {genre ? (
+          <Link href={`/genres/${genre.slug}`} className="text-sm text-blue-600 hover:underline">
+            ← {genre.name}一覧に戻る
+          </Link>
+        ) : (
+          <Link href="/" className="text-sm text-blue-600 hover:underline">
+            ← トップに戻る
+          </Link>
+        )}
       </div>
 
       <div className="bg-white border rounded-xl p-6 space-y-5">
@@ -88,23 +85,18 @@ export default async function ListingDetailPage({
               href={`/listings/${listing.id}/edit`}
               className="shrink-0 text-sm border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              編集
+              登録情報の編集
             </Link>
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <span className="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded-full">
-            {TYPE_LABELS[listing.type]}
-          </span>
-          {listing.friendliness && (
-            <span
-              className={`text-sm px-3 py-1 rounded-full ${FRIENDLINESS_COLORS[listing.friendliness]}`}
-            >
-              {FRIENDLINESS_LABELS[listing.friendliness]}
+        {genre && (
+          <div className="flex flex-wrap gap-2">
+            <span className="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded-full">
+              {genre.name}
             </span>
-          )}
-        </div>
+          </div>
+        )}
 
         {listing.description && (
           <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
@@ -128,51 +120,47 @@ export default async function ListingDetailPage({
           </div>
         )}
 
-        {listing.address && (
+        {(pref || listing.address) && (
           <div>
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
               所在地
             </p>
-            <p className="text-sm text-gray-700">📍 {listing.address}</p>
+            <p className="text-sm text-gray-700">
+              {[pref, w, listing.address].filter(Boolean).join(" ")}
+            </p>
           </div>
         )}
 
-        {(purposeCategories.length > 0 || industryCategories.length > 0) && (
-          <div className="space-y-3 pt-1">
-            {purposeCategories.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                  目的別カテゴリ
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {purposeCategories.map((cat) => (
-                    <span
-                      key={cat.id}
-                      className="text-sm bg-blue-50 text-blue-700 px-3 py-1 rounded-full"
-                    >
-                      {cat.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {industryCategories.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                  業態別カテゴリ
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {industryCategories.map((cat) => (
-                    <span
-                      key={cat.id}
-                      className="text-sm bg-green-50 text-green-700 px-3 py-1 rounded-full"
-                    >
-                      {cat.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+        {serviceAreaNames.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+              出張エリア
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {serviceAreaNames.map((name: string) => (
+                <span key={name} className="text-sm bg-blue-50 text-blue-700 px-3 py-1 rounded-full">
+                  {name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {categoryNames.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+              カテゴリ
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {categoryNames.map((name) => (
+                <span
+                  key={name}
+                  className="text-sm bg-green-50 text-green-700 px-3 py-1 rounded-full"
+                >
+                  {name}
+                </span>
+              ))}
+            </div>
           </div>
         )}
 

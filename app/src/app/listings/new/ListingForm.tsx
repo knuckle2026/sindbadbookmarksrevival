@@ -198,7 +198,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
       }
     }
 
-    router.push(`/listings/${listingId}`);
+    router.push("/my-listings");
   };
 
   const inputClass =

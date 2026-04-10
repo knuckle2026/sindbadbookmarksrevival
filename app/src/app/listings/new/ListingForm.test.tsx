@@ -164,7 +164,7 @@ describe("ListingForm", () => {
     ).toBeInTheDocument();
   });
 
-  it("正常ケース: listings と listing_categories に insert され /listings/:id に遷移", async () => {
+  it("正常ケース: listings と listing_categories に insert され /my-listings に遷移", async () => {
     render(
       <ListingForm genres={GENRES_FIXTURE} categories={CATEGORIES_FIXTURE} />,
     );
@@ -200,7 +200,7 @@ describe("ListingForm", () => {
       { listing_id: "listing-1", category_id: "c-bar" },
     ]);
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith("/listings/listing-1");
+      expect(pushMock).toHaveBeenCalledWith("/my-listings");
     });
   });
 });

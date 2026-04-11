@@ -60,8 +60,24 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     .filter(Boolean);
 
   let listingIds: string[] | null = null;
+  const isMassage = slug === "massage-urisen";
+  const newhalfCat = isMassage
+    ? (categories ?? []).find((c) => c.slug === "newhalf")
+    : null;
+  const newhalfExplicitlySelected = selectedCategorySlugs.includes("newhalf");
+
+  // ニューハーフ除外対象IDを取得（マッサージ & ニューハーフ未選択時に使用）
+  let excludeNewhalfIds: Set<string> = new Set();
+  if (isMassage && newhalfCat && !newhalfExplicitlySelected) {
+    const { data: nhLc } = await supabase
+      .from("listing_categories")
+      .select("listing_id")
+      .eq("category_id", newhalfCat.id);
+    excludeNewhalfIds = new Set((nhLc ?? []).map((r) => r.listing_id));
+  }
 
   if (selectedCategorySlugs.length > 0) {
+    // カテゴリ選択あり → OR検索
     const matchedCats = (categories ?? []).filter((c) =>
       selectedCategorySlugs.includes(c.slug),
     );
@@ -73,33 +89,24 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
           "category_id",
           matchedCats.map((c) => c.id),
         );
-      listingIds = [...new Set((lc ?? []).map((r) => r.listing_id))];
-      if (listingIds.length === 0)
-        listingIds = ["00000000-0000-0000-0000-000000000000"];
-    }
-  } else if (slug === "massage-urisen") {
-    // ニューハーフマッサージ除外: カテゴリ未選択時はニューハーフを除外
-    const newhalfCat = (categories ?? []).find((c) => c.slug === "newhalf");
-    if (newhalfCat) {
-      const { data: nhLc } = await supabase
-        .from("listing_categories")
-        .select("listing_id")
-        .eq("category_id", newhalfCat.id);
-      const nhIds = new Set((nhLc ?? []).map((r) => r.listing_id));
-      if (nhIds.size > 0) {
-        // Get all listings for this genre, then exclude newhalf ones
-        const { data: allListings } = await supabase
-          .from("listings")
-          .select("id")
-          .eq("genre_id", genreRow.id)
-          .eq("status", "published");
-        listingIds = (allListings ?? [])
-          .map((l) => l.id)
-          .filter((id) => !nhIds.has(id));
-        if (listingIds.length === 0)
-          listingIds = ["00000000-0000-0000-0000-000000000000"];
+      let ids = [...new Set((lc ?? []).map((r) => r.listing_id))];
+      // ニューハーフ未選択時は除外
+      if (excludeNewhalfIds.size > 0) {
+        ids = ids.filter((id) => !excludeNewhalfIds.has(id));
       }
+      listingIds = ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"];
     }
+  } else if (isMassage && excludeNewhalfIds.size > 0) {
+    // カテゴリ未選択 & マッサージ → ニューハーフのみ除外して全件表示
+    const { data: allListings } = await supabase
+      .from("listings")
+      .select("id")
+      .eq("genre_id", genreRow.id)
+      .eq("status", "published");
+    const ids = (allListings ?? [])
+      .map((l) => l.id)
+      .filter((id) => !excludeNewhalfIds.has(id));
+    listingIds = ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"];
   }
 
   // 2. 都道府県フィルタ

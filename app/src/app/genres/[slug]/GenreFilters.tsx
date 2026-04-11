@@ -1,8 +1,8 @@
 // @ts-nocheck
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useState, useEffect, useTransition } from "react";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import { SERVICE_AREA_GROUPS } from "@/lib/constants/service-areas";
 
@@ -15,7 +15,6 @@ interface CategoryItem {
 interface GenreFiltersProps {
   slug: string;
   categories: CategoryItem[];
-  /** Whether this genre has service areas (massage-urisen) */
   hasServiceAreas: boolean;
 }
 
@@ -25,68 +24,103 @@ export default function GenreFilters({
   hasServiceAreas,
 }: GenreFiltersProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
-  // Parse current state from URL
-  const selectedCategories = (searchParams.get("category") ?? "")
-    .split(",")
-    .filter(Boolean);
-  const selectedPrefecture = searchParams.get("prefecture") ?? "";
-  const selectedServiceAreas = (searchParams.get("service_area") ?? "")
-    .split(",")
-    .filter(Boolean);
+  // ニューハーフマッサージを通常カテゴリから分離
+  const normalCategories = categories.filter((c) => c.slug !== "newhalf");
+  const newhalfCategory = categories.find((c) => c.slug === "newhalf");
 
-  const buildUrl = useCallback(
-    (updates: Record<string, string>) => {
-      const params = new URLSearchParams(searchParams.toString());
-      // Always reset page when filters change
-      params.delete("page");
-
-      for (const [key, value] of Object.entries(updates)) {
-        if (value) {
-          params.set(key, value);
-        } else {
-          params.delete(key);
-        }
-      }
-
-      const qs = params.toString();
-      return `/genres/${slug}${qs ? `?${qs}` : ""}`;
-    },
-    [slug, searchParams],
+  // ローカルstate（URLから初期化）
+  const [checkedCats, setCheckedCats] = useState<Set<string>>(() => {
+    const param = searchParams.get("category") ?? "";
+    return new Set(param.split(",").filter(Boolean));
+  });
+  const [prefecture, setPrefecture] = useState(
+    () => searchParams.get("prefecture") ?? "",
   );
+  const [checkedAreas, setCheckedAreas] = useState<Set<string>>(() => {
+    const param = searchParams.get("service_area") ?? "";
+    return new Set(param.split(",").filter(Boolean));
+  });
 
-  const allCategorySlugs = categories.map((c) => c.slug);
-  const allCategoriesSelected =
-    allCategorySlugs.length > 0 &&
-    allCategorySlugs.every((s) => selectedCategories.includes(s));
+  // URLからstateを同期（ブラウザバック対応）
+  useEffect(() => {
+    const catParam = searchParams.get("category") ?? "";
+    setCheckedCats(new Set(catParam.split(",").filter(Boolean)));
+    setPrefecture(searchParams.get("prefecture") ?? "");
+    const areaParam = searchParams.get("service_area") ?? "";
+    setCheckedAreas(new Set(areaParam.split(",").filter(Boolean)));
+  }, [searchParams]);
 
-  const toggleAllCategories = () => {
-    if (allCategoriesSelected) {
-      // 全解除
-      router.push(buildUrl({ category: "" }));
+  // stateからURLを構築して遷移
+  const syncToUrl = (
+    nextCats: Set<string>,
+    nextPref: string,
+    nextAreas: Set<string>,
+  ) => {
+    const params = new URLSearchParams();
+    const catStr = [...nextCats].join(",");
+    if (catStr) params.set("category", catStr);
+    if (nextPref) params.set("prefecture", nextPref);
+    const areaStr = [...nextAreas].join(",");
+    if (areaStr) params.set("service_area", areaStr);
+    const qs = params.toString();
+    const url = `${pathname}${qs ? `?${qs}` : ""}`;
+    startTransition(() => {
+      router.replace(url, { scroll: false });
+    });
+  };
+
+  // --- カテゴリ ---
+  const normalSlugs = normalCategories.map((c) => c.slug);
+  const allNormalChecked =
+    normalSlugs.length > 0 && normalSlugs.every((s) => checkedCats.has(s));
+  const newhalfChecked = newhalfCategory
+    ? checkedCats.has(newhalfCategory.slug)
+    : false;
+
+  const toggleAll = () => {
+    const next = new Set(checkedCats);
+    if (allNormalChecked) {
+      // 全解除（ニューハーフも含む）
+      normalSlugs.forEach((s) => next.delete(s));
     } else {
-      // 全選択
-      router.push(buildUrl({ category: allCategorySlugs.join(",") }));
+      // 全選択（ニューハーフ以外）
+      normalSlugs.forEach((s) => next.add(s));
     }
+    setCheckedCats(next);
+    syncToUrl(next, prefecture, checkedAreas);
   };
 
-  const toggleCategory = (catSlug: string) => {
-    const next = selectedCategories.includes(catSlug)
-      ? selectedCategories.filter((c) => c !== catSlug)
-      : [...selectedCategories, catSlug];
-    router.push(buildUrl({ category: next.join(",") }));
+  const toggleCat = (catSlug: string) => {
+    const next = new Set(checkedCats);
+    if (next.has(catSlug)) {
+      next.delete(catSlug);
+    } else {
+      next.add(catSlug);
+    }
+    setCheckedCats(next);
+    syncToUrl(next, prefecture, checkedAreas);
   };
 
-  const setPrefecture = (value: string) => {
-    router.push(buildUrl({ prefecture: value }));
+  // --- 都道府県 ---
+  const onPrefChange = (value: string) => {
+    setPrefecture(value);
+    syncToUrl(checkedCats, value, checkedAreas);
   };
 
-  const toggleServiceArea = (areaSlug: string) => {
-    const next = selectedServiceAreas.includes(areaSlug)
-      ? selectedServiceAreas.filter((a) => a !== areaSlug)
-      : [...selectedServiceAreas, areaSlug];
-    router.push(buildUrl({ service_area: next.join(",") }));
+  // --- 出張エリア ---
+  const toggleArea = (areaSlug: string) => {
+    const next = new Set(checkedAreas);
+    if (next.has(areaSlug)) {
+      next.delete(areaSlug);
+    } else {
+      next.add(areaSlug);
+    }
+    setCheckedAreas(next);
+    syncToUrl(checkedCats, prefecture, next);
   };
 
   return (
@@ -98,36 +132,51 @@ export default function GenreFilters({
             カテゴリで絞り込み（複数選択可）
           </p>
           <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+            {/* すべて（ニューハーフマッサージ以外） */}
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input
                 type="checkbox"
-                checked={allCategoriesSelected}
-                onChange={toggleAllCategories}
+                checked={allNormalChecked}
+                onChange={toggleAll}
                 className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
               />
               <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                すべて
+                {newhalfCategory ? "ニューハーフマッサージ以外すべて" : "すべて"}
               </span>
             </label>
-            {categories.map((c) => {
-              const checked = selectedCategories.includes(c.slug);
-              return (
-                <label
-                  key={c.id}
-                  className="flex items-center gap-1.5 cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleCategory(c.slug)}
-                    className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
-                  />
-                  <span className="text-sm text-zinc-800 dark:text-zinc-200">
-                    {c.name}
-                  </span>
-                </label>
-              );
-            })}
+
+            {/* 通常カテゴリ */}
+            {normalCategories.map((c) => (
+              <label
+                key={c.id}
+                className="flex items-center gap-1.5 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={checkedCats.has(c.slug)}
+                  onChange={() => toggleCat(c.slug)}
+                  className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
+                />
+                <span className="text-sm text-zinc-800 dark:text-zinc-200">
+                  {c.name}
+                </span>
+              </label>
+            ))}
+
+            {/* ニューハーフマッサージ（明示的オプトイン） */}
+            {newhalfCategory && (
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newhalfChecked}
+                  onChange={() => toggleCat(newhalfCategory.slug)}
+                  className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
+                />
+                <span className="text-sm text-zinc-800 dark:text-zinc-200">
+                  {newhalfCategory.name}
+                </span>
+              </label>
+            )}
           </div>
         </div>
       )}
@@ -139,8 +188,8 @@ export default function GenreFilters({
             都道府県で絞り込み
           </p>
           <select
-            value={selectedPrefecture}
-            onChange={(e) => setPrefecture(e.target.value)}
+            value={prefecture}
+            onChange={(e) => onPrefChange(e.target.value)}
             className="w-full max-w-xs rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
           >
             <option value="">すべての都道府県</option>
@@ -170,30 +219,31 @@ export default function GenreFilters({
                   {group.label}
                 </p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1">
-                  {group.areas.map((a) => {
-                    const checked = selectedServiceAreas.includes(a.slug);
-                    return (
-                      <label
-                        key={a.slug}
-                        className="flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleServiceArea(a.slug)}
-                          className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
-                        />
-                        <span className="text-sm text-zinc-800 dark:text-zinc-200">
-                          {a.name}
-                        </span>
-                      </label>
-                    );
-                  })}
+                  {group.areas.map((a) => (
+                    <label
+                      key={a.slug}
+                      className="flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checkedAreas.has(a.slug)}
+                        onChange={() => toggleArea(a.slug)}
+                        className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
+                      />
+                      <span className="text-sm text-zinc-800 dark:text-zinc-200">
+                        {a.name}
+                      </span>
+                    </label>
+                  ))}
                 </div>
               </div>
             ))}
           </div>
         </div>
+      )}
+
+      {isPending && (
+        <p className="text-xs text-zinc-400">読み込み中...</p>
       )}
     </div>
   );

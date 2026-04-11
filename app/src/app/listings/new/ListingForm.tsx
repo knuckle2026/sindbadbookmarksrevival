@@ -332,59 +332,67 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
         </div>
       )}
 
-      {/* 都道府県 */}
-      <div>
-        <label className={labelClass}>都道府県（任意）</label>
-        <select
-          value={prefecture}
-          onChange={(e) => {
-            setPrefecture(e.target.value);
-            setWard("");
-          }}
-          className={inputClass}
-        >
-          <option value="">選択しない（オンライン等）</option>
-          {PREFECTURE_REGIONS.map((region) => (
-            <optgroup key={region.slug} label={region.name}>
-              {region.prefectures.map((p) => (
-                <option key={p.slug} value={p.slug}>
-                  {p.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-      </div>
+      {/* 所在地セクション (hasPrefecture ジャンルのみ) */}
+      {!!genreMeta?.hasPrefecture && (
+        <>
+          <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">所在地</p>
 
-      {/* 区 (東京のみ) */}
-      {showWard && (
-        <div>
-          <label className={labelClass}>区（任意）</label>
-          <select
-            value={ward}
-            onChange={(e) => setWard(e.target.value)}
-            className={inputClass}
-          >
-            <option value="">選択しない</option>
-            {TOKYO_WARDS.map((w) => (
-              <option key={w.slug} value={w.slug}>
-                {w.name}
-              </option>
-            ))}
-          </select>
-        </div>
+          {/* 都道府県 + 区 (横並び) */}
+          <div className="flex gap-3">
+            <div className="w-1/2">
+              <label className={labelClass}>都道府県</label>
+              <select
+                value={prefecture}
+                onChange={(e) => {
+                  setPrefecture(e.target.value);
+                  setWard("");
+                }}
+                className={inputClass}
+              >
+                <option value="">選択しない（オンライン等）</option>
+                {PREFECTURE_REGIONS.map((region) => (
+                  <optgroup key={region.slug} label={region.name}>
+                    {region.prefectures.map((p) => (
+                      <option key={p.slug} value={p.slug}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+
+            {showWard && (
+              <div className="w-1/2">
+                <label className={labelClass}>区（任意）</label>
+                <select
+                  value={ward}
+                  onChange={(e) => setWard(e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">選択しない</option>
+                  {TOKYO_WARDS.map((w) => (
+                    <option key={w.slug} value={w.slug}>
+                      {w.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* 詳細住所 */}
+          <div>
+            <label className={labelClass}>詳細住所（任意）</label>
+            <input
+              type="text"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+        </>
       )}
-
-      {/* 住所 (自由入力) */}
-      <div>
-        <label className={labelClass}>住所（任意）</label>
-        <input
-          type="text"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          className={inputClass}
-        />
-      </div>
 
       {/* 出張エリア (hasServiceAreas=true ジャンルのみ) */}
       {showServiceAreas && (

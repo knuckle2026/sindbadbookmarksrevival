@@ -4,8 +4,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GENRES } from "@/lib/constants/genres";
+import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import Pagination from "@/components/listings/Pagination";
 import GenreFilters from "./GenreFilters";
+import RegionPrefectureNav from "./RegionPrefectureNav";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,7 @@ interface PageProps {
     category?: string;
     prefecture?: string;
     service_area?: string;
+    region?: string;
     page?: string;
   }>;
 }
@@ -27,6 +30,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     category: categoryParam,
     prefecture: prefectureParam,
     service_area: serviceAreaParam,
+    region: regionParam,
     page: pageParam,
   } = await searchParams;
   const currentPage = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
@@ -51,6 +55,27 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     .select("id, slug, name, sort_order")
     .eq("genre_id", genreRow.id)
     .order("sort_order", { ascending: true });
+
+  // === Prefecture counts (hasPrefecture ジャンルのみ) ===
+  let prefCountMap: Record<string, number> = {};
+  if (genreMeta.hasPrefecture) {
+    const { data: prefCounts } = await supabase
+      .from("listings")
+      .select("prefecture")
+      .eq("genre_id", genreRow.id)
+      .eq("status", "published")
+      .not("prefecture", "is", null);
+
+    (prefCounts ?? []).forEach((row) => {
+      const p = row.prefecture;
+      if (p) prefCountMap[p] = (prefCountMap[p] ?? 0) + 1;
+    });
+  }
+
+  // === Region resolution ===
+  const selectedRegion = regionParam
+    ? PREFECTURE_REGIONS.find((r) => r.slug === regionParam)
+    : null;
 
   // === フィルタ処理 ===
 
@@ -77,7 +102,6 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   }
 
   if (selectedCategorySlugs.length > 0) {
-    // カテゴリ選択あり → OR検索
     const matchedCats = (categories ?? []).filter((c) =>
       selectedCategorySlugs.includes(c.slug),
     );
@@ -90,14 +114,12 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
           matchedCats.map((c) => c.id),
         );
       let ids = [...new Set((lc ?? []).map((r) => r.listing_id))];
-      // ニューハーフ未選択時は除外
       if (excludeNewhalfIds.size > 0) {
         ids = ids.filter((id) => !excludeNewhalfIds.has(id));
       }
       listingIds = ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"];
     }
   } else if (isMassage && excludeNewhalfIds.size > 0) {
-    // カテゴリ未選択 & マッサージ → ニューハーフのみ除外して全件表示
     const { data: allListings } = await supabase
       .from("listings")
       .select("id")
@@ -109,8 +131,11 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     listingIds = ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"];
   }
 
-  // 2. 都道府県フィルタ
+  // 2. 都道府県 / 地方フィルタ
   const prefectureFilter = prefectureParam ?? "";
+  const regionPrefectureSlugs = selectedRegion
+    ? selectedRegion.prefectures.map((p) => p.slug)
+    : null;
 
   // 3. 出張エリアフィルタ
   const selectedServiceAreas = (serviceAreaParam ?? "")
@@ -126,7 +151,11 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     .eq("genre_id", genreRow.id)
     .eq("status", "published");
   if (listingIds) countQuery = countQuery.in("id", listingIds);
-  if (prefectureFilter) countQuery = countQuery.eq("prefecture", prefectureFilter);
+  if (prefectureFilter) {
+    countQuery = countQuery.eq("prefecture", prefectureFilter);
+  } else if (regionPrefectureSlugs) {
+    countQuery = countQuery.in("prefecture", regionPrefectureSlugs);
+  }
   if (selectedServiceAreas.length > 0)
     countQuery = countQuery.overlaps("service_areas", selectedServiceAreas);
   const { count } = await countQuery;
@@ -145,7 +174,11 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     .order("created_at", { ascending: false })
     .range(from, to);
   if (listingIds) query = query.in("id", listingIds);
-  if (prefectureFilter) query = query.eq("prefecture", prefectureFilter);
+  if (prefectureFilter) {
+    query = query.eq("prefecture", prefectureFilter);
+  } else if (regionPrefectureSlugs) {
+    query = query.in("prefecture", regionPrefectureSlugs);
+  }
   if (selectedServiceAreas.length > 0)
     query = query.overlaps("service_areas", selectedServiceAreas);
   const { data: listings } = await query;
@@ -153,6 +186,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   // extraParams for pagination links
   const extraParams: Record<string, string> = {};
   if (categoryParam) extraParams.category = categoryParam;
+  if (regionParam) extraParams.region = regionParam;
   if (prefectureFilter) extraParams.prefecture = prefectureFilter;
   if (serviceAreaParam) extraParams.service_area = serviceAreaParam;
 
@@ -170,7 +204,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
         {genreRow.name}
       </h1>
 
-      {/* フィルタ: チェックボックス式 */}
+      {/* カテゴリ + 出張エリアフィルタ */}
       <Suspense>
         <GenreFilters
           slug={slug}
@@ -182,6 +216,18 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
           hasServiceAreas={!!genreMeta.hasServiceAreas}
         />
       </Suspense>
+
+      {/* 所在地絞り込み (hasPrefecture ジャンルのみ) */}
+      {genreMeta.hasPrefecture && (
+        <RegionPrefectureNav
+          slug={slug}
+          prefCountMap={prefCountMap}
+          selectedRegion={regionParam ?? null}
+          selectedPrefecture={prefectureFilter}
+          categoryParam={categoryParam ?? ""}
+          serviceAreaParam={serviceAreaParam ?? ""}
+        />
+      )}
 
       {/* Listings */}
       {listings && listings.length > 0 ? (

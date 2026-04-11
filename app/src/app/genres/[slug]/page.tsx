@@ -1,9 +1,11 @@
 // @ts-nocheck
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GENRES } from "@/lib/constants/genres";
 import Pagination from "@/components/listings/Pagination";
+import GenreFilters from "./GenreFilters";
 
 export const dynamic = "force-dynamic";
 
@@ -11,12 +13,22 @@ const PER_PAGE = 20;
 
 interface PageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ category?: string; page?: string }>;
+  searchParams: Promise<{
+    category?: string;
+    prefecture?: string;
+    service_area?: string;
+    page?: string;
+  }>;
 }
 
 export default async function GenrePage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const { category: categorySlug, page: pageParam } = await searchParams;
+  const {
+    category: categoryParam,
+    prefecture: prefectureParam,
+    service_area: serviceAreaParam,
+    page: pageParam,
+  } = await searchParams;
   const currentPage = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
 
   const genreMeta = GENRES.find((g) => g.slug === slug);
@@ -33,36 +45,83 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
 
   if (!genreRow) notFound();
 
-  // Categories of this genre (for sub-nav)
+  // Categories of this genre
   const { data: categories } = await supabase
     .from("categories")
     .select("id, slug, name, sort_order")
     .eq("genre_id", genreRow.id)
     .order("sort_order", { ascending: true });
 
-  // Listings: filter by genre, optionally by category via listing_categories join
+  // === フィルタ処理 ===
+
+  // 1. カテゴリフィルタ (OR検索、ニューハーフマッサージ除外の特殊ルール)
+  const selectedCategorySlugs = (categoryParam ?? "")
+    .split(",")
+    .filter(Boolean);
+
   let listingIds: string[] | null = null;
-  if (categorySlug) {
-    const match = (categories ?? []).find((c) => c.slug === categorySlug);
-    if (match) {
+
+  if (selectedCategorySlugs.length > 0) {
+    const matchedCats = (categories ?? []).filter((c) =>
+      selectedCategorySlugs.includes(c.slug),
+    );
+    if (matchedCats.length > 0) {
       const { data: lc } = await supabase
         .from("listing_categories")
         .select("listing_id")
-        .eq("category_id", match.id);
-      listingIds = (lc ?? []).map((r) => r.listing_id);
-      if (listingIds.length === 0) listingIds = ["00000000-0000-0000-0000-000000000000"];
+        .in(
+          "category_id",
+          matchedCats.map((c) => c.id),
+        );
+      listingIds = [...new Set((lc ?? []).map((r) => r.listing_id))];
+      if (listingIds.length === 0)
+        listingIds = ["00000000-0000-0000-0000-000000000000"];
+    }
+  } else if (slug === "massage-urisen") {
+    // ニューハーフマッサージ除外: カテゴリ未選択時はニューハーフを除外
+    const newhalfCat = (categories ?? []).find((c) => c.slug === "newhalf");
+    if (newhalfCat) {
+      const { data: nhLc } = await supabase
+        .from("listing_categories")
+        .select("listing_id")
+        .eq("category_id", newhalfCat.id);
+      const nhIds = new Set((nhLc ?? []).map((r) => r.listing_id));
+      if (nhIds.size > 0) {
+        // Get all listings for this genre, then exclude newhalf ones
+        const { data: allListings } = await supabase
+          .from("listings")
+          .select("id")
+          .eq("genre_id", genreRow.id)
+          .eq("status", "published");
+        listingIds = (allListings ?? [])
+          .map((l) => l.id)
+          .filter((id) => !nhIds.has(id));
+        if (listingIds.length === 0)
+          listingIds = ["00000000-0000-0000-0000-000000000000"];
+      }
     }
   }
 
-  // 総件数を取得
+  // 2. 都道府県フィルタ
+  const prefectureFilter = prefectureParam ?? "";
+
+  // 3. 出張エリアフィルタ
+  const selectedServiceAreas = (serviceAreaParam ?? "")
+    .split(",")
+    .filter(Boolean);
+
+  // === クエリ構築 ===
+
+  // 総件数
   let countQuery = supabase
     .from("listings")
     .select("id", { count: "exact", head: true })
     .eq("genre_id", genreRow.id)
     .eq("status", "published");
-  if (listingIds) {
-    countQuery = countQuery.in("id", listingIds);
-  }
+  if (listingIds) countQuery = countQuery.in("id", listingIds);
+  if (prefectureFilter) countQuery = countQuery.eq("prefecture", prefectureFilter);
+  if (selectedServiceAreas.length > 0)
+    countQuery = countQuery.overlaps("service_areas", selectedServiceAreas);
   const { count } = await countQuery;
 
   const totalCount = count ?? 0;
@@ -78,10 +137,17 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     .eq("status", "published")
     .order("created_at", { ascending: false })
     .range(from, to);
-  if (listingIds) {
-    query = query.in("id", listingIds);
-  }
+  if (listingIds) query = query.in("id", listingIds);
+  if (prefectureFilter) query = query.eq("prefecture", prefectureFilter);
+  if (selectedServiceAreas.length > 0)
+    query = query.overlaps("service_areas", selectedServiceAreas);
   const { data: listings } = await query;
+
+  // extraParams for pagination links
+  const extraParams: Record<string, string> = {};
+  if (categoryParam) extraParams.category = categoryParam;
+  if (prefectureFilter) extraParams.prefecture = prefectureFilter;
+  if (serviceAreaParam) extraParams.service_area = serviceAreaParam;
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
@@ -97,72 +163,56 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
         {genreRow.name}
       </h1>
 
-      {/* Category sub-nav */}
-      {categories && categories.length > 0 && (
-        <div className="mb-6 flex flex-wrap gap-2">
-          <Link
-            href={`/genres/${slug}`}
-            className={`rounded-full border px-3 py-1 text-sm ${
-              !categorySlug
-                ? "border-red-600 bg-red-600 text-white"
-                : "border-zinc-300 bg-white text-zinc-700 hover:border-red-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
-            }`}
-          >
-            すべて
-          </Link>
-          {categories.map((c) => {
-            const active = c.slug === categorySlug;
-            return (
-              <Link
-                key={c.id}
-                href={`/genres/${slug}?category=${c.slug}`}
-                className={`rounded-full border px-3 py-1 text-sm ${
-                  active
-                    ? "border-red-600 bg-red-600 text-white"
-                    : "border-zinc-300 bg-white text-zinc-700 hover:border-red-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
-                }`}
-              >
-                {c.name}
-              </Link>
-            );
-          })}
-        </div>
-      )}
+      {/* フィルタ: チェックボックス式 */}
+      <Suspense>
+        <GenreFilters
+          slug={slug}
+          categories={(categories ?? []).map((c) => ({
+            id: c.id,
+            slug: c.slug,
+            name: c.name,
+          }))}
+          hasServiceAreas={!!genreMeta.hasServiceAreas}
+        />
+      </Suspense>
 
       {/* Listings */}
       {listings && listings.length > 0 ? (
         <>
-        <ul className="space-y-3">
-          {listings.map((l) => (
-            <li
-              key={l.id}
-              className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              {l.website_url ? (
-                <a
-                  href={l.website_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block text-base font-semibold text-zinc-900 hover:underline dark:text-zinc-50"
-                >
-                  {l.title}
-                </a>
-              ) : (
-                <span className="block text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                  {l.title}
-                </span>
-              )}
-              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-                {l.description}
-              </p>
-            </li>
-          ))}
-        </ul>
+          <p className="mb-3 text-sm text-zinc-500">
+            {totalCount}件の登録情報
+          </p>
+          <ul className="space-y-3">
+            {listings.map((l) => (
+              <li
+                key={l.id}
+                className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+              >
+                {l.website_url ? (
+                  <a
+                    href={l.website_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-base font-semibold text-zinc-900 hover:underline dark:text-zinc-50"
+                  >
+                    {l.title}
+                  </a>
+                ) : (
+                  <span className="block text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                    {l.title}
+                  </span>
+                )}
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                  {l.description}
+                </p>
+              </li>
+            ))}
+          </ul>
           <Pagination
             currentPage={safePage}
             totalPages={totalPages}
             basePath={`/genres/${slug}`}
-            extraParams={categorySlug ? { category: categorySlug } : {}}
+            extraParams={extraParams}
           />
         </>
       ) : (

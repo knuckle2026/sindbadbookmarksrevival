@@ -43,8 +43,8 @@ export function Header({ onHamburgerClick }: HeaderProps) {
           <span className="block h-0.5 w-6 bg-white" />
         </button>
 
-        {/* ロゴ画像 */}
-        <Link href="/" className="shrink-0">
+        {/* ロゴ画像 (スマホでは非表示) */}
+        <Link href="/" className="hidden sm:block shrink-0">
           <Image
             src="/images/sbbm_logo.jpg"
             alt="sindbadbookmarks revival logo"
@@ -55,14 +55,25 @@ export function Header({ onHamburgerClick }: HeaderProps) {
           />
         </Link>
 
-        {/* サイトタイトル */}
+        {/* サイトタイトル: スマホ3行 / PC1行 */}
         <Link href="/" className="leading-tight">
-          <span className="text-lg font-bold tracking-tight">
-            sindbadbookmarks
+          {/* スマホ用: 3行表示 */}
+          <span className="sm:hidden text-base font-bold tracking-tight leading-4">
+            sindbad
+            <br />
+            bookmarks
+            <br />
+            <span className="text-xs font-light opacity-90">revival</span>
           </span>
-          <br />
-          <span className="text-sm font-light tracking-tight opacity-90">
-            revival
+          {/* PC用: 従来通り */}
+          <span className="hidden sm:inline">
+            <span className="text-lg font-bold tracking-tight">
+              sindbadbookmarks
+            </span>
+            <br />
+            <span className="text-sm font-light tracking-tight opacity-90">
+              revival
+            </span>
           </span>
         </Link>
       </div>

@@ -1,7 +1,7 @@
 # sindbadbookmarks 実装仕様書
 
-**バージョン:** 1.5
-**最終更新:** 2026-04-08
+**バージョン:** 1.7
+**最終更新:** 2026-04-11
 **ブランチ:** `feature/age-gate`（masterへのマージ待ち）
 **ステータス:** 仕様確定完了 → 実装着手待ち
 
@@ -1340,6 +1340,7 @@ Section 18.8 に 20/21/22 の追加要件を統合した最終的な実装手順
 | 1.4 | 2026-04-08 | Section 23 追加（全11ジャンルのカテゴリ確定） |
 | 1.5 | 2026-04-08 | Section 24 追加（ロゴ・ヘッダー再構成・ダッシュボード構成変更） |
 | 1.6 | 2026-04-10 | Section 25 追加（マイリスティング画面仕様 — 一覧/編集/削除/ページング） |
+| 1.7 | 2026-04-11 | Section 25 更新（削除モーダルボタン構成確定、status非表示、RLS DELETEポリシー確認・記録） |
 
 ---
 
@@ -1570,7 +1571,7 @@ Section 18.5 を以下で上書き。
 │ ┌──────────────────────────────────────────────┬───────┐ │
 │ │ 名称（リンク→website_url）                   │ 編集  │ │
 │ │ 説明文                                       │       │ │
-│ │ 状態: published  登録日: 2026-04-10          │       │ │
+│ │ 登録日: 2026-04-10                            │       │ │
 │ └──────────────────────────────────────────────┴───────┘ │
 │ ┌──────────────────────────────────────────────┬───────┐ │
 │ │ 名称                                         │ 編集  │ │
@@ -1595,8 +1596,8 @@ Section 18.5 を以下で上書き。
 左から:
 1. **名称**（`title`）— `website_url` へのリンク（新しいタブで開く）
 2. **説明文**（`description`）
-3. **状態**（`status`）— published / draft 等
-4. **登録日**（`created_at`）
+3. **登録日**（`created_at`）
+4. ~~**状態**（`status`）~~ → **非表示**（現時点では全件 published のため不要）
 
 右端:
 5. **「編集」ボタン** — クリックで `/listings/[id]/edit` に遷移
@@ -1614,12 +1615,14 @@ Section 18.5 を以下で上書き。
 
 - 「この情報を削除する」ボタンを押すと **確認モーダル**を表示
 - 確認メッセージ: 「この登録情報を削除しますか？この操作は取り消せません。」
+- モーダルボタン構成:
+  - **「削除する」ボタン**（赤系 `bg-red-600 text-white`）
+  - **「キャンセル」ボタン**（グレー系 `border-zinc-300 text-zinc-700`）
 - 確認後、以下を実行:
-  1. `listing_categories` の該当レコードを削除（FK CASCADE で自動削除でも可）
-  2. `listings` の該当レコードを削除
+  1. `listings` の該当レコードを削除（`listing_categories` は FK `ON DELETE CASCADE` で自動削除）
 - 削除成功後、`/my-listings` に遷移
 - 削除失敗時はエラーメッセージを表示
-- **オーナー本人のみ削除可能**（`listings.user_id = ログインユーザーID` を検証）
+- **オーナー本人のみ削除可能** — RLS ポリシー `listings_delete_own` で保証（`user_id = auth.uid()` OR admin）
 
 ### 25.6 未ログイン時
 
@@ -1635,10 +1638,28 @@ Section 18.5 を以下で上書き。
 | 変更 | `app/src/app/listings/new/ListingForm.tsx` | 削除機能（mode="edit"時のみ表示） |
 | 新規 | `app/src/components/listings/Pagination.tsx` | ページネーションコンポーネント（§19.2 と共通化可能） |
 
-### 25.8 未決事項（全て確定済み ✅）
+### 25.8 RLS ポリシー（確認済み ✅）
+
+`listings` テーブルに DELETE ポリシーが本番適用済み:
+
+```sql
+-- ポリシー名: listings_delete_own
+-- 条件: オーナー本人 OR 管理者
+(user_id = auth.uid()) OR EXISTS (
+  SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
+)
+```
+
+`listing_categories` は FK `ON DELETE CASCADE` により `listings` 削除時に自動削除。
+マイグレーション記録: `supabase/migrations/00002_add_listings_delete_policy.sql`
+
+### 25.9 確定事項一覧 ✅
 
 | # | 項目 | 決定 |
 |---|---|---|
 | 1 | ✅ 削除の確認UI | **モーダルダイアログ**（`window.confirm()` ではなく専用モーダルコンポーネント） |
 | 2 | ✅ 論理削除か物理削除か | **物理削除**（`DELETE FROM listings WHERE id = ...`） |
 | 3 | ✅ ページネーションUIの共通化 | **ジャンル一覧ページ（§19.2）と共通コンポーネント**（`app/src/components/listings/Pagination.tsx`） |
+| 4 | ✅ 削除モーダルのボタン構成 | **「削除する」（赤系）+「キャンセル」（グレー系）** |
+| 5 | ✅ 一覧の status 表示 | **非表示**（現時点で全件 published のため不要） |
+| 6 | ✅ RLS DELETE ポリシー | **本番適用済み**（`listings_delete_own`: オーナー + admin） |

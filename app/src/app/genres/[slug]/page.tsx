@@ -3,17 +3,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GENRES } from "@/lib/constants/genres";
+import Pagination from "@/components/listings/Pagination";
 
 export const dynamic = "force-dynamic";
 
+const PER_PAGE = 20;
+
 interface PageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{ category?: string; page?: string }>;
 }
 
 export default async function GenrePage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const { category: categorySlug } = await searchParams;
+  const { category: categorySlug, page: pageParam } = await searchParams;
+  const currentPage = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
 
   const genreMeta = GENRES.find((g) => g.slug === slug);
   if (!genreMeta) notFound();
@@ -50,12 +54,30 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     }
   }
 
+  // 総件数を取得
+  let countQuery = supabase
+    .from("listings")
+    .select("id", { count: "exact", head: true })
+    .eq("genre_id", genreRow.id)
+    .eq("status", "published");
+  if (listingIds) {
+    countQuery = countQuery.in("id", listingIds);
+  }
+  const { count } = await countQuery;
+
+  const totalCount = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const from = (safePage - 1) * PER_PAGE;
+  const to = from + PER_PAGE - 1;
+
   let query = supabase
     .from("listings")
     .select("id, title, description, website_url, prefecture")
     .eq("genre_id", genreRow.id)
     .eq("status", "published")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(from, to);
   if (listingIds) {
     query = query.in("id", listingIds);
   }
@@ -109,6 +131,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
 
       {/* Listings */}
       {listings && listings.length > 0 ? (
+        <>
         <ul className="space-y-3">
           {listings.map((l) => (
             <li
@@ -135,6 +158,13 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
             </li>
           ))}
         </ul>
+          <Pagination
+            currentPage={safePage}
+            totalPages={totalPages}
+            basePath={`/genres/${slug}`}
+            extraParams={categorySlug ? { category: categorySlug } : {}}
+          />
+        </>
       ) : (
         <p className="rounded-lg border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
           登録情報はまだありません

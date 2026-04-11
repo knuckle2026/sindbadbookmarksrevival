@@ -51,6 +51,8 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [title, setTitle] = useState(initialValues?.title ?? "");
   const [description, setDescription] = useState(initialValues?.description ?? "");
@@ -196,6 +198,27 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
         setLoading(false);
         return;
       }
+    }
+
+    router.push("/my-listings");
+  };
+
+  const handleDelete = async () => {
+    if (!initialValues?.id) return;
+    setDeleting(true);
+    setError("");
+
+    const supabase = createClient();
+    const { error: deleteError } = await supabase
+      .from("listings")
+      .delete()
+      .eq("id", initialValues.id);
+
+    if (deleteError) {
+      setError(deleteError.message ?? "削除に失敗しました");
+      setDeleting(false);
+      setShowDeleteModal(false);
+      return;
     }
 
     router.push("/my-listings");
@@ -418,6 +441,51 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
           {loading ? (mode === "edit" ? "更新中..." : "登録中...") : (mode === "edit" ? "更新する" : "登録する")}
         </button>
       </div>
+
+      {/* 削除ボタン (編集モードのみ) */}
+      {mode === "edit" && initialValues?.id && (
+        <div className="border-t border-zinc-200 pt-4 dark:border-zinc-700">
+          <button
+            type="button"
+            onClick={() => setShowDeleteModal(true)}
+            className="text-sm text-red-600 hover:text-red-700 hover:underline dark:text-red-400 dark:hover:text-red-300"
+          >
+            この情報を削除する
+          </button>
+        </div>
+      )}
+
+      {/* 削除確認モーダル */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="mx-4 w-full max-w-sm rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900">
+            <h2 className="mb-2 text-lg font-bold text-zinc-900 dark:text-zinc-50">
+              削除の確認
+            </h2>
+            <p className="mb-6 text-sm text-zinc-600 dark:text-zinc-300">
+              この登録情報を削除しますか？この操作は取り消せません。
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+                className="flex-1 rounded-lg border border-zinc-300 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 rounded-lg bg-red-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleting ? "削除中..." : "削除する"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

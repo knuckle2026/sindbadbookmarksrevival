@@ -99,7 +99,7 @@ export default function GenreFilters({
             カテゴリで絞り込み（複数選択可）
           </p>
           <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-            {/* すべて */}
+            {/* すべて / ニューハーフマッサージ以外 */}
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input
                 type="checkbox"
@@ -108,7 +108,7 @@ export default function GenreFilters({
                 className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
               />
               <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                すべて
+                {newhalfCategory ? "ニューハーフマッサージ以外" : "すべて"}
               </span>
             </label>
 

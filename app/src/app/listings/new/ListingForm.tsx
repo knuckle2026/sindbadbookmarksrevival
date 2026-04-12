@@ -8,6 +8,7 @@ import { GENRES } from "@/lib/constants/genres";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import { TOKYO_WARDS } from "@/lib/constants/tokyo-wards";
 import { SERVICE_AREA_GROUPS } from "@/lib/constants/service-areas";
+import { PROVIDER_AGES } from "@/lib/constants/provider-ages";
 
 export interface GenreOption {
   id: string;
@@ -33,6 +34,7 @@ export interface InitialValues {
   prefecture?: string;
   ward?: string;
   serviceAreas?: string[];
+  providerAges?: string[];
   address?: string;
 }
 
@@ -62,6 +64,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
   const [prefecture, setPrefecture] = useState(initialValues?.prefecture ?? "");
   const [ward, setWard] = useState(initialValues?.ward ?? "");
   const [serviceAreas, setServiceAreas] = useState<string[]>(initialValues?.serviceAreas ?? []);
+  const [providerAges, setProviderAges] = useState<string[]>(initialValues?.providerAges ?? []);
   const [address, setAddress] = useState(initialValues?.address ?? "");
 
   const selectedGenreSlug = useMemo(
@@ -90,6 +93,12 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
 
   const toggleServiceArea = (slug: string) => {
     setServiceAreas((prev) =>
+      prev.includes(slug) ? prev.filter((c) => c !== slug) : [...prev, slug],
+    );
+  };
+
+  const toggleProviderAge = (slug: string) => {
+    setProviderAges((prev) =>
       prev.includes(slug) ? prev.filter((c) => c !== slug) : [...prev, slug],
     );
   };
@@ -129,6 +138,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
 
     const showWard = prefecture === "tokyo";
     const showServiceAreas = !!genreMeta?.hasServiceAreas;
+    const showProviderAges = !!genreMeta?.hasProviderAges;
 
     const payload = {
       genre_id: genreId,
@@ -139,6 +149,8 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
       ward: showWard && ward ? ward : null,
       service_areas:
         showServiceAreas && serviceAreas.length > 0 ? serviceAreas : null,
+      provider_ages:
+        showProviderAges && providerAges.length > 0 ? providerAges : null,
       address: address.trim() || null,
       updated_by: user.id,
     };
@@ -309,26 +321,52 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
         />
       </div>
 
-      {/* カテゴリ (チェックボックス複数選択) */}
+      {/* カテゴリ + サービス提供者の年代 (横並び) */}
       {selectedGenreSlug && visibleCategories.length > 0 && (
-        <div>
-          <label className={labelClass}>カテゴリ（複数選択可）</label>
-          <div className="space-y-2">
-            {visibleCategories.map((c) => {
-              const active = selectedCategories.includes(c.id);
-              return (
-                <label key={c.id} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={active}
-                    onChange={() => toggleCategory(c.id)}
-                    className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
-                  />
-                  <span className="text-sm text-zinc-800 dark:text-zinc-200">{c.name}</span>
-                </label>
-              );
-            })}
+        <div className={`${!!genreMeta?.hasProviderAges ? "flex gap-6" : ""}`}>
+          {/* カテゴリ */}
+          <div className="flex-1">
+            <label className={labelClass}>カテゴリ（複数選択可）</label>
+            <div className="space-y-2">
+              {visibleCategories.map((c) => {
+                const active = selectedCategories.includes(c.id);
+                return (
+                  <label key={c.id} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={active}
+                      onChange={() => toggleCategory(c.id)}
+                      className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
+                    />
+                    <span className="text-sm text-zinc-800 dark:text-zinc-200">{c.name}</span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
+
+          {/* サービス提供者の年代 (マッサージ・売り専のみ、カテゴリの右側) */}
+          {!!genreMeta?.hasProviderAges && (
+            <div className="flex-1">
+              <label className={labelClass}>サービス提供者の年代（複数選択可）</label>
+              <div className="space-y-2">
+                {PROVIDER_AGES.map((age) => {
+                  const active = providerAges.includes(age.slug);
+                  return (
+                    <label key={age.slug} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={active}
+                        onChange={() => toggleProviderAge(age.slug)}
+                        className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
+                      />
+                      <span className="text-sm text-zinc-800 dark:text-zinc-200">{age.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

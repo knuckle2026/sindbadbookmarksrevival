@@ -96,6 +96,7 @@ export default async function EditListingPage({
           prefecture: listing.prefecture ?? "",
           ward: listing.ward ?? "",
           serviceAreas: listing.service_areas ?? [],
+          providerAges: listing.provider_ages ?? [],
           address: listing.address ?? "",
         }}
       />

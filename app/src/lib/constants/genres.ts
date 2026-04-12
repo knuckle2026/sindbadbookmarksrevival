@@ -4,6 +4,8 @@ export interface GenreMeta {
   sortOrder: number;
   /** Whether the service-areas field should be shown in the listing form */
   hasServiceAreas?: boolean;
+  /** Whether the provider_ages field should be shown */
+  hasProviderAges?: boolean;
   /** Whether prefecture/location fields should be shown */
   hasPrefecture?: boolean;
 }
@@ -11,7 +13,7 @@ export interface GenreMeta {
 export const GENRES: GenreMeta[] = [
   { slug: "bar-restaurant",     name: "バー・飲食店",              sortOrder: 1, hasPrefecture: true },
   { slug: "hattenba",           name: "ハッテンバ",                sortOrder: 2, hasPrefecture: true },
-  { slug: "massage-urisen",     name: "マッサージ・売り専",        sortOrder: 3, hasServiceAreas: true, hasPrefecture: true },
+  { slug: "massage-urisen",     name: "マッサージ・売り専",        sortOrder: 3, hasServiceAreas: true, hasProviderAges: true, hasPrefecture: true },
   { slug: "video-gallery",      name: "公式動画配信・ギャラリー",  sortOrder: 4 },
   { slug: "personal-site",      name: "個人サイト",                sortOrder: 5 },
   { slug: "org-consult",        name: "団体・相談先",              sortOrder: 6 },

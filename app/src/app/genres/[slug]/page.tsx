@@ -11,6 +11,7 @@ import ClickableTitle from "@/components/listings/ClickableTitle";
 import GenreFilters from "./GenreFilters";
 import RegionPrefectureNav from "./RegionPrefectureNav";
 import ServiceAreaFilter from "./ServiceAreaFilter";
+import ProviderAgeFilter from "./ProviderAgeFilter";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ interface PageProps {
     region?: string;
     sort?: string;
     exclude_nh?: string;
+    provider_age?: string;
     page?: string;
   }>;
 }
@@ -38,6 +40,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     region: regionParam,
     sort: sortParam,
     exclude_nh: excludeNhParam,
+    provider_age: providerAgeParam,
     page: pageParam,
   } = await searchParams;
   const currentPage = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
@@ -181,6 +184,11 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     .split(",")
     .filter(Boolean);
 
+  // 4. サービス提供者の年代フィルタ
+  const selectedProviderAges = (providerAgeParam ?? "")
+    .split(",")
+    .filter(Boolean);
+
   // === クエリ構築 ===
 
   // 総件数
@@ -197,6 +205,8 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   }
   if (selectedServiceAreas.length > 0)
     countQuery = countQuery.overlaps("service_areas", selectedServiceAreas);
+  if (selectedProviderAges.length > 0)
+    countQuery = countQuery.overlaps("provider_ages", selectedProviderAges);
   const { count } = await countQuery;
 
   const totalCount = count ?? 0;
@@ -232,6 +242,8 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   }
   if (selectedServiceAreas.length > 0)
     query = query.overlaps("service_areas", selectedServiceAreas);
+  if (selectedProviderAges.length > 0)
+    query = query.overlaps("provider_ages", selectedProviderAges);
   const { data: listings } = await query;
 
   // extraParams for pagination links
@@ -242,6 +254,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   if (serviceAreaParam) extraParams.service_area = serviceAreaParam;
   if (currentSort !== "created_desc") extraParams.sort = currentSort;
   if (excludeNhParam === "1") extraParams.exclude_nh = "1";
+  if (providerAgeParam) extraParams.provider_age = providerAgeParam;
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
@@ -268,6 +281,13 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
           }))}
         />
       </Suspense>
+
+      {/* 1.5 サービス提供者の年代 (マッサージ・売り専のみ) */}
+      {genreMeta.hasProviderAges && (
+        <Suspense>
+          <ProviderAgeFilter />
+        </Suspense>
+      )}
 
       {/* 2. 所在地絞り込み (hasPrefecture ジャンルのみ) */}
       {genreMeta.hasPrefecture && (

@@ -13,20 +13,15 @@ export default function AgeGatePage() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-zinc-950 text-white px-6">
-      <div className="mb-8 flex flex-col items-center gap-4">
-        <Image
-          src="/icon.png"
-          alt="sindbadbookmarks"
-          width={80}
-          height={80}
-          className="rounded-full"
-          priority
-        />
-        <h1 className="text-2xl font-bold tracking-tight">
-          <span className="text-violet-400">sindbad</span>bookmarks
-        </h1>
-      </div>
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-zinc-950 text-white px-6 overflow-y-auto">
+      <Image
+        src="/images/gate.jpg"
+        alt="sindbadbookmarks"
+        width={600}
+        height={400}
+        className="mb-6 w-full max-w-md rounded-lg object-contain"
+        priority
+      />
 
       <div className="w-full max-w-sm rounded-2xl border border-zinc-700 bg-zinc-900 p-8 text-center shadow-xl">
         <p className="text-lg font-semibold text-zinc-100">年齢確認</p>

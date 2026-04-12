@@ -3,7 +3,6 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useState, useEffect, useTransition } from "react";
-import { SERVICE_AREA_GROUPS } from "@/lib/constants/service-areas";
 
 interface CategoryItem {
   id: string;
@@ -14,13 +13,11 @@ interface CategoryItem {
 interface GenreFiltersProps {
   slug: string;
   categories: CategoryItem[];
-  hasServiceAreas: boolean;
 }
 
 export default function GenreFilters({
   slug,
   categories,
-  hasServiceAreas,
 }: GenreFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -36,31 +33,26 @@ export default function GenreFilters({
     const param = searchParams.get("category") ?? "";
     return new Set(param.split(",").filter(Boolean));
   });
-  const [checkedAreas, setCheckedAreas] = useState<Set<string>>(() => {
-    const param = searchParams.get("service_area") ?? "";
-    return new Set(param.split(",").filter(Boolean));
-  });
-
   // URLからstateを同期（ブラウザバック対応）
   useEffect(() => {
     const catParam = searchParams.get("category") ?? "";
     setCheckedCats(new Set(catParam.split(",").filter(Boolean)));
-    const areaParam = searchParams.get("service_area") ?? "";
-    setCheckedAreas(new Set(areaParam.split(",").filter(Boolean)));
   }, [searchParams]);
 
-  // stateからURLを構築して遷移（region/prefecture は保持）
-  const syncToUrl = (nextCats: Set<string>, nextAreas: Set<string>) => {
+  // stateからURLを構築して遷移（region/prefecture/service_area は保持）
+  const syncToUrl = (nextCats: Set<string>) => {
     const params = new URLSearchParams();
     const catStr = [...nextCats].join(",");
     if (catStr) params.set("category", catStr);
-    // region/prefecture を現在のURLから保持
+    // 他のパラメータを現在のURLから保持
     const currentRegion = searchParams.get("region");
     if (currentRegion) params.set("region", currentRegion);
     const currentPref = searchParams.get("prefecture");
     if (currentPref) params.set("prefecture", currentPref);
-    const areaStr = [...nextAreas].join(",");
-    if (areaStr) params.set("service_area", areaStr);
+    const currentArea = searchParams.get("service_area");
+    if (currentArea) params.set("service_area", currentArea);
+    const currentSort = searchParams.get("sort");
+    if (currentSort) params.set("sort", currentSort);
     const qs = params.toString();
     const url = `${pathname}${qs ? `?${qs}` : ""}`;
     startTransition(() => {
@@ -84,7 +76,7 @@ export default function GenreFilters({
       normalSlugs.forEach((s) => next.add(s));
     }
     setCheckedCats(next);
-    syncToUrl(next, checkedAreas);
+    syncToUrl(next);
   };
 
   const toggleCat = (catSlug: string) => {
@@ -95,19 +87,7 @@ export default function GenreFilters({
       next.add(catSlug);
     }
     setCheckedCats(next);
-    syncToUrl(next, checkedAreas);
-  };
-
-  // --- 出張エリア ---
-  const toggleArea = (areaSlug: string) => {
-    const next = new Set(checkedAreas);
-    if (next.has(areaSlug)) {
-      next.delete(areaSlug);
-    } else {
-      next.add(areaSlug);
-    }
-    setCheckedAreas(next);
-    syncToUrl(checkedCats, next);
+    syncToUrl(next);
   };
 
   return (
@@ -164,42 +144,6 @@ export default function GenreFilters({
                 </span>
               </label>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* 出張可能サービスのエリアフィルタ (マッサージ・売り専のみ) */}
-      {hasServiceAreas && (
-        <div>
-          <p className="mb-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-            出張可能サービスのエリア絞り込み（複数選択可）
-          </p>
-          <div className="space-y-3">
-            {SERVICE_AREA_GROUPS.map((group) => (
-              <div key={group.label}>
-                <p className="mb-1 text-xs font-medium text-zinc-400 dark:text-zinc-500">
-                  {group.label}
-                </p>
-                <div className="flex flex-wrap gap-x-4 gap-y-1">
-                  {group.areas.map((a) => (
-                    <label
-                      key={a.slug}
-                      className="flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checkedAreas.has(a.slug)}
-                        onChange={() => toggleArea(a.slug)}
-                        className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
-                      />
-                      <span className="text-sm text-zinc-800 dark:text-zinc-200">
-                        {a.name}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       )}

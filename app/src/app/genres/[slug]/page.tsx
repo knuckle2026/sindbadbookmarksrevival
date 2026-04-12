@@ -6,10 +6,11 @@ import { createClient } from "@/lib/supabase/server";
 import { GENRES } from "@/lib/constants/genres";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import Pagination from "@/components/listings/Pagination";
-import SortTabs, { type SortKey } from "@/components/listings/SortTabs";
+import SortSelect, { type SortKey } from "@/components/listings/SortSelect";
 import ClickableTitle from "@/components/listings/ClickableTitle";
 import GenreFilters from "./GenreFilters";
 import RegionPrefectureNav from "./RegionPrefectureNav";
+import ServiceAreaFilter from "./ServiceAreaFilter";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +84,19 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
       const p = row.prefecture;
       if (p) prefCountMap[p] = (prefCountMap[p] ?? 0) + 1;
     });
+  }
+
+  // === 出張サービス件数 (マッサージ・売り専のみ) ===
+  let serviceListingCount = 0;
+  if (genreMeta.hasServiceAreas) {
+    const { count: svcCount } = await supabase
+      .from("listings")
+      .select("id", { count: "exact", head: true })
+      .eq("genre_id", genreRow.id)
+      .eq("status", "published")
+      .not("service_areas", "is", null)
+      .neq("service_areas", "{}");
+    serviceListingCount = svcCount ?? 0;
   }
 
   // === Region resolution ===
@@ -230,7 +244,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
         {genreRow.name}
       </h1>
 
-      {/* カテゴリ + 出張エリアフィルタ */}
+      {/* 1. カテゴリ絞り込み */}
       <Suspense>
         <GenreFilters
           slug={slug}
@@ -239,11 +253,10 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
             slug: c.slug,
             name: c.name,
           }))}
-          hasServiceAreas={!!genreMeta.hasServiceAreas}
         />
       </Suspense>
 
-      {/* 所在地絞り込み (hasPrefecture ジャンルのみ) */}
+      {/* 2. 所在地絞り込み (hasPrefecture ジャンルのみ) */}
       {genreMeta.hasPrefecture && (
         <RegionPrefectureNav
           slug={slug}
@@ -255,8 +268,15 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
         />
       )}
 
-      {/* Sort Tabs */}
-      <SortTabs
+      {/* 3. 出張サービス (マッサージ・売り専のみ) */}
+      {genreMeta.hasServiceAreas && (
+        <Suspense>
+          <ServiceAreaFilter serviceListingCount={serviceListingCount} />
+        </Suspense>
+      )}
+
+      {/* 並び順 */}
+      <SortSelect
         currentSort={currentSort}
         basePath={`/genres/${slug}`}
         extraParams={extraParams}

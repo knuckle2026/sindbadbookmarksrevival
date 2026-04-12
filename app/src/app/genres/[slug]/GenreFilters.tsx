@@ -33,17 +33,23 @@ export default function GenreFilters({
     const param = searchParams.get("category") ?? "";
     return new Set(param.split(",").filter(Boolean));
   });
+  const [excludeNh, setExcludeNh] = useState<boolean>(
+    () => searchParams.get("exclude_nh") === "1",
+  );
+
   // URLからstateを同期（ブラウザバック対応）
   useEffect(() => {
     const catParam = searchParams.get("category") ?? "";
     setCheckedCats(new Set(catParam.split(",").filter(Boolean)));
+    setExcludeNh(searchParams.get("exclude_nh") === "1");
   }, [searchParams]);
 
-  // stateからURLを構築して遷移（region/prefecture/service_area は保持）
-  const syncToUrl = (nextCats: Set<string>) => {
+  // stateからURLを構築して遷移
+  const syncToUrl = (nextCats: Set<string>, nextExcludeNh: boolean) => {
     const params = new URLSearchParams();
     const catStr = [...nextCats].join(",");
     if (catStr) params.set("category", catStr);
+    if (nextExcludeNh) params.set("exclude_nh", "1");
     // 他のパラメータを現在のURLから保持
     const currentRegion = searchParams.get("region");
     if (currentRegion) params.set("region", currentRegion);
@@ -76,7 +82,7 @@ export default function GenreFilters({
       normalSlugs.forEach((s) => next.add(s));
     }
     setCheckedCats(next);
-    syncToUrl(next);
+    syncToUrl(next, excludeNh);
   };
 
   const toggleCat = (catSlug: string) => {
@@ -87,7 +93,13 @@ export default function GenreFilters({
       next.add(catSlug);
     }
     setCheckedCats(next);
-    syncToUrl(next);
+    syncToUrl(next, excludeNh);
+  };
+
+  const toggleExcludeNh = () => {
+    const nextExclude = !excludeNh;
+    setExcludeNh(nextExclude);
+    syncToUrl(checkedCats, nextExclude);
   };
 
   return (
@@ -99,7 +111,7 @@ export default function GenreFilters({
             カテゴリで絞り込み（複数選択可）
           </p>
           <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-            {/* すべて / ニューハーフマッサージ以外 */}
+            {/* すべて */}
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input
                 type="checkbox"
@@ -108,7 +120,7 @@ export default function GenreFilters({
                 className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
               />
               <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                {newhalfCategory ? "ニューハーフマッサージ以外" : "すべて"}
+                すべて
               </span>
             </label>
 
@@ -141,6 +153,21 @@ export default function GenreFilters({
                 />
                 <span className="text-sm text-zinc-800 dark:text-zinc-200">
                   {newhalfCategory.name}
+                </span>
+              </label>
+            )}
+
+            {/* ニューハーフマッサージ以外（NH除外フィルタ） */}
+            {newhalfCategory && (
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={excludeNh}
+                  onChange={toggleExcludeNh}
+                  className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
+                />
+                <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                  ニューハーフマッサージ以外
                 </span>
               </label>
             )}

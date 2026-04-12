@@ -24,6 +24,7 @@ interface PageProps {
     service_area?: string;
     region?: string;
     sort?: string;
+    exclude_nh?: string;
     page?: string;
   }>;
 }
@@ -36,6 +37,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     service_area: serviceAreaParam,
     region: regionParam,
     sort: sortParam,
+    exclude_nh: excludeNhParam,
     page: pageParam,
   } = await searchParams;
   const currentPage = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
@@ -126,11 +128,11 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   const newhalfCat = isMassage
     ? (categories ?? []).find((c) => c.slug === "newhalf")
     : null;
-  const newhalfExplicitlySelected = selectedCategorySlugs.includes("newhalf");
+  const excludeNhActive = excludeNhParam === "1";
 
-  // ニューハーフ除外対象IDを取得（マッサージ & ニューハーフ未選択時に使用）
+  // ニューハーフ除外対象IDを取得（exclude_nh=1 のときのみ）
   let excludeNewhalfIds: Set<string> = new Set();
-  if (isMassage && newhalfCat && !newhalfExplicitlySelected) {
+  if (isMassage && newhalfCat && excludeNhActive) {
     const { data: nhLc } = await supabase
       .from("listing_categories")
       .select("listing_id")
@@ -156,7 +158,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
       }
       listingIds = ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"];
     }
-  } else if (isMassage && excludeNewhalfIds.size > 0) {
+  } else if (isMassage && excludeNhActive && excludeNewhalfIds.size > 0) {
     const { data: allListings } = await supabase
       .from("listings")
       .select("id")
@@ -239,6 +241,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   if (prefectureFilter) extraParams.prefecture = prefectureFilter;
   if (serviceAreaParam) extraParams.service_area = serviceAreaParam;
   if (currentSort !== "created_desc") extraParams.sort = currentSort;
+  if (excludeNhParam === "1") extraParams.exclude_nh = "1";
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">

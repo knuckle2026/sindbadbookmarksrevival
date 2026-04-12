@@ -20,7 +20,6 @@ export default function ServiceAreaFilter({
   const [isPending, startTransition] = useTransition();
 
   const [isOpen, setIsOpen] = useState(() => {
-    // 既にservice_areaパラメータがあれば展開状態で開始
     return !!(searchParams.get("service_area"));
   });
 
@@ -45,7 +44,6 @@ export default function ServiceAreaFilter({
     } else {
       params.delete("service_area");
     }
-    // Reset page
     params.delete("page");
     const qs = params.toString();
     const url = `${pathname}${qs ? `?${qs}` : ""}`;
@@ -65,6 +63,13 @@ export default function ServiceAreaFilter({
     syncToUrl(next);
   };
 
+  // テキスト部分クリック → そのエリアだけで単独絞り込み
+  const selectSingle = (areaSlug: string) => {
+    const next = new Set([areaSlug]);
+    setCheckedAreas(next);
+    syncToUrl(next);
+  };
+
   return (
     <div className="mb-6">
       {/* 出張サービス ヘッダー（クリックで展開） */}
@@ -79,7 +84,7 @@ export default function ServiceAreaFilter({
         <span>出張サービス（{serviceListingCount}件）</span>
       </button>
 
-      {/* 展開時：エリアチェックボックス */}
+      {/* 展開時：エリアチェックボックス + クリック可能テキスト */}
       {isOpen && (
         <div className="mt-3 space-y-3">
           <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
@@ -91,25 +96,29 @@ export default function ServiceAreaFilter({
                 {group.label}
               </p>
               <div className="flex flex-wrap gap-x-4 gap-y-1">
-                {group.areas.map((a) => (
-                  <label
-                    key={a.slug}
-                    className="flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checkedAreas.has(a.slug)}
-                      onChange={() => toggleArea(a.slug)}
-                      className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
-                    />
-                    <span className="text-sm text-zinc-800 dark:text-zinc-200">
-                      {a.name}
-                      <span className="ml-0.5 text-xs text-zinc-400">
-                        ({areaCountMap[a.slug] ?? 0})
-                      </span>
-                    </span>
-                  </label>
-                ))}
+                {group.areas.map((a) => {
+                  const count = areaCountMap[a.slug] ?? 0;
+                  return (
+                    <div key={a.slug} className="flex items-center gap-1.5">
+                      <input
+                        type="checkbox"
+                        checked={checkedAreas.has(a.slug)}
+                        onChange={() => toggleArea(a.slug)}
+                        className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => selectSingle(a.slug)}
+                        className="text-sm text-zinc-700 hover:text-red-600 hover:underline cursor-pointer dark:text-zinc-200 dark:hover:text-red-400"
+                      >
+                        {a.name}
+                        <span className="ml-0.5 text-xs text-zinc-400">
+                          ({count})
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}

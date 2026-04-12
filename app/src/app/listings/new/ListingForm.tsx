@@ -349,7 +349,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
                 }}
                 className={inputClass}
               >
-                <option value="">選択しない（オンライン等）</option>
+                <option value="">未選択</option>
                 {PREFECTURE_REGIONS.map((region) => (
                   <optgroup key={region.slug} label={region.name}>
                     {region.prefectures.map((p) => (
@@ -370,7 +370,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
                   onChange={(e) => setWard(e.target.value)}
                   className={inputClass}
                 >
-                  <option value="">選択しない</option>
+                  <option value="">未選択</option>
                   {TOKYO_WARDS.map((w) => (
                     <option key={w.slug} value={w.slug}>
                       {w.name}
@@ -381,9 +381,9 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
             )}
           </div>
 
-          {/* 詳細住所 */}
+          {/* 住所詳細 */}
           <div>
-            <label className={labelClass}>詳細住所（任意）</label>
+            <label className={labelClass}>住所詳細（任意）</label>
             <input
               type="text"
               value={address}

@@ -1,9 +1,8 @@
 # sindbadbookmarks 実装仕様書
 
-**バージョン:** 1.7
-**最終更新:** 2026-04-11
+**最終更新:** 2026-04-12
 **ブランチ:** `feature/age-gate`（masterへのマージ待ち）
-**ステータス:** 仕様確定完了 → 実装着手待ち
+**ステータス:** 実装進行中
 
 ---
 
@@ -150,19 +149,12 @@ sindbadbookmarksrevival/        ← リポジトリルート
 
 - 背景色: `#B21000`（赤）
 - 幅: `w-40`（160px / 約3cm）
-- ジャンルを縦に並べ、クリックで中分類を展開（accordion）
-- 初期状態: 「情報タイプ」のみ開いている
+- 11ジャンルを縦に並べ、各ジャンル名の右横に登録件数を `(123)` 形式で表示
+- クリックで `/genres/[slug]` へ遷移（アコーディオン展開なし）
+- 「マイリスティング」リンクを常時表示（未ログイン時は認証ゲート）
+- ハンバーガーメニュー（☰）で開閉トグル、デフォルトは閉じた状態
 
-**ジャンル構成（要件定義書 4章準拠）:**
-
-| ジャンル | 中分類（クリック先） |
-|---|---|
-| 情報タイプ | 店舗 / 団体・NPO / メディア |
-| 目的別 | 交流・出会い / 支援・相談 / ナイトライフ / 文化・アート / 情報・メディア / 暮らし・サービス / 権利・アドボカシー |
-| 業態別 | 飲食 / 宿泊 / 美容・ファッション / 医療・メンタルヘルス / 法律・士業 / IT・テクノロジー / エンターテインメント / 教育・研究 / その他 |
-| フレンドリー度 | 専門 (Dedicated) / フレンドリー (Friendly) / アライ (Ally) |
-
-中分類クリック → `/listings?type=xxx` or `/listings?category=slug` or `/listings?friendliness=xxx` へ遷移
+**ジャンル構成（11ジャンル）:** Section 23.2 参照
 
 ---
 
@@ -227,30 +219,25 @@ age_verified=1; path=/; max-age=86400; SameSite=Lax
 
 ### 表示内容
 
-| セクション | データ取得 |
-|---|---|
-| 掲載情報 総数 | `rpc('get_dashboard_counts')` |
-| 情報タイプ別件数（店舗/団体/メディア） | 同上 |
-| 目的別カテゴリ件数 | `rpc('get_dashboard_category_counts')` |
-| 業態別カテゴリ件数 | 同上 |
-| フレンドリー度別件数 | `rpc('get_dashboard_friendliness_counts')` |
-
-各カードは `/listings?type=xxx` or `/listings?category=slug` へのリンク
+- **11ジャンルをカード/セクションで3列グリッド表示**
+- 各ジャンルセクション内に **カテゴリ名 + (登録件数)** を表示
+- 件数0のカテゴリは非表示
+- カテゴリ名クリック → `/genres/[slug]?category=[cat-slug]` で絞り込み表示
+- ジャンル名クリック → `/genres/[slug]` で全件表示
 
 ---
 
 ## 8. 登録情報一覧（`/listings`）
 
-**Server Component** + クライアント検索フォーム（`SearchFilters.tsx`）
+**Server Component**
 
 ### URLパラメータ
 
 | パラメータ | 型 | 説明 |
 |---|---|---|
 | `q` | string | キーワード検索（タイトル部分一致） |
-| `type` | shop / organization / media | 情報タイプフィルタ |
-| `category` | slug | カテゴリスラッグフィルタ |
-| `friendliness` | Dedicated / Friendly / Ally | フレンドリー度フィルタ |
+
+カテゴリ・ジャンル・都道府県などの絞り込みはジャンル別ページ `/genres/[slug]` で行う。
 
 ### TypeScript 注意
 
@@ -260,21 +247,22 @@ Supabase のリレーション join クエリで型推論が `never` になる�
 
 ## 9. 情報登録（`/listings/new`）
 
-- **未認証** → `/login` へリダイレクト（Server Component で確認）
+- **未認証** → ログイン案内UI表示（Section 16.3 準拠）
 - **フォーム:** `ListingForm.tsx`（Client Component）
 
 ### 入力項目
 
+Section 17.1 参照。主要項目:
+
 | フィールド | 型 | 備考 |
 |---|---|---|
-| タイトル | text | 必須 |
-| 情報タイプ | shop / organization / media | 必須 |
-| 説明 | textarea | 任意 |
-| WebサイトURL | url | 任意 |
-| 住所 | text | 任意 |
-| フレンドリー度 | Dedicated / Friendly / Ally / null | 任意 |
-| 目的別カテゴリ | 複数選択（toggle buttons） | 任意 |
-| 業態別カテゴリ | 複数選択（toggle buttons） | 任意 |
+| ジャンル | 11ジャンルから単一選択 | 必須 |
+| 名称 | text（最大20字） | 必須 |
+| ウェブサイトURL/SNS | url | 必須 |
+| 説明文 | textarea（最大100字） | 必須 |
+| カテゴリ | チェックボックス複数選択 | 任意・ジャンル連動 |
+| 所在地（都道府県/区/詳細住所） | select + text | hasPrefectureジャンルのみ |
+| 出張エリア | チェックボックス複数選択 | マッサージ・売り専のみ |
 
 ### INSERT フロー
 
@@ -285,31 +273,29 @@ Supabase のリレーション join クエリで型推論が `never` になる�
 
 ## 10. 詳細ページ（`/listings/[id]`）
 
-**Server Component**（`// @ts-nocheck`）
-
-- listing と categories を別クエリで取得（join型推論問題回避）
-- 登録者本人のみ「編集」ボタン表示（未実装、ボタンのみ表示）
+**不要と確定**（Section 20.2）。名称クリック＝外部サイト遷移のみ。編集は `/listings/[id]/edit` で実施。
 
 ---
 
-## 11. DBスキーマ（実装済み）
+## 11. DBスキーマ
 
 ### 主要テーブル
 
 ```
-profiles          - ユーザープロフィール（id, display_name, role, is_suspended）
-listings          - 掲載情報（id, user_id, type, title, description, address, website_url, friendliness, status）
-categories        - カテゴリマスタ（id, group_type[purpose|industry], name, slug, sort_order）
+profiles           - ユーザープロフィール（id, display_name, role, is_suspended）
+genres             - ジャンルマスタ（id, slug, name, sort_order）
+listings           - 掲載情報（id, user_id, genre_id, title, description, website_url, prefecture, ward, address, service_areas, click_count, status, created_at, created_by, updated_at, updated_by）
+categories         - カテゴリマスタ（id, genre_id, slug, name, sort_order）
 listing_categories - 多対多リレーション（listing_id, category_id）
-reports           - 通報（id, listing_id, reason, status）
+reports            - 通報（id, listing_id, reason, reporter_user_id, status）
 ```
 
-### RPC関数（ダッシュボード用）
+### RPC関数
 
 ```
-get_dashboard_counts()           → 総数・タイプ別件数
-get_dashboard_category_counts()  → カテゴリ別件数
-get_dashboard_friendliness_counts() → フレンドリー度別件数
+get_genre_counts()                          → 11ジャンルの件数
+get_category_counts_all()                   → 全ジャンル×カテゴリの件数
+increment_click_count(listing_id uuid)      → クリックカウント+1（アトミック）
 ```
 
 ---
@@ -324,16 +310,16 @@ get_dashboard_friendliness_counts() → フレンドリー度別件数
 
 ## 13. 既知の課題・TODO
 
-| # | 内容 | 優先度 |
+| # | 内容 | 状態 |
 |---|---|---|
-| 1 | Supabase join クエリの TypeScript 型推論が `never` → `@ts-nocheck` で暫定対応 | 中 |
-| 2 | ~~`/listings/[id]/edit` 編集ページ未実装~~ ✅ 実装済み | ~~高~~ |
-| 3 | 検索: キーワード全文検索未実装（タイトル部分一致のみ） | 中 |
-| 4 | ページネーション未実装 | 中 |
-| 5 | 画像アップロード未実装 | 中 |
-| 6 | 管理者パネル（`/admin`）未実装 | 低 |
-| 7 | プロフィール設定ページ（`/profile`）未実装 | 低 |
-| 8 | 地域フィルタ未実装 | 低 |
+| 1 | Supabase join クエリの TypeScript 型推論が `never` → `@ts-nocheck` で暫定対応 | 継続 |
+| 2 | ~~`/listings/[id]/edit` 編集ページ~~ | ✅ 実装済み |
+| 3 | 検索: キーワード全文検索（タイトル部分一致のみ） | 未実装 |
+| 4 | ~~ページネーション~~ | ✅ 実装済み |
+| 5 | 画像アップロード | 未実装 |
+| 6 | 管理者パネル（`/admin`） | 未実装 |
+| 7 | プロフィール設定ページ（`/profile`） | 未実装 |
+| 8 | ~~地域フィルタ~~ | ✅ 実装済み（地方→都道府県2階層ナビ） |
 
 ---
 
@@ -348,10 +334,9 @@ get_dashboard_friendliness_counts() → フレンドリー度別件数
 
 ---
 
-## 15. 追加要件（未実装）— 左サイドバー / ジャンル一覧画面の刷新
+## 15. 左サイドバー / ジャンル一覧画面
 
-> ステータス: **要件定義のみ。実装未着手。**
-> 既存の左サイドバー（情報タイプ / 目的別 / 業態別 / フレンドリー度の4ジャンル＋アコーディオン）を、以下の11ジャンル構成に置き換える。
+> ステータス: **実装済み**
 
 ### 15.1 ジャンル一覧（11個）
 
@@ -365,7 +350,7 @@ get_dashboard_friendliness_counts() → フレンドリー度別件数
 | 4 | 公式動画・ギャラリー | `video-gallery` |
 | 5 | 個人サイト | `personal-site` |
 | 6 | 団体・相談先 | `org-consult` |
-| 7 | マッチング | `matching` |
+| 7 | 出会い | `matching` |
 | 8 | 女装・ニューハーフ | `crossdress-newhalf` |
 | 9 | ファッション・美容 | `fashion-beauty` |
 | 10 | マニア系 | `mania` |
@@ -385,52 +370,50 @@ get_dashboard_friendliness_counts() → フレンドリー度別件数
 
 ```
 ┌────────────────────────────────────────────────────┐
-│ ヘッダー（赤 #B21000、白文字）                       │  ← グローバルヘッダー
-│  [sindbadbookmarks]  バー・飲食店                   │  ← 右側にジャンル名を大きく表示
+│ ヘッダー（赤 #B21000）                              │
+│  [☰] [ロゴ] sindbadbookmarks revival  [情報を登録]  │
 ├────────────────────────────────────────────────────┤
-│ カテゴリ絞り込み（チェックボックス・横並び）            │  ← ヘッダー直下、複数選択可
-│  □ ゲイバー  □ レズバー  □ ミックスバー              │
-│  □ 観光バー  □ 食事     □ 軽食                    │
-├────────────────────────────────────────────────────┤
-│ 一覧表示エリア                                       │
-│  ・カード or リスト形式で登録情報を表示                │
-│  ・件数表示／ソート                                  │
+│ パンくず: ダッシュボード / バー・飲食店                │
+│ カテゴリ絞り込み（チェックボックス・横並び）            │
+│  ☑ すべて  □ ゲイバー  □ レズバー  □ 飲食 ...      │
+│ 所在地絞り込み（hasPrefectureジャンルのみ）            │
+│ ソートタブ（7種）                                    │
+│ 一覧表示エリア（20件/ページ、クリックカウント付き）    │
+│ ページネーション                                     │
 └────────────────────────────────────────────────────┘
 ```
 
-#### ヘッダー内ジャンル名表示
+#### カテゴリチェックボックス絞り込み
 
-- 既存ヘッダー右側（ロゴの右隣／現在の "ページタイトル" 表示位置）に **選択中ジャンル名を表示**
-- 例: `sindbadbookmarks ｜ バー・飲食店`
-- ジャンル未選択時（トップやその他ページ）は現在のページタイトルを表示
+- ジャンルページ上部に **そのジャンル専用のカテゴリチェックボックス** を横並びで表示
+- カテゴリは **複数選択可能**（OR検索）
+- 「すべて」チェックボックスで全カテゴリ一括ON/OFF（マッサージ・売り専ではニューハーフを除く）
+- チェック変更時にローカルステートで即時反映 → `router.replace` でURL同期
+- カテゴリは各ジャンルごとに紐付く（Section 23.2 参照）
 
-#### ヘッダー下のカテゴリチェックボックス絞り込み
+### 15.4 所在地絞り込み（hasPrefecture ジャンル専用）
 
-- ヘッダー直下に **そのジャンル専用のカテゴリチェックボックス** を横並びで表示
-- カテゴリは **複数選択可能**（OR検索 or AND検索は要決定）
-- カテゴリは各ジャンルごとに紐付く（後述 15.5.1 参照）
-- チェック変更時に一覧をリアルタイム更新（URLパラメータ同期）
-- 「中分類」「サブカテゴリ」概念は **使用しない**。1ジャンル＝1階層のカテゴリ群のみ。
+所在地の入力・絞り込みが可能なジャンル（`hasPrefecture: true`）:
+- バー・飲食店 / ハッテンバ / マッサージ・売り専 / ファッション・美容
 
-### 15.4 「バー・飲食店」「マッサージ・売り専」専用：都道府県別件数表示
+ジャンル一覧ページで **地方→都道府県** の2階層ナビゲーション（件数付き）を表示。
 
-該当ジャンル選択時、一覧表示エリアの上部または横に **都道府県リストと件数** を表示する。
-
-| 表示位置 | 内容 |
-|---|---|
-| 一覧の住所欄 | リスティングに紐づく都道府県名の右横に **`(該当登録件数)`** を表示 |
-| 都道府県をクリック | その都道府県でリスティングを絞り込み（URL: `?prefecture=東京都` 等） |
-
-#### 表示例
-
+#### Level 1（デフォルト: ?region= なし）
 ```
-東京都 (42)    神奈川県 (18)    大阪府 (35)    愛知県 (12)
-新潟県 (3)     福岡県 (9)       沖縄県 (5)     ...
+所在地絞り込み
+北海道・東北 (3)  関東 (12)  中部 (0)  関西 (5)  ...
 ```
+- 地方名 + (登録件数) をリンクで表示。0件でも表示・クリック可能
 
-- 件数は該当ジャンル × 該当都道府県の公開済みリスティング数
-- 件数 0 件の都道府県は非表示
-- 多い順 or 北から南順（要決定）
+#### Level 2（?region=kanto 等）
+```
+関東
+茨城県 (0)  栃木県 (0)  群馬県 (1)  埼玉県 (3)  ...
+```
+- 都道府県名 + (登録件数) をリンクで表示。0件でも表示・クリック可能
+- 選択中の都道府県はハイライト
+
+件数は `listings.prefecture` のみでカウント（出張エリアは含めない）
 
 ### 15.5 データ要件・DB変更
 
@@ -461,7 +444,7 @@ CREATE TABLE genres (
 | 公式動画・ギャラリー | video-gallery | 4 |
 | 個人サイト | personal-site | 5 |
 | 団体・相談先 | org-consult | 6 |
-| マッチング | matching | 7 |
+| 出会い | matching | 7 |
 | 女装・ニューハーフ | crossdress-newhalf | 8 |
 | ファッション・美容 | fashion-beauty | 9 |
 | マニア系 | mania | 10 |
@@ -475,37 +458,13 @@ CREATE TABLE genres (
 ALTER TABLE categories ADD COLUMN genre_id uuid REFERENCES genres(id) ON DELETE CASCADE;
 ```
 
-- 既存の `group_type` カラム（`purpose` / `industry`）は **非推奨化**（マイグレーション対象）
-- `genre_id` が NOT NULL のレコードのみ新仕様で使用
+- `group_type` カラムは **削除済み**（マイグレーション 00003 で DROP）
+- `genre_id` が NOT NULL のレコードのみ使用
 - `name` / `slug` / `sort_order` はそのまま利用
 
-##### 初期投入カテゴリ（確定分のみ）
+##### 初期投入カテゴリ
 
-**バー・飲食店（bar-restaurant）配下:**
-
-| name | slug | sort_order |
-|---|---|---|
-| ゲイバー | gay-bar | 1 |
-| レズバー | lesbian-bar | 2 |
-| ミックスバー | mixed-bar | 3 |
-| 観光バー | tourist-bar | 4 |
-| 食事 | meal | 5 |
-| 軽食 | light-meal | 6 |
-
-**マッサージ・売り専（massage-urisen）配下:**
-
-| name | slug | sort_order |
-|---|---|---|
-| 整体 | seitai | 1 |
-| オイルマッサージ | oil-massage | 2 |
-| ニューハーフマッサージ | newhalf-massage | 3 |
-| ゲイマッサージ | gay-massage | 4 |
-| タイ古式マッサージ | thai-massage | 5 |
-| 売り専 | urisen | 6 |
-
-**その他9ジャンル配下:**
-
-→ **未定**。Phase 実装時または管理画面リリース後に管理者が追加する。
+全11ジャンルのカテゴリは Section 23.2 参照。全ジャンル分が定義済み。
 
 ##### 管理画面からの追加
 
@@ -549,54 +508,50 @@ listings 1 ──N── listing_categories ──N── categories N ──1�
                                             (genre_id)
 ```
 
-#### 15.5.4 件数取得用 RPC（新規 or View）
-
-サイドバーの件数表示用に集計クエリが必要：
+#### 15.5.4 件数取得用 RPC
 
 ```sql
--- ジャンルごとの公開済みリスティング件数
-get_genre_counts() RETURNS TABLE (
-  genre_id uuid,
-  genre_slug text,
-  genre_name text,
-  listing_count bigint
-)
-
--- 指定ジャンル × 都道府県の件数（バー・飲食店／マッサージ・売り専用）
-get_prefecture_counts_by_genre(genre_slug text) RETURNS TABLE (
-  prefecture text,
-  listing_count bigint
-)
+get_genre_counts()                       -- サイドバー用: 11ジャンルの件数
+get_category_counts_all()                -- ダッシュボード用: 全ジャンル×カテゴリ件数
+increment_click_count(listing_id uuid)   -- クリックカウント+1
 ```
+
+都道府県別件数はジャンル一覧ページ（page.tsx）でJSにより集計（RPC不使用）。
 
 ### 15.6 ルーティング（URL設計）
 
 | URL | 説明 |
 |---|---|
-| `/listings?genre=bar-restaurant` | バー・飲食店一覧（カテゴリ絞り込みなし） |
-| `/listings?genre=bar-restaurant&category=gay-bar,mixed-bar` | バー・飲食店 × ゲイバー＋ミックスバー（複数カテゴリ） |
-| `/listings?genre=bar-restaurant&prefecture=東京都` | バー・飲食店 × 東京都 |
-| `/listings?genre=bar-restaurant&prefecture=東京都&category=gay-bar` | 複合絞り込み |
-| `/listings?genre=massage-urisen&category=urisen,gay-massage` | マッサージ・売り専 × 売り専＋ゲイマッサージ |
+| `/genres/bar-restaurant` | バー・飲食店一覧（カテゴリ絞り込みなし） |
+| `/genres/bar-restaurant?category=gay-bar,mixed-bar` | バー・飲食店 × ゲイバー＋ミックスバー |
+| `/genres/bar-restaurant?region=kanto` | バー・飲食店 × 関東地方 |
+| `/genres/bar-restaurant?region=kanto&prefecture=tokyo` | バー・飲食店 × 東京都 |
+| `/genres/bar-restaurant?category=gay-bar&region=kanto&prefecture=tokyo` | 複合絞り込み |
+| `/genres/massage-urisen?category=urisen,gay-massage` | マッサージ・売り専 × 売り専＋ゲイマッサージ |
+| `/genres/massage-urisen?service_area=tokyo-23,osaka` | マッサージ・売り専 × 出張エリア絞り込み |
+| `/genres/bar-restaurant?sort=popular` | アクセス数順で並び替え |
 
-- `category` パラメータは **カンマ区切りで複数指定可能**
+- `category` パラメータは **カンマ区切りで複数指定可能**（OR検索）
+- `service_area` パラメータは **カンマ区切りで複数指定可能**
+- `sort` パラメータ: `created_desc`(default) / `created_asc` / `updated_desc` / `updated_asc` / `title_asc` / `title_desc` / `popular`
 - カテゴリのスラッグはジャンル内でユニーク（DB全体ではジャンルをまたいで重複可）
 
-### 15.7 影響範囲
-
-以下のファイルを変更／追加予定（実装フェーズ時）:
+### 15.7 主要ファイル
 
 | 種別 | パス |
 |---|---|
-| 変更 | `app/src/components/sidebar.tsx` — 11ジャンル＋件数表示、アコーディオン廃止 |
-| 変更 | `app/src/components/header.tsx` — 選択ジャンル名表示の連動 |
-| 変更 | `app/src/app/listings/page.tsx` — `genre` / `category[]` / `prefecture` パラメータ対応 |
-| 新規 | `app/src/app/listings/CategoryCheckboxes.tsx` — ジャンル別カテゴリのチェックボックス絞り込み |
-| 新規 | `app/src/app/listings/PrefectureCounts.tsx` — 都道府県別件数表示（バー・マッサージ系） |
-| 新規 | `app/src/app/admin/categories/page.tsx` — 管理画面：カテゴリ追加・編集・削除 |
-| 変更 | `app/src/app/listings/new/ListingForm.tsx` — ジャンル選択必須化＋ジャンル別カテゴリ表示 |
-| 変更 | `app/src/lib/supabase/types.ts` — `Genre` 型新規、`Category` に `genre_id` |
-| 新規 | `supabase/migrations/xxx_add_genres_and_categories.sql` — `genres` テーブル作成、`categories.genre_id` 追加、`listings.genre_id`／`prefecture` 追加、RPC、初期データ投入 |
+| 実装済み | `app/src/components/sidebar.tsx` — 11ジャンル＋件数表示 |
+| 実装済み | `app/src/components/header.tsx` — ロゴ・ハンバーガー・情報登録ボタン |
+| 実装済み | `app/src/app/genres/[slug]/page.tsx` — ジャンル別一覧ページ |
+| 実装済み | `app/src/app/genres/[slug]/GenreFilters.tsx` — カテゴリ・出張エリアチェックボックス |
+| 実装済み | `app/src/app/genres/[slug]/RegionPrefectureNav.tsx` — 所在地2階層ナビ |
+| 実装済み | `app/src/components/listings/SortTabs.tsx` — ソートタブ（7種） |
+| 実装済み | `app/src/components/listings/ClickableTitle.tsx` — クリックカウント付きタイトル |
+| 実装済み | `app/src/components/listings/Pagination.tsx` — ページネーション |
+| 実装済み | `app/src/app/api/listings/[id]/click/route.ts` — クリックカウントAPI |
+| 実装済み | `app/src/app/listings/new/ListingForm.tsx` — ジャンル連動フォーム |
+| 実装済み | `app/src/lib/constants/genres.ts` — 11ジャンル定義 |
+| 実装済み | `app/src/lib/constants/prefectures.ts` — 都道府県＋地方定義 |
 
 ### 15.8 未決事項（確定済みは ✅ マーク）
 
@@ -604,7 +559,7 @@ get_prefecture_counts_by_genre(genre_slug text) RETURNS TABLE (
 |---|---|---|
 | 1 | ✅ 全11ジャンルのカテゴリ定義 | **確定**: Section 23.2 参照 |
 | 2 | ✅ 都道府県リストの並び順 | **北から南順** |
-| 3 | ✅ 既存の `categories.group_type`（purpose/industry）の扱い | **廃止（DROP）** — `friendliness` と同タイミングで次回マイグレーションで削除 |
+| 3 | ✅ 既存の `categories.group_type`（purpose/industry）の扱い | **DROP 済み**（マイグレーション 00003） |
 | 4 | ✅ 既存リスティングの `prefecture` 欠損データの扱い | **バッチ補完**（マイグレーション or スクリプトで一括補完） |
 | 5 | ✅ カテゴリチェックの検索方式 | **OR検索**。ただしマッサージ・売り専の「ニューハーフマッサージ」は特殊扱い（後述 §15.8.1） |
 | 6 | ✅ カテゴリ未選択時の挙動 | **全件表示**（ジャンルのみで絞り込み） |
@@ -626,10 +581,9 @@ get_prefecture_counts_by_genre(genre_slug text) RETURNS TABLE (
 
 ---
 
-## 16. 仕様変更（未実装）— フレンドリー度廃止 / トップ検索簡素化 / 未ログイン時の登録導線
+## 16. フレンドリー度廃止 / トップ検索簡素化 / 未ログイン時の登録導線
 
-> ステータス: **要件定義のみ。実装未着手。**
-> 15章の追加要件を受けた調整。
+> ステータス: **実装済み**
 
 ### 16.1 「フレンドリー度（Friendliness）」分類の廃止
 
@@ -638,8 +592,8 @@ get_prefecture_counts_by_genre(genre_slug text) RETURNS TABLE (
 - **分類軸としての「フレンドリー度」を完全廃止**
 - サイドバー・ヘッダー下・トップ検索いずれからも削除
 - リスティング登録フォームの「フレンドリー度」入力欄を削除
-- DBカラム `listings.friendliness` は **非推奨**（当面は残置、将来マイグレーションで削除可）
-- RPC `get_dashboard_friendliness_counts()` の呼び出し停止
+- DBカラム `listings.friendliness` は **DROP 済み**（マイグレーション 00003）
+- RPC `get_dashboard_friendliness_counts()` は廃止
 - ダッシュボード（`/`）の「フレンドリー度別」セクション削除
 
 **影響ファイル:**
@@ -739,7 +693,7 @@ get_prefecture_counts_by_genre(genre_slug text) RETURNS TABLE (
 
 | # | 項目 | 決定 |
 |---|---|---|
-| 1 | ✅ `listings.friendliness` カラムの最終処理 | **次回実装着手時の最初のマイグレーションで DROP**（`categories.group_type` も同時に DROP） |
+| 1 | ✅ `listings.friendliness` カラムの最終処理 | **DROP 済み**（`categories.group_type` も同時に DROP。マイグレーション 00003） |
 | 2 | ✅ ログイン案内画面のボタン構成 | **「アカウント新規作成」ボタンを表示する**。「情報を登録」ボタンは不要（ログイン後にヘッダーから遷移可能） |
 | 3 | ✅ `/login?next=...` のオープンリダイレクト対策 | **実装済み**: `safeRedirectPath()` で `/` 始まり（`//` 除外）のみ許可。login/signup/auth/callback 全箇所に適用 |
 | 4 | ✅ ダッシュボードの代替コンテンツ | **ジャンル×カテゴリ件数ツリー（§24.4）で確定・実装済み** |
@@ -762,15 +716,14 @@ get_prefecture_counts_by_genre(genre_slug text) RETURNS TABLE (
    - 選択中ジャンルに紐づく `categories`（`categories.genre_id = 選択ジャンル`）をチェックボックスで表示
    - 未定義ジャンルの場合は非表示または「カテゴリなし」表示
    - 保存先: `listing_categories` 中間テーブル
-5. **住所・所在地**
-   - **都道府県**（必須・セレクト）47都道府県
-   - **市区町村**（条件付き）
-     - 都道府県が「東京都」の場合のみ **23区セレクト** を表示（必須）
-     - それ以外の都道府県では非表示、または自由入力欄に統合
-   - **それ以降の住所**（任意・テキスト）番地・建物名など自由入力
+5. **所在地**（`hasPrefecture: true` のジャンルのみ表示: バー・飲食店/ハッテンバ/マッサージ・売り専/ファッション・美容）
+   - 「所在地」セクションヘッダーを表示
+   - **都道府県**（セレクト、幅半分 `w-1/2`）47都道府県
+   - **区**（東京都選択時のみ、都道府県の右横に表示 `w-1/2`）23区セレクト
+   - **詳細住所**（任意・テキスト）番地・建物名など自由入力
    - 保存先:
      - `listings.prefecture`（例: `"tokyo"`）
-     - `listings.ward`（新規カラム案、東京23区のみ使用）
+     - `listings.ward`（東京23区のみ使用）
      - `listings.address`（番地以降の自由入力）
 6. **サービス提供地域（出張エリア）**（条件付き・複数選択可・チェックボックス）
    - **ジャンルが「マッサージ・売り専」の場合のみ表示**
@@ -778,15 +731,10 @@ get_prefecture_counts_by_genre(genre_slug text) RETURNS TABLE (
    - 保存先: `listings.service_areas`（`text[]` 配列）
    - マッサージ以外のジャンルでは DB に NULL/空配列を保存
 
-### 17.2 削除される項目
+### 17.2 廃止された項目
 
-以前の仕様にあった以下は **廃止**：
-
-- **目的別カテゴリ**（複数選択可）← 廃止
-- **業態別カテゴリ**（複数選択可）← 廃止
-- **フレンドリー度**（Section 16.1 で既に廃止済み）
-
-カテゴリは「ジャンルに紐づく単一のカテゴリ群」に統一され、目的別／業態別の二軸は使用しない。
+- **目的別カテゴリ** / **業態別カテゴリ** — ジャンルに紐づく単一カテゴリ群に統一
+- **フレンドリー度** — Section 16.1 で廃止、カラムも DROP 済み
 
 ### 17.3 DB スキーマ追加・変更（案）
 
@@ -842,7 +790,7 @@ Section 15〜17 の未決事項および追加論点について、以下のと�
 |---|---|---|
 | 1 | 都道府県の保存形式 | **スラッグ**（例: `tokyo`, `osaka`, `hokkaido`） |
 | 2 | 東京以外の市区町村 | **東京23区のみ特別扱い**。他都道府県は `ward` 未使用、番地以降を `address` 自由入力に統合 |
-| 3 | `listings.friendliness` カラム | **即DROP**（本番データ未投入のためマイグレーションで削除） |
+| 3 | `listings.friendliness` カラム | **DROP 済み**（マイグレーション 00003） |
 | 4 | 緯度経度 (`latitude`/`longitude`) | **Phase 2 では入力不要**。カラムは残すが NULL 許容、フォームに含めない。Phase 4 でジオコーディング検討 |
 | 5 | ウェブサイトURL/SNS | **1カラム（`listings.website_url`）に統合、NOT NULL（必須）**。複数URL不要。SNSプロファイルも同カラム |
 | 5b | 説明文の文字数制限 | **100文字以内**（入力時 `maxLength`、DB CHECK 制約） |
@@ -869,7 +817,7 @@ Section 15〜17 の未決事項および追加論点について、以下のと�
 
 ### 18.3 カテゴリ未定義ジャンルの UI
 
-11ジャンル中、カテゴリ定義済みは「バー・飲食店」「マッサージ・売り専」の2つのみ。残り9ジャンル（ハッテンバ／公式動画・ギャラリー／個人サイト／団体・相談先／マッチング／女装・ニューハーフ／ファッション・美容／マニア系／その他）では：
+全11ジャンルにカテゴリが定義済み（Section 23.2 参照）。カテゴリが0件のジャンルでは：
 
 - 登録フォームの **カテゴリセクション自体を非表示**
 - ジャンル別一覧ページでも **カテゴリ絞り込み UI を非表示**
@@ -954,17 +902,27 @@ Section 15〜17 の未決事項および追加論点について、以下のと�
 
 ### 19.3 並び順切り替え
 
-- 一覧上部に **ソート用コンボボックス（select）** を配置
-- 選択肢（4種）:
+- 一覧上部に **ソートタブ（pill ボタン横並び）** を配置（`SortTabs` コンポーネント）
+- 選択肢（7種）:
   | value | 表示ラベル | Supabase order |
   |---|---|---|
-  | `created_asc` | 登録日（古い順） | `.order('created_at', { ascending: true })` |
-  | `created_desc` | 登録日（新しい順） | `.order('created_at', { ascending: false })` |
-  | `title_asc` | 名称（昇順） | `.order('title', { ascending: true })` |
-  | `title_desc` | 名称（降順） | `.order('title', { ascending: false })` |
-- **デフォルト**: `created_desc`（新しい順）
-- URL クエリパラメータ: `?sort=created_desc` 形式
+  | `created_desc` | 登録日新しい順 | `.order('created_at', { ascending: false })` |
+  | `created_asc` | 登録日古い順 | `.order('created_at', { ascending: true })` |
+  | `updated_desc` | 更新日新しい順 | `.order('updated_at', { ascending: false })` |
+  | `updated_asc` | 更新日古い順 | `.order('updated_at', { ascending: true })` |
+  | `title_asc` | 名称 あ→わ | `.order('title', { ascending: true })` |
+  | `title_desc` | 名称 わ→あ | `.order('title', { ascending: false })` |
+  | `popular` | アクセス数順 | `.order('click_count', { ascending: false })` |
+- **デフォルト**: `created_desc`（新しい順、URLパラメータ省略）
+- URL クエリパラメータ: `?sort=popular` 形式
 - 並び替え操作時は `page=1` にリセット
+
+### 19.3.1 クリックカウント（アクセス数）
+
+- `listings.click_count integer NOT NULL DEFAULT 0` カラムで保持
+- 名称リンクのクリック時に `ClickableTitle` コンポーネントが `/api/listings/[id]/click` へ fire-and-forget POST
+- サーバー側は `supabase.rpc('increment_click_count', { listing_id })` でアトミックに +1
+- ナビゲーション（外部サイト遷移）をブロックしない設計
 
 ### 19.4 空状態
 
@@ -1145,14 +1103,14 @@ Section 18.8 のステップ1に以下を追加：
 | ヘッダー右側 | **「情報を登録」ボタン**を配置（常時表示、未ログイン時は押下後にログイン案内＝Section 16.3） |
 | サイドバー | 11ジャンルリスト（Section 15 準拠） + **「マイリスティング」リンクを常時表示**（未ログインでも表示）。未ログインで押下した場合は `/my-listings` 側で「ログインが必要です」案内＋ログイン/新規登録ボタンを表示（Section 16.3 と同等の認証ゲート）。ログイン済みの場合は自分の登録 listings 一覧を表示 |
 
-### 22.2 バー・飲食店 都道府県リスト 表示方針
+### 22.2 所在地絞り込み 表示方針
 
-- **47都道府県すべて表示**
-- 件数0の都道府県も表示するが **クリック不可**（`disabled`、グレーアウト）
-- **地域別に折りたたみ**表示:
-  - 北海道・東北 / 関東 / 中部 / 関西 / 中国 / 四国 / 九州・沖縄
-  - 各地域をアコーディオンで開閉
-- 件数は都道府県名の右に `（12）` 形式で表示
+`hasPrefecture: true` の4ジャンル（バー・飲食店/ハッテンバ/マッサージ・売り専/ファッション・美容）で表示。
+
+- **地方→都道府県** の2階層ナビゲーション（Section 15.4 参照）
+- 地方一覧: 件数付き、0件でも表示・クリック可能
+- 都道府県一覧: 選択した地方内のみ表示、件数付き、0件でも表示・クリック可能
+- 選択中の都道府県はハイライト表示
 
 ### 22.3 マッサージ・売り専 件数基準
 
@@ -1210,13 +1168,12 @@ Section 18.8 のステップ1に以下を追加：
 
 > ⚠️ **セキュリティ注意**: パスワードは本ドキュメントに記載しない。初期 admin のパスワードは別途安全な経路（パスワードマネージャ等）で管理し、リポジトリには絶対にコミットしないこと。GitHub に公開されるファイルに平文パスワードが載ることは重大なセキュリティインシデントとなる。
 
-### 22.8 影響する既存セクション
+### 22.8 関連セクション
 
-- Section 15.2 サイドバー: 22.1 の「マイリスティング」リンクを追記
-- Section 15.3 ジャンルページ: 22.2 の都道府県折りたたみ仕様を反映
-- Section 15.6 URL設計: カテゴリ OR 条件を明記（`?category=a,b,c` は OR）
-- Section 3 認証: Google OAuth 追加
-- Section 6 レイアウト: ヘッダー右「情報を登録」ボタン追加
+- Section 15.2 サイドバー: マイリスティングリンク
+- Section 15.3 ジャンルページ: カテゴリ絞り込み + 所在地ナビ
+- Section 15.6 URL設計: カテゴリ OR 条件・ソートパラメータ
+- Section 24: ヘッダー再構成
 
 ---
 
@@ -1231,13 +1188,14 @@ Section 18.8 に 20/21/22 の追加要件を統合した最終的な実装手順
    - `listings.title` CHECK `char_length(title) <= 20`
    - `listings.description` NOT NULL + CHECK `char_length(description) BETWEEN 1 AND 100`
    - `listings.website_url` NOT NULL
-   - `listings.friendliness` **DROP**
+   - `listings.friendliness` **DROP**（実施済み: マイグレーション 00003）
+   - `listings.click_count integer NOT NULL DEFAULT 0`（実施済み: マイグレーション 00003）
    - `listings.latitude` / `longitude` は残す（NULL許容、フォーム未使用）
    - `profiles.is_disabled boolean default false` 追加
    - `reports.reason` CHECK `char_length(reason) <= 50`、`reporter_user_id` NULL 許容
    - `updated_at` 自動更新トリガー作成
    - FK `ON DELETE CASCADE`（`listing_categories` 等）
-2. **シード**: 11ジャンル + バー・飲食店6カテゴリ + マッサージ・売り専6カテゴリ
+2. **シード**: 11ジャンル + 全ジャンルのカテゴリ（Section 23.2 参照）
 3. **RPC 関数**
    - `get_genre_counts()` 11ジャンルの件数
    - `get_prefecture_counts_by_genre(genre_slug text)` 47都道府県件数（0件含む）
@@ -1308,20 +1266,20 @@ Section 18.8 に 20/21/22 の追加要件を統合した最終的な実装手順
 | 入力 | 都道府県保存形式 | スラッグ（`tokyo` 等） |
 | 入力 | 東京以外の区 | 自由入力に統合 |
 | 表示 | 一覧1ページ | 20件 |
-| 表示 | ソート | 登録日昇降 / 名称昇降 |
+| 表示 | ソート | 登録日昇降 / 更新日昇降 / 名称昇降 / アクセス数順（7種） |
 | 表示 | デフォルトソート | 登録日新しい順 |
 | 表示 | 詳細ページ | 不要 |
 | 表示 | カテゴリ絞り込み | OR条件 |
-| 表示 | 都道府県リスト | 47件全表示・地域別アコーディオン・0件はクリック不可 |
+| 表示 | 所在地絞り込み | 地方→都道府�� 2階層ナビ（hasPrefecture 4ジャンルのみ、0件も表示・クリック可） |
 | 表示 | OGP画像 | Phase 2 では無し |
-| 機能 | マイリスティング | `/my/listings`（編集・物理削除） |
+| 機能 | マイリスティング | `/my-listings`（編集・物理削除） |
 | 機能 | 通報 | ログイン不要・50字以内・完了画面あり |
 | 機能 | アカウント停止 | Admin が実施、復元不可 |
 | 機能 | 削除方針 | 全て物理削除 |
 | 監査 | 保持項目 | created_at/by, updated_at/by |
-| ジャンル | 数 | 11（バー・飲食店/ハッテンバ/マッサージ・売り専/公式動画・ギャラリー/個人サイト/団体・相談先/マッチング/女装・ニューハーフ/ファッション・美容/マニア系/その他） |
-| ジャンル | カテゴリ定義済み | バー・飲食店 / マッサージ・売り専 のみ |
-| ジャンル | 未定義時UI | カテゴリセクション非表示 |
+| ジャンル | 数 | 11（バー・飲食店/ハッテンバ/マッサージ・売り専/公式動画配信・ギャラリー/個人サイト/団体・相談先/出会い/女装・ニューハーフ/ファッション・美容/マニア系/その他） |
+| ジャンル | カテゴリ定義済み | 全11ジャンル（Section 23.2 参照） |
+| ジャンル | カテゴリ0件時UI | カテゴリセクション非表示 |
 | サービス提供地域 | 対象 | マッサージ・売り専のみ |
 | サービス提供地域 | 選択肢 | 関東/東京23区/東京23区外/関西/東海/北海道/東北/中部/中国/四国/九州/沖縄/全国対応 |
 | 管理画面 Phase 2 | 範囲 | /admin/categories + /admin/listings（全件CRUD+監査） |
@@ -1337,24 +1295,16 @@ Section 18.8 に 20/21/22 の追加要件を統合した最終的な実装手順
 | 1.1 | 2026-04-07 | Section 15 追加（11ジャンル・サイドバー再設計） |
 | 1.2 | 2026-04-07 | Section 16 追加（フレンドリー度廃止・検索簡素化・ログイン導線） |
 | 1.3 | 2026-04-08 | Section 17〜22 追加・付録 A/B 追加・仕様確定完了 |
-| 1.4 | 2026-04-08 | Section 23 追加（全11ジャンルのカテゴリ確定） |
-| 1.5 | 2026-04-08 | Section 24 追加（ロゴ・ヘッダー再構成・ダッシュボード構成変更） |
-| 1.6 | 2026-04-10 | Section 25 追加（マイリスティング画面仕様 — 一覧/編集/削除/ページング） |
-| 1.7 | 2026-04-11 | Section 25 更新（削除モーダルボタン構成確定、status非表示、RLS DELETEポリシー確認・記録） |
+| 1.4 | 2026-04-08 | Section 24 追加（ロゴ・ヘッダー再構成・ダッシュボード構成変更） |
+| 1.5 | 2026-04-10 | Section 25 追加（マイリスティング画面仕様 — 一覧/編集/削除/ページング） |
+| 1.6 | 2026-04-11 | Section 25 更新（削除モーダルボタン構成確定、status非表示、RLS DELETEポリシー確認） |
+| 1.7 | 2026-04-12 | 仕様書全体を最新実装に同期（DB変更・ソート7種・クリックカウント・所在地2階層ナビ・モバイルヘッダー反映） |
 
 ---
 
-## 23. 各ジャンルのカテゴリ 確定一覧
+## 23. 全ジャンル・カテゴリ一覧
 
-Section 15/17/18.3 で「カテゴリ定義済みはバー・飲食店とマッサージ・売り専のみ」としていたが、本セクションで **全11ジャンル分のカテゴリを確定**。シード投入対象。
-
-### 23.1 ジャンル名変更
-
-| 旧（Section 15.1） | 新 |
-|---|---|
-| マッチング | **出会い** |
-
-スラッグは `matching` を維持（URL互換性のため）。表示名のみ「出会い」に変更。
+全11ジャンル分のカテゴリ定義。DBシード投入済み。
 
 ### 23.2 カテゴリ一覧（全ジャンル）
 
@@ -1362,34 +1312,23 @@ Section 15/17/18.3 で「カテゴリ定義済みはバー・飲食店とマッ�
 |---|---|---|---|
 | 1 | バー・飲食店 | `bar-restaurant` | ゲイバー / レズバー / ミックスバー / 観光バー / 飲食 / 女性入店可 |
 | 2 | ハッテンバ | `hattenba` | ビデオボックス / サウナ / 宿泊 |
-| 3 | マッサージ・売り専 | `massage-urisen` | 整体 / オイルマッサージ / タイ古式マッサージ / ジャップカサイ / 出張 / ストレッチ / カイロプラクティック / ニューハーフマッサージ |
+| 3 | マッサージ・売り専 | `massage-urisen` | 整体 / オイルマッサージ / タイ古式マッサージ / ニューハーフマッサージ / ゲイマッサージ / 売り専 |
 | 4 | 公式動画配信・ギャラリー | `video-gallery` | 日本 / 海外 / アジア |
 | 5 | 個人サイト | `personal-site` | ブログ / 体験記 / ギャラリー |
-| 6 | 団体・相談先 | `org-consult` | NPO / 行政 |
+| 6 | 団体・相談先 | `org-consult` | NPO / 行政 / サークル |
 | 7 | 出会い | `matching` | マッチングアプリ / サービス / 掲示板 |
 | 8 | 女装・ニューハーフ | `crossdress-newhalf` | ドラッグ / ショップ / サロン / ショーパブ |
-| 9 | ファッション・美容 | `fashion-beauty` | ヘアサロン / メイク / エステ / 脱毛 / タンニング |
+| 9 | ファッション・美容 | `fashion-beauty` | ヘアサロン / メイク / エステ / 脱毛 / タンニング / フィットネス / 医療関係 |
 | 10 | マニア系 | `mania` | SM / 露出 / デブ専 / フケ専 / 緊縛 / ゼンタイ |
 | 11 | その他 | `other` | 占い / 出版 / 便利サイト |
 
-### 23.3 変更点のまとめ
+### 23.3 注意事項
 
-- Section 18.3 の「カテゴリ定義済みは2ジャンルのみ」は解消 → **10ジャンル分をシード投入**（その他のみ未定）
-- Section 15.1 の旧ジャンル名「マッチング」→「出会い」に修正（スラッグは維持）
-- Section 17.1 の「バー・飲食店」カテゴリ例を以下のとおり更新:
-  - 旧: ゲイバー/レズバー/ミックスバー/観光バー/食事/軽食
-  - 新: **ゲイバー/レズバー/ミックスバー/観光バー/飲食/女性入店可**
-- Section 17.1 の「マッサージ・売り専」カテゴリ例を以下のとおり更新:
-  - 旧: 整体/オイルマッサージ/ニューハーフマッサージ/ゲイマッサージ/タイ古式マッサージ/売り専
-  - 新: **整体/オイルマッサージ/タイ古式マッサージ/ジャップカサイ/出張/ストレッチ/カイロプラクティック/ニューハーフマッサージ**
-- 「団体・相談先」カテゴリを更新:
-  - 旧: NPO法人 / ボランティア
-  - 新: **NPO / 行政**
-- 「その他」ジャンルのカテゴリを確定: **占い / 出版 / 便利サイト**
+- `categories.slug` はジャンル内で一意（複合ユニーク制約 `UNIQUE (genre_id, slug)`）
+- カテゴリの並び順は上記の記載順（`sort_order` カラムで制御）
+- 「出会い」ジャンルはスラッグ `matching` を維持（URL互換性のため）
 
-> **注意**: DB上の「団体・相談先」カテゴリは旧データ（NPO法人/ボランティア）のまま。マイグレーションで「NPO / 行政」に更新が必要。
-
-### 23.4 シード SQL（案）
+### 23.4 シード SQL
 
 ```sql
 -- genres
@@ -1400,7 +1339,7 @@ INSERT INTO genres (slug, name, sort_order) VALUES
   ('video-gallery',      '公式動画配信・ギャラリー', 4),
   ('personal-site',      '個人サイト',           5),
   ('org-consult',        '団体・相談先',         6),
-  ('matching',           '出会い',               7),
+  ('matching',            '出会い',              7),
   ('crossdress-newhalf', '女装・ニューハーフ',   8),
   ('fashion-beauty',     'ファッション・美容',   9),
   ('mania',              'マニア系',            10),
@@ -1422,11 +1361,9 @@ INSERT INTO categories (genre_id, slug, name) SELECT id, 'lodging',      '宿泊
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'seitai',           '整体'                 FROM genres WHERE slug='massage-urisen';
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'oil',              'オイルマッサージ'     FROM genres WHERE slug='massage-urisen';
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'thai',             'タイ古式マッサージ'   FROM genres WHERE slug='massage-urisen';
-INSERT INTO categories (genre_id, slug, name) SELECT id, 'jap-kasai',        'ジャップカサイ'       FROM genres WHERE slug='massage-urisen';
-INSERT INTO categories (genre_id, slug, name) SELECT id, 'outcall',          '出張'                 FROM genres WHERE slug='massage-urisen';
-INSERT INTO categories (genre_id, slug, name) SELECT id, 'stretch',          'ストレッチ'           FROM genres WHERE slug='massage-urisen';
-INSERT INTO categories (genre_id, slug, name) SELECT id, 'chiropractic',     'カイロプラクティック' FROM genres WHERE slug='massage-urisen';
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'newhalf',          'ニューハーフマッサージ' FROM genres WHERE slug='massage-urisen';
+INSERT INTO categories (genre_id, slug, name) SELECT id, 'gay-massage',      'ゲイマッサージ'       FROM genres WHERE slug='massage-urisen';
+INSERT INTO categories (genre_id, slug, name) SELECT id, 'urisen',           '売り専'               FROM genres WHERE slug='massage-urisen';
 -- video-gallery
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'japan',  '日本'   FROM genres WHERE slug='video-gallery';
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'world',  '海外'   FROM genres WHERE slug='video-gallery';
@@ -1438,6 +1375,7 @@ INSERT INTO categories (genre_id, slug, name) SELECT id, 'gallery',    'ギャ�
 -- org-consult
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'npo',        'NPO'     FROM genres WHERE slug='org-consult';
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'government', '行政'    FROM genres WHERE slug='org-consult';
+INSERT INTO categories (genre_id, slug, name) SELECT id, 'circle',     'サークル' FROM genres WHERE slug='org-consult';
 -- matching (出会い)
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'app',     'マッチングアプリ' FROM genres WHERE slug='matching';
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'service', 'サービス'         FROM genres WHERE slug='matching';
@@ -1453,6 +1391,8 @@ INSERT INTO categories (genre_id, slug, name) SELECT id, 'makeup',   'メイク'
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'esthetic', 'エステ'     FROM genres WHERE slug='fashion-beauty';
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'hair-removal', '脱毛'   FROM genres WHERE slug='fashion-beauty';
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'tanning',  'タンニング' FROM genres WHERE slug='fashion-beauty';
+INSERT INTO categories (genre_id, slug, name) SELECT id, 'fitness',  'フィットネス' FROM genres WHERE slug='fashion-beauty';
+INSERT INTO categories (genre_id, slug, name) SELECT id, 'medical',  '医療関係'   FROM genres WHERE slug='fashion-beauty';
 -- mania
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'sm',       'SM'       FROM genres WHERE slug='mania';
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'exposure', '露出'     FROM genres WHERE slug='mania';
@@ -1466,12 +1406,6 @@ INSERT INTO categories (genre_id, slug, name) SELECT id, 'publishing',  '出版'
 INSERT INTO categories (genre_id, slug, name) SELECT id, 'useful-site', '便利サイト' FROM genres WHERE slug='other';
 ```
 
-### 23.5 注意事項
-
-- `categories.slug` はジャンル内で一意（複合ユニーク制約 `UNIQUE (genre_id, slug)`）
-- 名称に記号・長音を含むものは UTF-8 保存
-- 「SM」「NPO法人」など大文字・英数字混在はそのまま保存
-- カテゴリの並び順は上記の記載順（必要なら `sort_order` カラムで制御）
 
 ---
 
@@ -1484,22 +1418,22 @@ INSERT INTO categories (genre_id, slug, name) SELECT id, 'useful-site', '便利�
 - ヘッダー左側に表示（`next/image` で最適化、クリックで `/` へ遷移）
 - ロゴ右横にテキスト「**sindbadbookmarks revival**」を並置（白文字、現状のフォント）
 
-### 24.2 ヘッダー構成（上書き仕様）
-
-Section 6 / Section 22.1 を以下で上書き。
+### 24.2 ヘッダー構成
 
 左から順に:
 
 1. **ハンバーガーメニューアイコン**（☰）
    - 押下で左サイドバーを表示/非表示トグル
-   - デフォルト状態は **「非表示（閉じた状態）」で確定**（§24.7 #1）
-   - モバイル対応は Phase 4 だが、ハンバーガー自体は Phase 2 で実装
+   - デフォルト状態は **閉じた状態**
 2. **ロゴ画像**（24.1 のロゴ）
 3. **サイトタイトル**「sindbadbookmarks revival」（テキスト、白文字）
 4. （中央余白）
-5. **「情報を登録」ボタン**（右端、Section 22.1 踏襲）
+5. **「情報を登録」ボタン**（右端）
 
-従来の「ページタイトル中央表示」は廃止 → タイトルはサイト名固定、ジャンル名などは左サイドバー/メイン領域で表現。
+#### モバイル表示（sm: 未満）
+- ロゴ画像は **非表示**（`hidden sm:block`）
+- タイトルは3行表示: 「sindbad」「bookmarks」「revival」
+- デスクトップでは1行表示: 「sindbadbookmarks revival」
 
 ### 24.3 サイドバー表示トグル
 

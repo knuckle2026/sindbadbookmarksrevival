@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import { GENRES } from "@/lib/constants/genres";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import Pagination from "@/components/listings/Pagination";
+import SortTabs, { type SortKey } from "@/components/listings/SortTabs";
+import ClickableTitle from "@/components/listings/ClickableTitle";
 import GenreFilters from "./GenreFilters";
 import RegionPrefectureNav from "./RegionPrefectureNav";
 
@@ -20,6 +22,7 @@ interface PageProps {
     prefecture?: string;
     service_area?: string;
     region?: string;
+    sort?: string;
     page?: string;
   }>;
 }
@@ -31,9 +34,19 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     prefecture: prefectureParam,
     service_area: serviceAreaParam,
     region: regionParam,
+    sort: sortParam,
     page: pageParam,
   } = await searchParams;
   const currentPage = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
+
+  // Resolve sort key
+  const validSorts: SortKey[] = [
+    "created_desc", "created_asc", "updated_desc", "updated_asc",
+    "title_asc", "title_desc", "popular",
+  ];
+  const currentSort: SortKey = validSorts.includes(sortParam as SortKey)
+    ? (sortParam as SortKey)
+    : "created_desc";
 
   const genreMeta = GENRES.find((g) => g.slug === slug);
   if (!genreMeta) notFound();
@@ -166,12 +179,24 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   const from = (safePage - 1) * PER_PAGE;
   const to = from + PER_PAGE - 1;
 
+  // Sort mapping
+  const sortConfig: Record<SortKey, { column: string; ascending: boolean }> = {
+    created_desc: { column: "created_at", ascending: false },
+    created_asc: { column: "created_at", ascending: true },
+    updated_desc: { column: "updated_at", ascending: false },
+    updated_asc: { column: "updated_at", ascending: true },
+    title_asc: { column: "title", ascending: true },
+    title_desc: { column: "title", ascending: false },
+    popular: { column: "click_count", ascending: false },
+  };
+  const { column: sortColumn, ascending: sortAsc } = sortConfig[currentSort];
+
   let query = supabase
     .from("listings")
     .select("id, title, description, website_url, prefecture")
     .eq("genre_id", genreRow.id)
     .eq("status", "published")
-    .order("created_at", { ascending: false })
+    .order(sortColumn, { ascending: sortAsc })
     .range(from, to);
   if (listingIds) query = query.in("id", listingIds);
   if (prefectureFilter) {
@@ -189,6 +214,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   if (regionParam) extraParams.region = regionParam;
   if (prefectureFilter) extraParams.prefecture = prefectureFilter;
   if (serviceAreaParam) extraParams.service_area = serviceAreaParam;
+  if (currentSort !== "created_desc") extraParams.sort = currentSort;
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
@@ -229,6 +255,13 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
         />
       )}
 
+      {/* Sort Tabs */}
+      <SortTabs
+        currentSort={currentSort}
+        basePath={`/genres/${slug}`}
+        extraParams={extraParams}
+      />
+
       {/* Listings */}
       {listings && listings.length > 0 ? (
         <>
@@ -241,20 +274,11 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
                 key={l.id}
                 className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
               >
-                {l.website_url ? (
-                  <a
-                    href={l.website_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block text-base font-semibold text-zinc-900 hover:underline dark:text-zinc-50"
-                  >
-                    {l.title}
-                  </a>
-                ) : (
-                  <span className="block text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                    {l.title}
-                  </span>
-                )}
+                <ClickableTitle
+                  listingId={l.id}
+                  title={l.title}
+                  websiteUrl={l.website_url}
+                />
                 <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
                   {l.description}
                 </p>

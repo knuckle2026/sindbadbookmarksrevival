@@ -7,10 +7,12 @@ import { SERVICE_AREA_GROUPS } from "@/lib/constants/service-areas";
 
 interface ServiceAreaFilterProps {
   serviceListingCount: number;
+  areaCountMap: Record<string, number>;
 }
 
 export default function ServiceAreaFilter({
   serviceListingCount,
+  areaCountMap,
 }: ServiceAreaFilterProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -102,6 +104,9 @@ export default function ServiceAreaFilter({
                     />
                     <span className="text-sm text-zinc-800 dark:text-zinc-200">
                       {a.name}
+                      <span className="ml-0.5 text-xs text-zinc-400">
+                        ({areaCountMap[a.slug] ?? 0})
+                      </span>
                     </span>
                   </label>
                 ))}

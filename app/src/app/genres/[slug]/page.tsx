@@ -88,15 +88,25 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
 
   // === 出張サービス件数 (マッサージ・売り専のみ) ===
   let serviceListingCount = 0;
+  let areaCountMap: Record<string, number> = {};
   if (genreMeta.hasServiceAreas) {
-    const { count: svcCount } = await supabase
+    const { data: svcListings } = await supabase
       .from("listings")
-      .select("id", { count: "exact", head: true })
+      .select("service_areas")
       .eq("genre_id", genreRow.id)
       .eq("status", "published")
-      .not("service_areas", "is", null)
-      .neq("service_areas", "{}");
-    serviceListingCount = svcCount ?? 0;
+      .not("service_areas", "is", null);
+
+    const validListings = (svcListings ?? []).filter(
+      (r) => r.service_areas && r.service_areas.length > 0,
+    );
+    serviceListingCount = validListings.length;
+    // エリア別件数を集計
+    validListings.forEach((r) => {
+      (r.service_areas as string[]).forEach((area) => {
+        areaCountMap[area] = (areaCountMap[area] ?? 0) + 1;
+      });
+    });
   }
 
   // === Region resolution ===
@@ -271,7 +281,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
       {/* 3. 出張サービス (マッサージ・売り専のみ) */}
       {genreMeta.hasServiceAreas && (
         <Suspense>
-          <ServiceAreaFilter serviceListingCount={serviceListingCount} />
+          <ServiceAreaFilter serviceListingCount={serviceListingCount} areaCountMap={areaCountMap} />
         </Suspense>
       )}
 

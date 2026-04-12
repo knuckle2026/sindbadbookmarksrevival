@@ -23,6 +23,9 @@ export default function ServiceAreaFilter({
     return !!(searchParams.get("service_area"));
   });
 
+  // 展開中の地域グループ
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+
   const [checkedAreas, setCheckedAreas] = useState<Set<string>>(() => {
     const param = searchParams.get("service_area") ?? "";
     return new Set(param.split(",").filter(Boolean));
@@ -33,7 +36,16 @@ export default function ServiceAreaFilter({
     const areaParam = searchParams.get("service_area") ?? "";
     const areas = new Set(areaParam.split(",").filter(Boolean));
     setCheckedAreas(areas);
-    if (areas.size > 0) setIsOpen(true);
+    if (areas.size > 0) {
+      setIsOpen(true);
+      // チェック済みエリアが属するグループを開く
+      for (const group of SERVICE_AREA_GROUPS) {
+        if (group.areas.some((a) => areas.has(a.slug))) {
+          setOpenGroup(group.label);
+          break;
+        }
+      }
+    }
   }, [searchParams]);
 
   const syncToUrl = (nextAreas: Set<string>) => {
@@ -70,6 +82,13 @@ export default function ServiceAreaFilter({
     syncToUrl(next);
   };
 
+  // 地域ごとの登録件数を算出（重複排除せず単純合算）
+  const getGroupCount = (groupLabel: string) => {
+    const group = SERVICE_AREA_GROUPS.find((g) => g.label === groupLabel);
+    if (!group) return 0;
+    return group.areas.reduce((sum, a) => sum + (areaCountMap[a.slug] ?? 0), 0);
+  };
+
   return (
     <div className="mb-6">
       {/* 出張サービス ヘッダー（クリックで展開） */}
@@ -84,19 +103,50 @@ export default function ServiceAreaFilter({
         <span>出張サービス（{serviceListingCount}件）</span>
       </button>
 
-      {/* 展開時：エリアチェックボックス + クリック可能テキスト */}
+      {/* 展開時 */}
       {isOpen && (
-        <div className="mt-3 space-y-3">
-          <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-            出張可能サービスのエリア絞り込み（複数選択可）
+        <div className="mt-3">
+          <p className="mb-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+            出張可能サービスのエリア絞り込み
           </p>
-          {SERVICE_AREA_GROUPS.map((group) => (
-            <div key={group.label}>
-              <p className="mb-1 text-xs font-medium text-zinc-400 dark:text-zinc-500">
-                {group.label}
-              </p>
+
+          {openGroup === null ? (
+            /* Level 1: 地域一覧（件数付きリンク） */
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+              {SERVICE_AREA_GROUPS.map((group) => {
+                const count = getGroupCount(group.label);
+                return (
+                  <button
+                    key={group.label}
+                    type="button"
+                    onClick={() => setOpenGroup(group.label)}
+                    className="text-sm text-zinc-700 hover:text-red-600 hover:underline cursor-pointer dark:text-zinc-300 dark:hover:text-red-400"
+                  >
+                    {group.label}
+                    <span className="ml-0.5 text-xs text-zinc-400">
+                      ({count})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            /* Level 2: 選択した地域のエリアチェックボックス */
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOpenGroup(null)}
+                  className="text-xs text-zinc-500 hover:text-red-600 cursor-pointer"
+                >
+                  ← 地域一覧
+                </button>
+                <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+                  {openGroup}
+                </span>
+              </div>
               <div className="flex flex-wrap gap-x-4 gap-y-1">
-                {group.areas.map((a) => {
+                {SERVICE_AREA_GROUPS.find((g) => g.label === openGroup)?.areas.map((a) => {
                   const count = areaCountMap[a.slug] ?? 0;
                   return (
                     <div key={a.slug} className="flex items-center gap-1.5">
@@ -121,9 +171,10 @@ export default function ServiceAreaFilter({
                 })}
               </div>
             </div>
-          ))}
+          )}
+
           {isPending && (
-            <p className="text-xs text-zinc-400">読み込み中...</p>
+            <p className="mt-2 text-xs text-zinc-400">読み込み中...</p>
           )}
         </div>
       )}

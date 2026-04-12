@@ -7,12 +7,15 @@ import { createClient } from "@/lib/supabase/client";
 
 interface HeaderProps {
   onHamburgerClick?: () => void;
+  onCloseSidebar?: () => void;
+  genreName?: string;
 }
 
-export function Header({ onHamburgerClick }: HeaderProps) {
+export function Header({ onHamburgerClick, onCloseSidebar, genreName }: HeaderProps) {
   const router = useRouter();
 
   const handleRegister = async () => {
+    onCloseSidebar?.();
     const supabase = createClient();
     const {
       data: { user },
@@ -30,7 +33,7 @@ export function Header({ onHamburgerClick }: HeaderProps) {
       className="flex h-24 shrink-0 items-center justify-between px-4 text-white shadow-md"
       style={{ backgroundColor: "#B21000" }}
     >
-      {/* 左: ハンバーガー + ロゴ + テキスト */}
+      {/* 左: ハンバーガー + ロゴ/ジャンル名 */}
       <div className="flex items-center gap-3">
         {/* ハンバーガーボタン */}
         <button
@@ -43,39 +46,47 @@ export function Header({ onHamburgerClick }: HeaderProps) {
           <span className="block h-0.5 w-6 bg-white" />
         </button>
 
-        {/* ロゴ画像 (スマホでは非表示) */}
-        <Link href="/" className="hidden sm:block shrink-0">
-          <Image
-            src="/images/sbbm_logo.jpg"
-            alt="sindbadbookmarks revival logo"
-            width={64}
-            height={64}
-            className="rounded object-contain"
-            priority
-          />
-        </Link>
+        {genreName ? (
+          /* ジャンル一覧ページ: ジャンル名表示（クリック不可） */
+          <span className="text-lg font-bold tracking-tight">{genreName}</span>
+        ) : (
+          /* 通常ページ: ロゴ + sindbadbookmarks revival */
+          <>
+            {/* ロゴ画像 (スマホでは非表示) */}
+            <Link href="/" className="hidden sm:block shrink-0">
+              <Image
+                src="/images/sbbm_logo.jpg"
+                alt="sindbadbookmarks revival logo"
+                width={64}
+                height={64}
+                className="rounded object-contain"
+                priority
+              />
+            </Link>
 
-        {/* サイトタイトル: スマホ3行 / PC1行 */}
-        <Link href="/" className="leading-tight">
-          {/* スマホ用: 3行表示 */}
-          <span className="sm:hidden text-base font-bold tracking-tight leading-4">
-            sindbad
-            <br />
-            bookmarks
-            <br />
-            <span className="text-xs font-light opacity-90">revival</span>
-          </span>
-          {/* PC用: 従来通り */}
-          <span className="hidden sm:inline">
-            <span className="text-lg font-bold tracking-tight">
-              sindbadbookmarks
-            </span>
-            <br />
-            <span className="text-sm font-light tracking-tight opacity-90">
-              revival
-            </span>
-          </span>
-        </Link>
+            {/* サイトタイトル: スマホ3行 / PC1行 */}
+            <Link href="/" className="leading-tight">
+              {/* スマホ用: 3行表示 */}
+              <span className="sm:hidden text-base font-bold tracking-tight leading-4">
+                sindbad
+                <br />
+                bookmarks
+                <br />
+                <span className="text-xs font-bold opacity-90">revival</span>
+              </span>
+              {/* PC用: 従来通り */}
+              <span className="hidden sm:inline">
+                <span className="text-lg font-bold tracking-tight">
+                  sindbadbookmarks
+                </span>
+                <br />
+                <span className="text-sm font-bold tracking-tight opacity-90">
+                  revival
+                </span>
+              </span>
+            </Link>
+          </>
+        )}
       </div>
 
       {/* 右: 情報を登録ボタン（常時表示） */}

@@ -17,16 +17,16 @@ export default function AgeGatePage() {
       <Image
         src="/images/gate.jpg"
         alt="sindbadbookmarks"
-        width={600}
-        height={400}
-        className="mb-6 w-full max-w-md rounded-lg object-contain"
+        width={300}
+        height={200}
+        className="mb-6 w-full max-w-xs rounded-lg object-contain"
         priority
       />
 
       <div className="w-full max-w-sm rounded-2xl border border-zinc-700 bg-zinc-900 p-8 text-center shadow-xl">
         <p className="text-lg font-semibold text-zinc-100">年齢確認</p>
         <p className="mt-3 text-sm leading-relaxed text-zinc-400">
-          このサイトはLGBTに関するコンテンツを含みます。
+          このサイトはアダルトコンテンツを含みます。
           <br />
           あなたは <span className="font-bold text-white">18歳以上</span> ですか？
         </p>

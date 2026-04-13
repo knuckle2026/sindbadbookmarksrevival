@@ -248,8 +248,18 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
                     <td className="max-w-[180px] truncate px-4 py-2 font-medium text-zinc-900">
                       {listing.title}
                     </td>
-                    <td className="max-w-[180px] truncate px-4 py-2 text-zinc-500 text-xs">
-                      {listing.website_url ?? "-"}
+                    <td className="max-w-[180px] truncate px-4 py-2 text-xs">
+                      {listing.website_url ? (
+                        <a
+                          href={listing.website_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 hover:underline"
+                          title={listing.website_url}
+                        >
+                          {listing.website_url}
+                        </a>
+                      ) : "-"}
                     </td>
                     <td className="max-w-[150px] truncate px-4 py-2 text-zinc-600 text-xs" title={desc}>
                       {shortDesc || "-"}

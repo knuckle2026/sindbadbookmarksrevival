@@ -15,15 +15,9 @@ export default async function AdminProtectedLayout({
     redirect("/sbbm-control/login");
   }
 
-  // Check admin role
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  // Non-admin → 404 (hide existence)
-  if (!profile || profile.role !== "admin") {
+  // Check admin role from JWT app_metadata (no DB query needed)
+  const role = user.app_metadata?.role;
+  if (role !== "admin") {
     notFound();
   }
 

@@ -88,15 +88,17 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
       .rpc("search_user_ids_by_email", { query: searchQuery });
     const uids: string[] = matchedUserIds ?? [];
 
+    // Build OR conditions: title, website_url, and optionally user_id
+    const orParts = [
+      `title.ilike.%${searchQuery}%`,
+      `website_url.ilike.%${searchQuery}%`,
+    ];
     if (uids.length > 0) {
-      // Match title OR creator email
-      countQuery = countQuery.or(`title.ilike.%${searchQuery}%,user_id.in.(${uids.join(",")})`);
-      dataQuery = dataQuery.or(`title.ilike.%${searchQuery}%,user_id.in.(${uids.join(",")})`);
-    } else {
-      // No email matches — title only
-      countQuery = countQuery.ilike("title", `%${searchQuery}%`);
-      dataQuery = dataQuery.ilike("title", `%${searchQuery}%`);
+      orParts.push(`user_id.in.(${uids.join(",")})`);
     }
+    const orFilter = orParts.join(",");
+    countQuery = countQuery.or(orFilter);
+    dataQuery = dataQuery.or(orFilter);
   }
 
   const { count } = await countQuery;
@@ -201,7 +203,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
             type="text"
             name="q"
             defaultValue={searchQuery ?? ""}
-            placeholder="Title / Email..."
+            placeholder="Title / URL / Email..."
             className="w-48 rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
           />
         </div>

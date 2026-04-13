@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function AdminLoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -29,8 +27,8 @@ export default function AdminLoginPage() {
         return;
       }
 
-      router.push("/sbbm-control");
-      router.refresh();
+      // Full page redirect to ensure auth cookies are sent properly
+      window.location.href = "/sbbm-control";
     } catch {
       setError("An error occurred");
       setLoading(false);

@@ -48,17 +48,15 @@ export async function middleware(request: NextRequest) {
     }
 
     // Check admin role — return 404 for non-admins (hide existence)
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .single();
 
-    if (!profile || profile.role !== "admin") {
-      // Rewrite to not-found to hide admin panel existence
-      const url = request.nextUrl.clone();
-      url.pathname = "/not-found";
-      return NextResponse.rewrite(url);
+    if (profileError || !profile || profile.role !== "admin") {
+      // Return 404 response to hide admin panel existence
+      return new NextResponse("Not Found", { status: 404 });
     }
 
     return supabaseResponse;

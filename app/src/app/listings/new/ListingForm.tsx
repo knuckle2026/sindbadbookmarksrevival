@@ -43,13 +43,14 @@ interface Props {
   categories: CategoryOption[];
   mode?: "new" | "edit";
   initialValues?: InitialValues;
+  redirectTo?: string;
 }
 
 const TITLE_MAX = 20;
 const DESCRIPTION_MAX = 100;
 const URL_RE = /^https?:\/\/.+/;
 
-export default function ListingForm({ genres, categories, mode = "new", initialValues }: Props) {
+export default function ListingForm({ genres, categories, mode = "new", initialValues, redirectTo }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -212,7 +213,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
       }
     }
 
-    router.push("/my-listings");
+    router.push(redirectTo ?? "/my-listings");
   };
 
   const handleDelete = async () => {
@@ -233,7 +234,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
       return;
     }
 
-    router.push("/my-listings");
+    router.push(redirectTo ?? "/my-listings");
   };
 
   const inputClass =

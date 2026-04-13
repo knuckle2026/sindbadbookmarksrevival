@@ -1,6 +1,5 @@
-// @ts-nocheck
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
 import ListingForm from "@/app/listings/new/ListingForm";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +19,7 @@ export default async function AdminEditListingPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const { supabase } = await getAdminClient();
 
   // Admin can edit any listing (RLS allows via admin policy)
   const { data: listing } = await supabase

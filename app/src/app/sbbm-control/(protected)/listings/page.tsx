@@ -1,7 +1,5 @@
-// @ts-nocheck
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { GENRES } from "@/lib/constants/genres";
+import { getAdminClient } from "@/lib/supabase/admin";
 import ListingActions from "./ListingActions";
 
 export const dynamic = "force-dynamic";
@@ -27,18 +25,13 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
 
   const currentPage = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
 
-  const supabase = await createClient();
+  const { supabase } = await getAdminClient();
 
   // Get genres for filter dropdown
-  const { data: genres, error: genresError } = await supabase
+  const { data: genres } = await supabase
     .from("genres")
     .select("id, slug, name")
     .order("sort_order", { ascending: true });
-
-  if (genresError) {
-    console.error("Admin listings - genres error:", genresError);
-  }
-  console.log("Admin listings - genres count:", genres?.length ?? 0);
 
   const genreMap = Object.fromEntries(
     (genres ?? []).map((g) => [g.id, g])
@@ -72,10 +65,8 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
     dataQuery = dataQuery.ilike("title", `%${searchQuery}%`);
   }
 
-  const { count, error: countError } = await countQuery;
-  if (countError) console.error("Admin listings - count error:", countError);
+  const { count } = await countQuery;
   const totalCount = count ?? 0;
-  console.log("Admin listings - total count:", totalCount);
   const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
   const from = (safePage - 1) * PER_PAGE;

@@ -83,8 +83,20 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
   }
 
   if (searchQuery) {
-    countQuery = countQuery.ilike("title", `%${searchQuery}%`);
-    dataQuery = dataQuery.ilike("title", `%${searchQuery}%`);
+    // Search by email via RPC to get matching user_ids
+    const { data: matchedUserIds } = await supabase
+      .rpc("search_user_ids_by_email", { query: searchQuery });
+    const uids: string[] = matchedUserIds ?? [];
+
+    if (uids.length > 0) {
+      // Match title OR creator email
+      countQuery = countQuery.or(`title.ilike.%${searchQuery}%,user_id.in.(${uids.join(",")})`);
+      dataQuery = dataQuery.or(`title.ilike.%${searchQuery}%,user_id.in.(${uids.join(",")})`);
+    } else {
+      // No email matches — title only
+      countQuery = countQuery.ilike("title", `%${searchQuery}%`);
+      dataQuery = dataQuery.ilike("title", `%${searchQuery}%`);
+    }
   }
 
   const { count } = await countQuery;
@@ -189,7 +201,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
             type="text"
             name="q"
             defaultValue={searchQuery ?? ""}
-            placeholder="Title..."
+            placeholder="Title / Email..."
             className="w-48 rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
           />
         </div>

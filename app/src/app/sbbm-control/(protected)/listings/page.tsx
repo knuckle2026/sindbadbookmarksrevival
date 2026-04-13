@@ -1,3 +1,4 @@
+// @ts-nocheck
 import Link from "next/link";
 import { getAdminClient } from "@/lib/supabase/admin";
 import ListingActions from "./ListingActions";

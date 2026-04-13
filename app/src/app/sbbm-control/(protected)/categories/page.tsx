@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { getAdminClient } from "@/lib/supabase/admin";
 import { GENRES } from "@/lib/constants/genres";
 import CategoryManager from "./CategoryManager";

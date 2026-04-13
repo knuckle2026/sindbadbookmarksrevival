@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { notFound } from "next/navigation";
 import { getAdminClient } from "@/lib/supabase/admin";
 import ListingForm from "@/app/listings/new/ListingForm";

@@ -16,10 +16,15 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
   const supabase = await createClient();
 
   // Get all genres from DB
-  const { data: genres } = await supabase
+  const { data: genres, error: genresError } = await supabase
     .from("genres")
     .select("id, slug, name")
     .order("sort_order", { ascending: true });
+
+  if (genresError) {
+    console.error("Admin categories - genres error:", genresError);
+  }
+  console.log("Admin categories - genres count:", genres?.length ?? 0);
 
   // Get categories for selected genre
   const selectedGenre = (genres ?? []).find((g) => g.slug === selectedSlug);

@@ -7,22 +7,20 @@ export const dynamic = "force-dynamic";
 
 const PER_PAGE = 30;
 
-type SortColumn = "title" | "genre" | "prefecture" | "status" | "creator" | "created_at";
+type SortColumn = "genre" | "title" | "url" | "description" | "created_at";
 type SortOrder = "asc" | "desc";
 
 const SORT_COLUMNS: { key: SortColumn; label: string }[] = [
-  { key: "title", label: "Title" },
   { key: "genre", label: "Genre" },
-  { key: "prefecture", label: "Prefecture" },
-  { key: "status", label: "Status" },
-  { key: "creator", label: "Creator" },
+  { key: "title", label: "Title" },
+  { key: "url", label: "URL" },
+  { key: "description", label: "Description" },
   { key: "created_at", label: "Created" },
 ];
 
 interface PageProps {
   searchParams: Promise<{
     genre?: string;
-    status?: string;
     page?: string;
     q?: string;
     sort?: string;
@@ -33,7 +31,6 @@ interface PageProps {
 export default async function AdminListingsPage({ searchParams }: PageProps) {
   const {
     genre: genreFilter,
-    status: statusFilter,
     page: pageParam,
     q: searchQuery,
     sort: sortParam,
@@ -66,7 +63,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
 
   let dataQuery = supabase
     .from("listings")
-    .select("id, title, genre_id, prefecture, status, created_at, user_id");
+    .select("id, title, genre_id, website_url, description, created_at, listing_categories(categories(name))");
 
   // Apply filters
   if (genreFilter) {
@@ -77,26 +74,8 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
     }
   }
 
-  if (statusFilter) {
-    countQuery = countQuery.eq("status", statusFilter);
-    dataQuery = dataQuery.eq("status", statusFilter);
-  }
-
   if (searchQuery) {
-    // Search by email via RPC to get matching user_ids
-    const { data: matchedUserIds } = await supabase
-      .rpc("search_user_ids_by_email", { query: searchQuery });
-    const uids: string[] = matchedUserIds ?? [];
-
-    // Build OR conditions: title, website_url, and optionally user_id
-    const orParts = [
-      `title.ilike.%${searchQuery}%`,
-      `website_url.ilike.%${searchQuery}%`,
-    ];
-    if (uids.length > 0) {
-      orParts.push(`user_id.in.(${uids.join(",")})`);
-    }
-    const orFilter = orParts.join(",");
+    const orFilter = `title.ilike.%${searchQuery}%,website_url.ilike.%${searchQuery}%`;
     countQuery = countQuery.or(orFilter);
     dataQuery = dataQuery.or(orFilter);
   }
@@ -108,30 +87,23 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
   const from = (safePage - 1) * PER_PAGE;
   const to = from + PER_PAGE - 1;
 
-  // Apply sort — genre and creator are sorted client-side after fetch
-  const dbSortable = ["title", "prefecture", "status", "created_at"];
-  if (dbSortable.includes(sortColumn)) {
-    dataQuery = dataQuery.order(sortColumn, { ascending: sortOrder === "asc" });
+  // Apply sort — genre is sorted client-side after fetch
+  const dbSortMap: Record<string, string> = {
+    title: "title",
+    url: "website_url",
+    description: "description",
+    created_at: "created_at",
+  };
+  if (dbSortMap[sortColumn]) {
+    dataQuery = dataQuery.order(dbSortMap[sortColumn], { ascending: sortOrder === "asc" });
   } else {
-    // Default DB order for client-side sorted columns
     dataQuery = dataQuery.order("created_at", { ascending: false });
   }
 
   const { data: rawListings } = await dataQuery.range(from, to);
   let listings = rawListings;
 
-  // Get user emails via admin-only RPC function
-  const userIds = [...new Set((listings ?? []).map((l) => l.user_id).filter(Boolean))];
-  let emailMap: Record<string, string> = {};
-  if (userIds.length > 0) {
-    const { data: emails } = await supabase
-      .rpc("get_user_emails", { user_ids: userIds });
-    emailMap = Object.fromEntries(
-      (emails ?? []).map((e: any) => [e.id, e.email])
-    );
-  }
-
-  // Client-side sort for genre and creator columns
+  // Client-side sort for genre column
   if (sortColumn === "genre" && listings) {
     listings = [...listings].sort((a, b) => {
       const aName = genreMap[a.genre_id]?.name ?? "";
@@ -141,21 +113,11 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
         : bName.localeCompare(aName, "ja");
     });
   }
-  if (sortColumn === "creator" && listings) {
-    listings = [...listings].sort((a, b) => {
-      const aEmail = a.user_id ? emailMap[a.user_id] ?? "" : "";
-      const bEmail = b.user_id ? emailMap[b.user_id] ?? "" : "";
-      return sortOrder === "asc"
-        ? aEmail.localeCompare(bEmail)
-        : bEmail.localeCompare(aEmail);
-    });
-  }
 
   // Build URL with params
   const buildBaseParams = () => {
     const params = new URLSearchParams();
     if (genreFilter) params.set("genre", genreFilter);
-    if (statusFilter) params.set("status", statusFilter);
     if (searchQuery) params.set("q", searchQuery);
     if (sortColumn !== "created_at" || sortOrder !== "desc") {
       params.set("sort", sortColumn);
@@ -174,13 +136,10 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
   const buildSortUrl = (col: SortColumn) => {
     const params = new URLSearchParams();
     if (genreFilter) params.set("genre", genreFilter);
-    if (statusFilter) params.set("status", statusFilter);
     if (searchQuery) params.set("q", searchQuery);
-    // Toggle: same column → flip order, different column → asc
     const newOrder = col === sortColumn && sortOrder === "asc" ? "desc" : "asc";
     params.set("sort", col);
     params.set("order", newOrder);
-    // Reset to page 1 on sort change
     const qs = params.toString();
     return `/sbbm-control/listings${qs ? `?${qs}` : ""}`;
   };
@@ -203,7 +162,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
             type="text"
             name="q"
             defaultValue={searchQuery ?? ""}
-            placeholder="Title / URL / Email..."
+            placeholder="Title / URL..."
             className="w-48 rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
           />
         </div>
@@ -222,20 +181,6 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
                 {g.name}
               </option>
             ))}
-          </select>
-        </div>
-
-        {/* Status filter */}
-        <div>
-          <label className="mb-1 block text-xs font-medium text-zinc-500">Status</label>
-          <select
-            name="status"
-            defaultValue={statusFilter ?? ""}
-            className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
-          >
-            <option value="">All</option>
-            <option value="published">Published</option>
-            <option value="draft">Draft</option>
           </select>
         </div>
 
@@ -268,6 +213,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
                   </Link>
                 </th>
               ))}
+              <th className="px-4 py-2 text-left font-medium text-zinc-500">Categories</th>
               <th className="px-4 py-2 text-right font-medium text-zinc-500">Actions</th>
             </tr>
           </thead>
@@ -281,39 +227,40 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
             ) : (
               (listings ?? []).map((listing) => {
                 const genre = genreMap[listing.genre_id];
-                const creatorEmail = listing.user_id ? emailMap[listing.user_id] : null;
+                const catNames = (listing.listing_categories ?? [])
+                  .map((lc: any) => {
+                    const cat = Array.isArray(lc.categories) ? lc.categories[0] : lc.categories;
+                    return cat?.name;
+                  })
+                  .filter(Boolean)
+                  .join(", ");
+                const desc = listing.description ?? "";
+                const shortDesc = desc.length > 20 ? desc.slice(0, 20) + "…" : desc;
+
                 return (
                   <tr
                     key={listing.id}
                     className="border-b border-zinc-100 last:border-0"
                   >
-                    <td className="max-w-[200px] truncate px-4 py-2 font-medium text-zinc-900">
-                      {listing.title}
-                    </td>
-                    <td className="px-4 py-2 text-zinc-600">
+                    <td className="px-4 py-2 text-zinc-600 whitespace-nowrap">
                       {genre?.name ?? "-"}
                     </td>
-                    <td className="px-4 py-2 text-zinc-600">
-                      {listing.prefecture ?? "-"}
+                    <td className="max-w-[180px] truncate px-4 py-2 font-medium text-zinc-900">
+                      {listing.title}
                     </td>
-                    <td className="px-4 py-2">
-                      <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                          listing.status === "published"
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-zinc-100 text-zinc-600"
-                        }`}
-                      >
-                        {listing.status}
-                      </span>
+                    <td className="max-w-[180px] truncate px-4 py-2 text-zinc-500 text-xs">
+                      {listing.website_url ?? "-"}
                     </td>
-                    <td className="px-4 py-2 text-xs text-zinc-500">
-                      {creatorEmail ?? "-"}
+                    <td className="max-w-[150px] truncate px-4 py-2 text-zinc-600 text-xs" title={desc}>
+                      {shortDesc || "-"}
                     </td>
-                    <td className="px-4 py-2 text-xs text-zinc-500">
+                    <td className="px-4 py-2 text-xs text-zinc-500 whitespace-nowrap">
                       {new Date(listing.created_at).toLocaleDateString("ja-JP")}
                     </td>
-                    <td className="px-4 py-2 text-right">
+                    <td className="max-w-[150px] truncate px-4 py-2 text-xs text-zinc-500">
+                      {catNames || "-"}
+                    </td>
+                    <td className="px-4 py-2 text-right whitespace-nowrap">
                       <Link
                         href={`/sbbm-control/listings/${listing.id}/edit`}
                         className="mr-2 rounded bg-zinc-100 px-3 py-1 text-xs text-zinc-700 hover:bg-zinc-200"

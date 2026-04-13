@@ -8,11 +8,7 @@ import { createClient } from "@/lib/supabase/server";
  */
 export async function getAdminClient() {
   const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-  console.log("[getAdminClient] authError:", authError?.message ?? "none");
-  console.log("[getAdminClient] user:", user?.id ?? "null");
-  console.log("[getAdminClient] role:", user?.app_metadata?.role ?? "none");
+  const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
     redirect("/sbbm-control/login");
@@ -22,13 +18,6 @@ export async function getAdminClient() {
   if (role !== "admin") {
     notFound();
   }
-
-  // Quick test query to verify client works
-  const { data: testGenres, error: testError } = await supabase
-    .from("genres")
-    .select("id")
-    .limit(1);
-  console.log("[getAdminClient] test query result:", testGenres?.length ?? 0, "error:", testError?.message ?? "none");
 
   return { supabase, user };
 }

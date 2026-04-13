@@ -74,7 +74,7 @@ export default function ReportButton({
           onClick={handleOpen}
           className="shrink-0 text-xs text-zinc-400 hover:text-red-500 transition-colors"
         >
-          ⚠ 報告
+          ✉ 運営へ報告
         </button>
       ) : (
         <button

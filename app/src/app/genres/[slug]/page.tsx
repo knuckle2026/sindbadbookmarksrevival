@@ -8,6 +8,7 @@ import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import Pagination from "@/components/listings/Pagination";
 import SortSelect, { type SortKey } from "@/components/listings/SortSelect";
 import ClickableTitle from "@/components/listings/ClickableTitle";
+import ReportButton from "@/components/listings/ReportButton";
 import GenreFilters from "./GenreFilters";
 import RegionPrefectureNav from "./RegionPrefectureNav";
 import ServiceAreaFilter from "./ServiceAreaFilter";
@@ -327,11 +328,14 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
                 key={l.id}
                 className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
               >
-                <ClickableTitle
-                  listingId={l.id}
-                  title={l.title}
-                  websiteUrl={l.website_url}
-                />
+                <div className="flex items-start justify-between gap-2">
+                  <ClickableTitle
+                    listingId={l.id}
+                    title={l.title}
+                    websiteUrl={l.website_url}
+                  />
+                  <ReportButton listingId={l.id} listingTitle={l.title} variant="card" />
+                </div>
                 <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
                   {l.description}
                 </p>

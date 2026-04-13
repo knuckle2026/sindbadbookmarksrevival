@@ -6,6 +6,7 @@ import { GENRES } from "@/lib/constants/genres";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import { TOKYO_WARDS } from "@/lib/constants/tokyo-wards";
 import { SERVICE_AREA_MAP } from "@/lib/constants/service-areas";
+import ReportButton from "@/components/listings/ReportButton";
 
 function prefectureName(slug: string | null): string | null {
   if (!slug) return null;
@@ -164,13 +165,16 @@ export default async function ListingDetailPage({
           </div>
         )}
 
-        <div className="text-xs text-gray-400 pt-3 border-t">
-          登録日:{" "}
-          {new Date(listing.created_at).toLocaleDateString("ja-JP", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
+        <div className="flex items-center justify-between pt-3 border-t">
+          <div className="text-xs text-gray-400">
+            登録日:{" "}
+            {new Date(listing.created_at).toLocaleDateString("ja-JP", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </div>
+          <ReportButton listingId={listing.id} listingTitle={listing.title} variant="detail" />
         </div>
       </div>
     </div>

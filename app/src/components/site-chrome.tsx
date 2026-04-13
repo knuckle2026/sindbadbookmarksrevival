@@ -31,7 +31,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       />
       <div className="flex flex-1 overflow-hidden">
         {sidebarOpen && <Sidebar />}
-        <main className="flex-1 overflow-y-auto bg-zinc-50 dark:bg-zinc-950">
+        <main className="flex-1 overflow-y-auto bg-zinc-50">
           {children}
         </main>
       </div>

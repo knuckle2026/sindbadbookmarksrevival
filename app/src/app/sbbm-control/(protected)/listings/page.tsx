@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { getAdminClient } from "@/lib/supabase/admin";
 import ListingActions from "./ListingActions";
+import ReportCount from "./ReportCount";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +64,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
 
   let dataQuery = supabase
     .from("listings")
-    .select("id, title, genre_id, website_url, description, created_at, listing_categories(categories(name))");
+    .select("id, title, genre_id, website_url, description, created_at, listing_categories(categories(name)), reports(id, reason, status, created_at)");
 
   // Apply filters
   if (genreFilter) {
@@ -215,12 +216,13 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
               ))}
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Categories</th>
               <th className="px-4 py-2 text-right font-medium text-zinc-500">Actions</th>
+              <th className="px-4 py-2 text-center font-medium text-zinc-500">通報</th>
             </tr>
           </thead>
           <tbody>
             {(listings ?? []).length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-zinc-400">
+                <td colSpan={8} className="px-4 py-6 text-center text-zinc-400">
                   No listings found
                 </td>
               </tr>
@@ -278,6 +280,9 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
                         Edit
                       </Link>
                       <ListingActions listingId={listing.id} title={listing.title} />
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      <ReportCount reports={listing.reports ?? []} />
                     </td>
                   </tr>
                 );

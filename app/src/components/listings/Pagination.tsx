@@ -41,13 +41,13 @@ export default function Pagination({
       {currentPage > 1 ? (
         <Link
           href={buildHref(currentPage - 1)}
-          className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
           aria-label="前のページ"
         >
           &lt;
         </Link>
       ) : (
-        <span className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-300 dark:border-zinc-800 dark:text-zinc-600">
+        <span className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-300">
           &lt;
         </span>
       )}
@@ -57,7 +57,7 @@ export default function Pagination({
         p === "..." ? (
           <span
             key={`ellipsis-${i}`}
-            className="px-2 py-2 text-sm text-zinc-400 dark:text-zinc-500"
+            className="px-2 py-2 text-sm text-zinc-400"
           >
             ...
           </span>
@@ -68,7 +68,7 @@ export default function Pagination({
             className={`rounded-lg px-3 py-2 text-sm font-medium ${
               p === currentPage
                 ? "bg-red-600 text-white"
-                : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50"
             }`}
             aria-current={p === currentPage ? "page" : undefined}
           >
@@ -81,13 +81,13 @@ export default function Pagination({
       {currentPage < totalPages ? (
         <Link
           href={buildHref(currentPage + 1)}
-          className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
           aria-label="次のページ"
         >
           &gt;
         </Link>
       ) : (
-        <span className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-300 dark:border-zinc-800 dark:text-zinc-600">
+        <span className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-300">
           &gt;
         </span>
       )}

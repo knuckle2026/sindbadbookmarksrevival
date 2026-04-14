@@ -267,7 +267,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
         <span>{genreRow.name}</span>
       </nav>
 
-      <h1 className="mb-4 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+      <h1 className="mb-4 text-2xl font-bold text-zinc-900">
         {genreRow.name}
       </h1>
 
@@ -326,7 +326,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
             {listings.map((l) => (
               <li
                 key={l.id}
-                className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+                className="rounded-lg border border-zinc-200 bg-white p-4"
               >
                 <div className="flex items-start justify-between gap-2">
                   <ClickableTitle
@@ -336,7 +336,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
                   />
                   <ReportButton listingId={l.id} listingTitle={l.title} variant="card" />
                 </div>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                <p className="mt-1 text-sm text-zinc-600">
                   {l.description}
                 </p>
               </li>
@@ -350,7 +350,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
           />
         </>
       ) : (
-        <p className="rounded-lg border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+        <p className="rounded-lg border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-500">
           登録情報はまだありません
         </p>
       )}

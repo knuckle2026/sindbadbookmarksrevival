@@ -95,7 +95,7 @@ export default function ServiceAreaFilter({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 text-xs font-semibold text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300 cursor-pointer"
+        className="flex items-center gap-2 text-xs font-semibold text-zinc-500 hover:text-zinc-700 cursor-pointer"
       >
         <span className={`transition-transform ${isOpen ? "rotate-90" : ""}`}>
           ▶
@@ -106,7 +106,7 @@ export default function ServiceAreaFilter({
       {/* 展開時 */}
       {isOpen && (
         <div className="mt-3">
-          <p className="mb-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+          <p className="mb-2 text-xs font-semibold text-zinc-500">
             出張可能サービスのエリア絞り込み
           </p>
 
@@ -120,7 +120,7 @@ export default function ServiceAreaFilter({
                     key={group.label}
                     type="button"
                     onClick={() => setOpenGroup(group.label)}
-                    className="text-sm text-zinc-700 hover:text-red-600 hover:underline cursor-pointer dark:text-zinc-300 dark:hover:text-red-400"
+                    className="text-sm text-zinc-700 hover:text-red-600 hover:underline cursor-pointer"
                   >
                     {group.label}
                     <span className="ml-0.5 text-xs text-zinc-400">
@@ -141,7 +141,7 @@ export default function ServiceAreaFilter({
                 >
                   ← 地域一覧
                 </button>
-                <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+                <span className="text-sm font-semibold text-zinc-700">
                   {openGroup}
                 </span>
               </div>
@@ -159,7 +159,7 @@ export default function ServiceAreaFilter({
                       <button
                         type="button"
                         onClick={() => selectSingle(a.slug)}
-                        className="text-sm text-zinc-700 hover:text-red-600 hover:underline cursor-pointer dark:text-zinc-200 dark:hover:text-red-400"
+                        className="text-sm text-zinc-700 hover:text-red-600 hover:underline cursor-pointer"
                       >
                         {a.name}
                         <span className="ml-0.5 text-xs text-zinc-400">

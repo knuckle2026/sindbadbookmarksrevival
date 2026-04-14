@@ -107,7 +107,7 @@ export default function GenreFilters({
       {/* カテゴリチェックボックス */}
       {categories.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+          <p className="mb-2 text-xs font-semibold text-zinc-500">
             カテゴリで絞り込み（複数選択可）
           </p>
           <div className="flex flex-wrap gap-x-4 gap-y-1.5">
@@ -119,7 +119,7 @@ export default function GenreFilters({
                 onChange={toggleAll}
                 className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
               />
-              <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+              <span className="text-sm font-medium text-zinc-800">
                 すべて
               </span>
             </label>
@@ -136,7 +136,7 @@ export default function GenreFilters({
                   onChange={() => toggleCat(c.slug)}
                   className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
                 />
-                <span className="text-sm text-zinc-800 dark:text-zinc-200">
+                <span className="text-sm text-zinc-800">
                   {c.name}
                 </span>
               </label>
@@ -151,7 +151,7 @@ export default function GenreFilters({
                   onChange={() => toggleCat(newhalfCategory.slug)}
                   className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
                 />
-                <span className="text-sm text-zinc-800 dark:text-zinc-200">
+                <span className="text-sm text-zinc-800">
                   {newhalfCategory.name}
                 </span>
               </label>
@@ -166,7 +166,7 @@ export default function GenreFilters({
                   onChange={toggleExcludeNh}
                   className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
                 />
-                <span className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                <span className="text-sm font-medium text-zinc-800">
                   ニューハーフマッサージ以外
                 </span>
               </label>

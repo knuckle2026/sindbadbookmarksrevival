@@ -51,7 +51,7 @@ export default function SortSelect({
       <select
         value={currentSort}
         onChange={handleChange}
-        className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+        className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
       >
         {SORT_OPTIONS.map((opt) => (
           <option key={opt.key} value={opt.key}>

@@ -48,7 +48,7 @@ export default function RegionPrefectureNav({
 
   return (
     <div className="mb-6">
-      <p className="mb-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+      <p className="mb-2 text-xs font-semibold text-zinc-500">
         所在地絞り込み
       </p>
 
@@ -58,10 +58,10 @@ export default function RegionPrefectureNav({
             <Link
               key={r.slug}
               href={buildHref(slug, categoryParam, serviceAreaParam, r.slug)}
-              className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-700 transition-colors hover:border-red-400 hover:bg-red-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-red-500 dark:hover:bg-zinc-800"
+              className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-700 transition-colors hover:border-red-400 hover:bg-red-50"
             >
               {r.name}{" "}
-              <span className="text-zinc-400 dark:text-zinc-500">
+              <span className="text-zinc-400">
                 ({r.count})
               </span>
             </Link>
@@ -69,7 +69,7 @@ export default function RegionPrefectureNav({
         </div>
       ) : (
         <>
-          <p className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          <p className="mb-2 text-sm font-medium text-zinc-700">
             {regionObj.name}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -87,16 +87,16 @@ export default function RegionPrefectureNav({
                   )}
                   className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                     isActive
-                      ? "border-red-500 bg-red-50 font-medium text-red-700 dark:border-red-400 dark:bg-red-900/20 dark:text-red-400"
-                      : "border-zinc-200 bg-white text-zinc-700 hover:border-red-400 hover:bg-red-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-red-500 dark:hover:bg-zinc-800"
+                      ? "border-red-500 bg-red-50 font-medium text-red-700"
+                      : "border-zinc-200 bg-white text-zinc-700 hover:border-red-400 hover:bg-red-50"
                   }`}
                 >
                   {p.name}{" "}
                   <span
                     className={
                       isActive
-                        ? "text-red-500 dark:text-red-300"
-                        : "text-zinc-400 dark:text-zinc-500"
+                        ? "text-red-500"
+                        : "text-zinc-400"
                     }
                   >
                     ({prefCountMap[p.slug] ?? 0})

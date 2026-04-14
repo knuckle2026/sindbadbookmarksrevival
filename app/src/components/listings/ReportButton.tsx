@@ -79,7 +79,7 @@ export default function ReportButton({
       ) : (
         <button
           onClick={handleOpen}
-          className="text-sm text-zinc-500 hover:text-red-600 transition-colors dark:text-zinc-400 dark:hover:text-red-400"
+          className="text-sm text-zinc-500 hover:text-red-600 transition-colors"
         >
           この情報を報告する
         </button>
@@ -92,22 +92,22 @@ export default function ReportButton({
           onClick={handleClose}
         >
           <div
-            className="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900"
+            className="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             {done ? (
               /* 完了表示 */
               <div className="text-center">
                 <div className="mb-3 text-3xl">✓</div>
-                <h2 className="mb-2 text-lg font-bold text-zinc-900 dark:text-zinc-50">
+                <h2 className="mb-2 text-lg font-bold text-zinc-900">
                   ご報告ありがとうございました
                 </h2>
-                <p className="mb-6 text-sm text-zinc-600 dark:text-zinc-300">
+                <p className="mb-6 text-sm text-zinc-600">
                   内容を確認のうえ対応いたします。
                 </p>
                 <button
                   onClick={handleClose}
-                  className="rounded-lg border border-zinc-300 px-6 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                  className="rounded-lg border border-zinc-300 px-6 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
                 >
                   閉じる
                 </button>
@@ -115,21 +115,21 @@ export default function ReportButton({
             ) : (
               /* フォーム */
               <>
-                <h2 className="mb-4 text-lg font-bold text-zinc-900 dark:text-zinc-50">
+                <h2 className="mb-4 text-lg font-bold text-zinc-900">
                   この情報を報告する
                 </h2>
 
                 <div className="mb-4">
-                  <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                  <label className="mb-1 block text-xs font-medium text-zinc-500">
                     対象
                   </label>
-                  <p className="rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                  <p className="rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
                     {listingTitle}
                   </p>
                 </div>
 
                 <div className="mb-1">
-                  <label className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                  <label className="mb-1 block text-xs font-medium text-zinc-500">
                     報告理由 <span className="text-red-500">*</span>
                   </label>
                   <textarea
@@ -141,7 +141,7 @@ export default function ReportButton({
                     }}
                     placeholder="報告する理由を入力してください"
                     rows={3}
-                    className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                    className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
                     maxLength={MAX_REASON_LENGTH}
                   />
                 </div>
@@ -151,7 +151,7 @@ export default function ReportButton({
                 </div>
 
                 {error && (
-                  <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                  <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
                     {error}
                   </div>
                 )}
@@ -160,7 +160,7 @@ export default function ReportButton({
                   <button
                     onClick={handleClose}
                     disabled={submitting}
-                    className="flex-1 rounded-lg border border-zinc-300 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                    className="flex-1 rounded-lg border border-zinc-300 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50"
                   >
                     キャンセル
                   </button>

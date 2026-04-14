@@ -60,7 +60,7 @@ export default function ProviderAgeFilter() {
   return (
     <div className="mb-6 space-y-4">
       <div>
-        <p className="mb-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+        <p className="mb-2 text-xs font-semibold text-zinc-500">
           サービス提供者の年代（複数選択可）
         </p>
         <div className="flex flex-wrap gap-x-4 gap-y-1.5">
@@ -72,7 +72,7 @@ export default function ProviderAgeFilter() {
                 onChange={() => toggleAge(age.slug)}
                 className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
               />
-              <span className="text-sm text-zinc-800 dark:text-zinc-200">
+              <span className="text-sm text-zinc-800">
                 {age.label}
               </span>
             </label>

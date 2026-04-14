@@ -115,9 +115,19 @@ export default function ReportButton({
             ) : (
               /* フォーム */
               <>
-                <h2 className="mb-4 text-lg font-bold text-zinc-900">
-                  この情報を報告する
-                </h2>
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-zinc-900">
+                    この情報を報告する
+                  </h2>
+                  <button
+                    onClick={handleClose}
+                    className="rounded p-1 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                    </svg>
+                  </button>
+                </div>
 
                 <div className="mb-4">
                   <label className="mb-1 block text-xs font-medium text-zinc-500">

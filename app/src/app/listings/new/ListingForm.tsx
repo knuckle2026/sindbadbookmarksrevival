@@ -238,9 +238,9 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
   };
 
   const inputClass =
-    "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100";
+    "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500";
   const labelClass =
-    "mb-1 block text-sm font-medium text-zinc-800 dark:text-zinc-200";
+    "mb-1 block text-sm font-medium text-zinc-800";
 
   const showWard = prefecture === "tokyo";
   const showServiceAreas = !!genreMeta?.hasServiceAreas;
@@ -339,7 +339,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
                       onChange={() => toggleCategory(c.id)}
                       className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
                     />
-                    <span className="text-sm text-zinc-800 dark:text-zinc-200">{c.name}</span>
+                    <span className="text-sm text-zinc-800">{c.name}</span>
                   </label>
                 );
               })}
@@ -361,7 +361,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
                         onChange={() => toggleProviderAge(age.slug)}
                         className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
                       />
-                      <span className="text-sm text-zinc-800 dark:text-zinc-200">{age.label}</span>
+                      <span className="text-sm text-zinc-800">{age.label}</span>
                     </label>
                   );
                 })}
@@ -374,7 +374,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
       {/* 所在地セクション (hasPrefecture ジャンルのみ) */}
       {!!genreMeta?.hasPrefecture && (
         <>
-          <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">所在地</p>
+          <p className="text-sm font-semibold text-zinc-800">所在地</p>
 
           {/* 都道府県 + 区 (横並び) */}
           <div className="flex gap-3">
@@ -440,7 +440,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
           <div className="space-y-4">
             {SERVICE_AREA_GROUPS.map((group) => (
               <div key={group.label}>
-                <p className="mb-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                <p className="mb-1.5 text-xs font-semibold text-zinc-500">
                   {group.label}
                 </p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1.5">
@@ -454,7 +454,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
                           onChange={() => toggleServiceArea(a.slug)}
                           className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
                         />
-                        <span className="text-sm text-zinc-800 dark:text-zinc-200">{a.name}</span>
+                        <span className="text-sm text-zinc-800">{a.name}</span>
                       </label>
                     );
                   })}
@@ -466,7 +466,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
       )}
 
       {error && (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
         </p>
       )}
@@ -475,7 +475,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
         <button
           type="button"
           onClick={() => router.back()}
-          className="flex-1 rounded-lg border border-zinc-300 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          className="flex-1 rounded-lg border border-zinc-300 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-50"
         >
           キャンセル
         </button>
@@ -491,11 +491,11 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
 
       {/* 削除ボタン (編集モードのみ) */}
       {mode === "edit" && initialValues?.id && (
-        <div className="border-t border-zinc-200 pt-4 dark:border-zinc-700">
+        <div className="border-t border-zinc-200 pt-4">
           <button
             type="button"
             onClick={() => setShowDeleteModal(true)}
-            className="text-sm text-red-600 hover:text-red-700 hover:underline dark:text-red-400 dark:hover:text-red-300"
+            className="text-sm text-red-600 hover:text-red-700 hover:underline"
           >
             この情報を削除する
           </button>
@@ -505,11 +505,11 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
       {/* 削除確認モーダル */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="mx-4 w-full max-w-sm rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900">
-            <h2 className="mb-2 text-lg font-bold text-zinc-900 dark:text-zinc-50">
+          <div className="mx-4 w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
+            <h2 className="mb-2 text-lg font-bold text-zinc-900">
               削除の確認
             </h2>
-            <p className="mb-6 text-sm text-zinc-600 dark:text-zinc-300">
+            <p className="mb-6 text-sm text-zinc-600">
               この登録情報を削除しますか？この操作は取り消せません。
             </p>
             <div className="flex gap-3">
@@ -517,7 +517,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
                 type="button"
                 onClick={() => setShowDeleteModal(false)}
                 disabled={deleting}
-                className="flex-1 rounded-lg border border-zinc-300 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                className="flex-1 rounded-lg border border-zinc-300 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50"
               >
                 キャンセル
               </button>

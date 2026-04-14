@@ -23,10 +23,10 @@ export default async function MyListingsPage({ searchParams }: PageProps) {
   if (!user) {
     return (
       <div className="mx-auto max-w-xl px-4 py-16 text-center">
-        <h1 className="mb-4 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+        <h1 className="mb-4 text-2xl font-bold text-zinc-900">
           マイリスティング
         </h1>
-        <p className="mb-8 text-sm text-zinc-600 dark:text-zinc-300">
+        <p className="mb-8 text-sm text-zinc-600">
           マイリスティングを表示するにはログインが必要です。
         </p>
         <div className="flex justify-center gap-3">
@@ -39,7 +39,7 @@ export default async function MyListingsPage({ searchParams }: PageProps) {
           </Link>
           <Link
             href="/signup?next=/my-listings"
-            className="inline-block rounded-lg border border-zinc-300 px-5 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="inline-block rounded-lg border border-zinc-300 px-5 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
           >
             アカウント新規作成
           </Link>
@@ -70,7 +70,7 @@ export default async function MyListingsPage({ searchParams }: PageProps) {
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-2xl font-bold text-zinc-900">
           マイリスティング
         </h1>
         <Link
@@ -88,18 +88,18 @@ export default async function MyListingsPage({ searchParams }: PageProps) {
             {listings.map((l) => (
               <li
                 key={l.id}
-                className="flex items-start justify-between rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+                className="flex items-start justify-between rounded-lg border border-zinc-200 bg-white p-4"
               >
                 <div className="min-w-0 flex-1">
                   <a
                     href={l.website_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block truncate text-base font-semibold text-zinc-900 hover:underline dark:text-zinc-50"
+                    className="block truncate text-base font-semibold text-zinc-900 hover:underline"
                   >
                     {l.title}
                   </a>
-                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                  <p className="mt-1 text-sm text-zinc-600">
                     {l.description}
                   </p>
                   <p className="mt-1 text-xs text-zinc-400">
@@ -108,7 +108,7 @@ export default async function MyListingsPage({ searchParams }: PageProps) {
                 </div>
                 <Link
                   href={`/listings/${l.id}/edit`}
-                  className="ml-4 shrink-0 rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                  className="ml-4 shrink-0 rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
                 >
                   編集
                 </Link>
@@ -123,7 +123,7 @@ export default async function MyListingsPage({ searchParams }: PageProps) {
           />
         </>
       ) : (
-        <p className="rounded-lg border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+        <p className="rounded-lg border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-500">
           まだ登録したリスティングがありません。
         </p>
       )}

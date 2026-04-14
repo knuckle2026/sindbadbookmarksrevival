@@ -49,7 +49,7 @@ export default async function NewListingPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+      <h1 className="mb-6 text-2xl font-bold text-zinc-900">
         情報を登録
       </h1>
       <ListingForm

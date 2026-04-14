@@ -14,7 +14,7 @@ import RegionPrefectureNav from "./RegionPrefectureNav";
 import ServiceAreaFilter from "./ServiceAreaFilter";
 import ProviderAgeFilter from "./ProviderAgeFilter";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60; // 1分キャッシュ
 
 const PER_PAGE = 20;
 
@@ -69,51 +69,56 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
 
   if (!genreRow) notFound();
 
-  // Categories of this genre
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("id, slug, name, sort_order")
-    .eq("genre_id", genreRow.id)
-    .order("sort_order", { ascending: true });
-
-  // === Prefecture counts (hasPrefecture ジャンルのみ) ===
-  let prefCountMap: Record<string, number> = {};
-  if (genreMeta.hasPrefecture) {
-    const { data: prefCounts } = await supabase
-      .from("listings")
-      .select("prefecture")
+  // === 並列クエリ: カテゴリ・都道府県件数・出張エリア件数を同時取得 ===
+  const [
+    { data: categories },
+    { data: prefCounts },
+    { data: svcListings },
+  ] = await Promise.all([
+    // Categories of this genre
+    supabase
+      .from("categories")
+      .select("id, slug, name, sort_order")
       .eq("genre_id", genreRow.id)
-      .eq("status", "published")
-      .not("prefecture", "is", null);
+      .order("sort_order", { ascending: true }),
+    // Prefecture counts (hasPrefecture ジャンルのみ)
+    genreMeta.hasPrefecture
+      ? supabase
+          .from("listings")
+          .select("prefecture")
+          .eq("genre_id", genreRow.id)
+          .eq("status", "published")
+          .not("prefecture", "is", null)
+      : Promise.resolve({ data: null }),
+    // 出張サービス件数 (マッサージ・売り専のみ)
+    genreMeta.hasServiceAreas
+      ? supabase
+          .from("listings")
+          .select("service_areas")
+          .eq("genre_id", genreRow.id)
+          .eq("status", "published")
+          .not("service_areas", "is", null)
+      : Promise.resolve({ data: null }),
+  ]);
 
-    (prefCounts ?? []).forEach((row) => {
-      const p = row.prefecture;
-      if (p) prefCountMap[p] = (prefCountMap[p] ?? 0) + 1;
+  // 都道府県カウント集計
+  const prefCountMap: Record<string, number> = {};
+  (prefCounts ?? []).forEach((row) => {
+    const p = row.prefecture;
+    if (p) prefCountMap[p] = (prefCountMap[p] ?? 0) + 1;
+  });
+
+  // 出張エリアカウント集計
+  const validListings = (svcListings ?? []).filter(
+    (r) => r.service_areas && r.service_areas.length > 0,
+  );
+  const serviceListingCount = validListings.length;
+  const areaCountMap: Record<string, number> = {};
+  validListings.forEach((r) => {
+    (r.service_areas as string[]).forEach((area) => {
+      areaCountMap[area] = (areaCountMap[area] ?? 0) + 1;
     });
-  }
-
-  // === 出張サービス件数 (マッサージ・売り専のみ) ===
-  let serviceListingCount = 0;
-  let areaCountMap: Record<string, number> = {};
-  if (genreMeta.hasServiceAreas) {
-    const { data: svcListings } = await supabase
-      .from("listings")
-      .select("service_areas")
-      .eq("genre_id", genreRow.id)
-      .eq("status", "published")
-      .not("service_areas", "is", null);
-
-    const validListings = (svcListings ?? []).filter(
-      (r) => r.service_areas && r.service_areas.length > 0,
-    );
-    serviceListingCount = validListings.length;
-    // エリア別件数を集計
-    validListings.forEach((r) => {
-      (r.service_areas as string[]).forEach((area) => {
-        areaCountMap[area] = (areaCountMap[area] ?? 0) + 1;
-      });
-    });
-  }
+  });
 
   // === Region resolution ===
   const selectedRegion = regionParam
@@ -208,13 +213,6 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     countQuery = countQuery.overlaps("service_areas", selectedServiceAreas);
   if (selectedProviderAges.length > 0)
     countQuery = countQuery.overlaps("provider_ages", selectedProviderAges);
-  const { count } = await countQuery;
-
-  const totalCount = count ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
-  const safePage = Math.min(currentPage, totalPages);
-  const from = (safePage - 1) * PER_PAGE;
-  const to = from + PER_PAGE - 1;
 
   // Sort mapping
   const sortConfig: Record<SortKey, { column: string; ascending: boolean }> = {
@@ -228,24 +226,37 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   };
   const { column: sortColumn, ascending: sortAsc } = sortConfig[currentSort];
 
-  let query = supabase
+  // currentPage ベースで range を先に計算（件数超過時は空結果になるだけ）
+  const from = (currentPage - 1) * PER_PAGE;
+  const to = from + PER_PAGE - 1;
+
+  let listingsQuery = supabase
     .from("listings")
     .select("id, title, description, website_url, prefecture")
     .eq("genre_id", genreRow.id)
     .eq("status", "published")
     .order(sortColumn, { ascending: sortAsc })
     .range(from, to);
-  if (listingIds) query = query.in("id", listingIds);
+  if (listingIds) listingsQuery = listingsQuery.in("id", listingIds);
   if (prefectureFilter) {
-    query = query.eq("prefecture", prefectureFilter);
+    listingsQuery = listingsQuery.eq("prefecture", prefectureFilter);
   } else if (regionPrefectureSlugs) {
-    query = query.in("prefecture", regionPrefectureSlugs);
+    listingsQuery = listingsQuery.in("prefecture", regionPrefectureSlugs);
   }
   if (selectedServiceAreas.length > 0)
-    query = query.overlaps("service_areas", selectedServiceAreas);
+    listingsQuery = listingsQuery.overlaps("service_areas", selectedServiceAreas);
   if (selectedProviderAges.length > 0)
-    query = query.overlaps("provider_ages", selectedProviderAges);
-  const { data: listings } = await query;
+    listingsQuery = listingsQuery.overlaps("provider_ages", selectedProviderAges);
+
+  // === 並列クエリ: 件数とリスティングを同時取得 ===
+  const [{ count }, { data: listings }] = await Promise.all([
+    countQuery,
+    listingsQuery,
+  ]);
+
+  const totalCount = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
 
   // extraParams for pagination links
   const extraParams: Record<string, string> = {};

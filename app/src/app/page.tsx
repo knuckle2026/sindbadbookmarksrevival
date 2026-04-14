@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic";
+export const revalidate = 300; // 5分キャッシュ
 
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";

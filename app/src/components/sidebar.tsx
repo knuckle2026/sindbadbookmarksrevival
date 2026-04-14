@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GENRES } from "@/lib/constants/genres";
@@ -11,10 +11,13 @@ interface SidebarProps {
 
 export function Sidebar({ onCloseSidebar }: SidebarProps) {
   const pathname = usePathname();
+  const initialPath = useRef(pathname);
 
-  // パスが変わったら（画面遷移完了後）サイドバーを閉じる
+  // パスが変わった時だけ（初回マウントはスキップ）サイドバーを閉じる
   useEffect(() => {
-    if (onCloseSidebar) onCloseSidebar();
+    if (pathname !== initialPath.current) {
+      if (onCloseSidebar) onCloseSidebar();
+    }
   }, [pathname]);
 
   return (

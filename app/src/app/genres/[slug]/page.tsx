@@ -259,17 +259,6 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
-      <nav className="mb-2 text-xs text-zinc-500">
-        <Link href="/" className="hover:underline">
-          ダッシュボード
-        </Link>
-        <span className="mx-1">/</span>
-        <span>{genreRow.name}</span>
-      </nav>
-
-      <h1 className="mb-4 text-2xl font-bold text-zinc-900">
-        {genreRow.name}
-      </h1>
 
       {/* 1. カテゴリ絞り込み */}
       <Suspense>

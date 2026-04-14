@@ -11,9 +11,9 @@ interface SidebarProps {
 export function Sidebar({ onCloseSidebar }: SidebarProps) {
   const router = useRouter();
 
-  const handleTopClick = () => {
+  const handleNavigate = (href: string) => {
     if (onCloseSidebar) onCloseSidebar();
-    router.push("/");
+    router.push(href);
   };
 
   return (
@@ -23,26 +23,26 @@ export function Sidebar({ onCloseSidebar }: SidebarProps) {
     >
       <nav className="py-3">
         <button
-          onClick={handleTopClick}
+          onClick={() => handleNavigate("/")}
           className="block w-full border-b border-white/20 px-3 py-2.5 text-left text-sm font-semibold hover:bg-white/10"
         >
           トップ
         </button>
         {GENRES.map((g) => (
-          <Link
+          <button
             key={g.slug}
-            href={`/genres/${g.slug}`}
-            className="block border-b border-white/20 px-3 py-2.5 text-sm font-medium hover:bg-white/10"
+            onClick={() => handleNavigate(`/genres/${g.slug}`)}
+            className="block w-full border-b border-white/20 px-3 py-2.5 text-left text-sm font-medium hover:bg-white/10"
           >
             {g.name}
-          </Link>
+          </button>
         ))}
-        <Link
-          href="/my-listings"
-          className="mt-2 block border-y border-white/20 bg-white/10 px-3 py-2.5 text-sm font-semibold hover:bg-white/20"
+        <button
+          onClick={() => handleNavigate("/my-listings")}
+          className="mt-2 block w-full border-y border-white/20 bg-white/10 px-3 py-2.5 text-left text-sm font-semibold hover:bg-white/20"
         >
           マイリスティング
-        </Link>
+        </button>
       </nav>
     </aside>
   );

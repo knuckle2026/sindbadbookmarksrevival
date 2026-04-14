@@ -9,9 +9,12 @@ interface HeaderProps {
   onHamburgerClick?: () => void;
   onCloseSidebar?: () => void;
   genreName?: string;
+  genreSlug?: string;
+  hideRegisterButton?: boolean;
+  showLogo?: boolean;
 }
 
-export function Header({ onHamburgerClick, onCloseSidebar, genreName }: HeaderProps) {
+export function Header({ onHamburgerClick, onCloseSidebar, genreName, genreSlug, hideRegisterButton, showLogo }: HeaderProps) {
   const router = useRouter();
 
   const handleRegister = async () => {
@@ -21,10 +24,14 @@ export function Header({ onHamburgerClick, onCloseSidebar, genreName }: HeaderPr
       data: { user },
     } = await supabase.auth.getUser();
 
+    const newPath = genreSlug
+      ? `/listings/new?genre=${genreSlug}`
+      : "/listings/new";
+
     if (user) {
-      router.push("/listings/new");
+      router.push(newPath);
     } else {
-      router.push("/login?next=/listings/new");
+      router.push(`/login?next=${encodeURIComponent(newPath)}`);
     }
   };
 
@@ -47,55 +54,38 @@ export function Header({ onHamburgerClick, onCloseSidebar, genreName }: HeaderPr
         </button>
 
         {genreName ? (
-          /* ジャンル一覧ページ: ジャンル名表示（クリック不可） */
+          /* ジャンル一覧ページ等: タイトル表示（クリック不可） */
           <span className="text-lg font-bold tracking-tight">{genreName}</span>
         ) : (
-          /* 通常ページ: ロゴ + sindbadbookmarks revival */
+          /* 通常ページ: ロゴ（トップのみ） + sindbadbookmarks revival */
           <>
-            {/* ロゴ画像 (スマホでは非表示) */}
-            <Link href="/" className="hidden sm:block shrink-0">
-              <Image
-                src="/images/sbbm_logo.jpg"
-                alt="sindbadbookmarks revival logo"
-                width={64}
-                height={64}
-                className="rounded object-contain"
-                priority
-              />
-            </Link>
+            {/* ロゴ画像（トップページのみ、ヘッダー高さに合わせる） */}
+            {showLogo && (
+              <Link href="/" className="shrink-0">
+                <Image
+                  src="/images/sbbm_logo.jpg"
+                  alt="sindbadbookmarks revival logo"
+                  width={96}
+                  height={96}
+                  className="object-contain h-20 w-auto max-w-28 sm:max-w-none"
+                  priority
+                />
+              </Link>
+            )}
 
-            {/* サイトタイトル: スマホ3行 / PC1行 */}
-            <Link href="/" className="leading-tight">
-              {/* スマホ用: 3行表示 */}
-              <span className="sm:hidden text-base font-bold tracking-tight leading-4">
-                sindbad
-                <br />
-                bookmarks
-                <br />
-                <span className="text-xs font-bold opacity-90">revival</span>
-              </span>
-              {/* PC用: 従来通り */}
-              <span className="hidden sm:inline">
-                <span className="text-lg font-bold tracking-tight">
-                  sindbadbookmarks
-                </span>
-                <br />
-                <span className="text-sm font-bold tracking-tight opacity-90">
-                  revival
-                </span>
-              </span>
-            </Link>
           </>
         )}
       </div>
 
-      {/* 右: 情報を登録ボタン（常時表示） */}
-      <button
-        onClick={handleRegister}
-        className="rounded-full bg-white/15 px-5 py-2.5 text-sm font-medium text-white ring-1 ring-white/40 transition-colors hover:bg-white/25"
-      >
-        情報を登録
-      </button>
+      {/* 右: 情報を登録ボタン（登録・編集画面では非表示） */}
+      {!hideRegisterButton && (
+        <button
+          onClick={handleRegister}
+          className="rounded-full bg-white/15 px-5 py-2.5 text-sm font-medium text-white ring-1 ring-white/40 transition-colors hover:bg-white/25"
+        >
+          情報を登録
+        </button>
+      )}
     </header>
   );
 }

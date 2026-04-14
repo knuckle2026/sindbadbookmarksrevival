@@ -44,13 +44,14 @@ interface Props {
   mode?: "new" | "edit";
   initialValues?: InitialValues;
   redirectTo?: string;
+  defaultGenreId?: string;
 }
 
 const TITLE_MAX = 20;
 const DESCRIPTION_MAX = 100;
 const URL_RE = /^https?:\/\/.+/;
 
-export default function ListingForm({ genres, categories, mode = "new", initialValues, redirectTo }: Props) {
+export default function ListingForm({ genres, categories, mode = "new", initialValues, redirectTo, defaultGenreId }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -60,7 +61,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
   const [title, setTitle] = useState(initialValues?.title ?? "");
   const [description, setDescription] = useState(initialValues?.description ?? "");
   const [websiteUrl, setWebsiteUrl] = useState(initialValues?.websiteUrl ?? "");
-  const [genreId, setGenreId] = useState(initialValues?.genreId ?? "");
+  const [genreId, setGenreId] = useState(initialValues?.genreId ?? defaultGenreId ?? "");
   const [selectedCategories, setSelectedCategories] = useState<string[]>(initialValues?.selectedCategories ?? []);
   const [prefecture, setPrefecture] = useState(initialValues?.prefecture ?? "");
   const [ward, setWard] = useState(initialValues?.ward ?? "");

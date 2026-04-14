@@ -14,14 +14,22 @@ type CategoryRow = {
   genres: { slug: string } | { slug: string }[] | null;
 };
 
-export default async function NewListingPage() {
+export default async function NewListingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ genre?: string }>;
+}) {
+  const { genre: genreSlug } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login?next=/listings/new");
+    const newPath = genreSlug
+      ? `/listings/new?genre=${genreSlug}`
+      : "/listings/new";
+    redirect(`/login?next=${encodeURIComponent(newPath)}`);
   }
 
   const { data: rawCategories } = await supabase
@@ -47,14 +55,19 @@ export default async function NewListingPage() {
     .select("id, slug, name, sort_order")
     .order("sort_order", { ascending: true });
 
+  // ジャンルslugからIDを解決
+  let defaultGenreId: string | undefined;
+  if (genreSlug) {
+    const match = (genres ?? []).find((g) => g.slug === genreSlug);
+    if (match) defaultGenreId = match.id;
+  }
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="mb-6 text-2xl font-bold text-zinc-900">
-        情報を登録
-      </h1>
       <ListingForm
         genres={(genres ?? []).map((g) => ({ id: g.id, slug: g.slug, name: g.name }))}
         categories={categories}
+        defaultGenreId={defaultGenreId}
       />
     </div>
   );

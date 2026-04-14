@@ -14,9 +14,21 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const isBare = BARE_PATHS.some((p) => pathname.startsWith(p));
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // /genres/[slug] の場合にジャンル名を取得
+  // /genres/[slug] の場合にジャンル名・スラッグを取得
   const genreMatch = pathname.match(/^\/genres\/([^/?]+)/);
-  const genreName = genreMatch ? GENRE_MAP[genreMatch[1]]?.name : undefined;
+  const genreSlug = genreMatch ? genreMatch[1] : undefined;
+  const genreName = genreSlug ? GENRE_MAP[genreSlug]?.name : undefined;
+
+  // 登録・編集画面のヘッダー表示
+  const isNewListing = pathname === "/listings/new";
+  const isEditListing = /^\/listings\/[^/]+\/edit$/.test(pathname);
+  const headerTitle = isNewListing
+    ? "情報を登録"
+    : isEditListing
+      ? "登録情報の編集"
+      : genreName;
+  const hideRegisterButton = isNewListing || isEditListing;
+  const showLogo = pathname === "/";
 
   if (isBare) {
     return <>{children}</>;
@@ -27,7 +39,10 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       <Header
         onHamburgerClick={() => setSidebarOpen((v) => !v)}
         onCloseSidebar={() => setSidebarOpen(false)}
-        genreName={genreName}
+        genreName={headerTitle}
+        genreSlug={genreSlug}
+        hideRegisterButton={hideRegisterButton}
+        showLogo={showLogo}
       />
       <div className="flex flex-1 overflow-hidden">
         {sidebarOpen && <Sidebar onCloseSidebar={() => setSidebarOpen(false)} />}

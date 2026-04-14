@@ -1,7 +1,7 @@
 # sindbadbookmarks 実装仕様書
 
-**最終更新:** 2026-04-12
-**ブランチ:** `feature/age-gate`（masterへのマージ待ち）
+**最終更新:** 2026-04-14
+**ブランチ:** `master`
 **ステータス:** 実装進行中
 
 ---
@@ -104,10 +104,16 @@ sindbadbookmarksrevival/        ← リポジトリルート
 | `/listings` | `app/listings/page.tsx` | 不要 | 登録情報一覧・検索 |
 | `/listings/new` | `app/listings/new/page.tsx` | 必須 | 情報登録フォーム |
 | `/listings/[id]` | `app/listings/[id]/page.tsx` | 不要 | 詳細ページ |
+| `/my-listings` | `app/my-listings/page.tsx` | 必須 | マイリスティング一覧 |
+| `/listings/[id]/edit` | `app/listings/[id]/edit/page.tsx` | 必須 | 登録情報の編集 |
 | `/login` | `app/login/` | — | ログイン |
 | `/signup` | `app/signup/` | — | サインアップ |
 | `/reset-password` | `app/reset-password/` | — | パスワードリセット |
 | `/auth/callback` | `app/auth/callback/` | — | OAuth コールバック |
+| `/sbbm-control/login` | `app/sbbm-control/login/page.tsx` | — | 管理者ログイン |
+| `/sbbm-control` | `app/sbbm-control/(protected)/page.tsx` | admin | 管理者ダッシュボード |
+| `/sbbm-control/listings` | `app/sbbm-control/(protected)/listings/page.tsx` | admin | リスティング管理 |
+| `/sbbm-control/categories` | `app/sbbm-control/(protected)/categories/page.tsx` | admin | カテゴリ管理 |
 
 ---
 
@@ -130,7 +136,8 @@ sindbadbookmarksrevival/        ← リポジトリルート
 - 高さ: `h-24`（約96px / 2.5cm）
 - 文字色: 白
 - 左側: sindbadbookmarks ロゴ + 現在ページのタイトル
-- 右側: ログイン状態に応じて「情報を登録」「ログアウト」or「ログイン」ボタン
+- 右側: 「情報を登録」ボタン（ジャンルページではクリック時に `?genre=<slug>` 付きで遷移）
+  - 登録画面・編集画面では非表示（ヘッダーに見出しが表示されるため）
 - ページタイトルマッピング:
 
 | パス | タイトル |
@@ -138,12 +145,11 @@ sindbadbookmarksrevival/        ← リポジトリルート
 | `/` | ダッシュボード |
 | `/listings` | 登録情報一覧 |
 | `/listings/new` | 情報を登録 |
-| `/listings/[id]` | 詳細 |
+| `/listings/[id]/edit` | 登録情報の編集 |
 | `/login` | ログイン |
 | `/signup` | サインアップ |
 | `/reset-password` | パスワードリセット |
-| `/profile` | プロフィール |
-| `/admin/*` | 管理者パネル |
+| `/sbbm-control/*` | 管理者パネル |
 
 ### 4.3 Sidebar（`src/components/sidebar.tsx`）
 
@@ -283,7 +289,7 @@ Section 17.1 参照。主要項目:
 ### 主要テーブル
 
 ```
-profiles           - ユーザープロフィール（id, display_name, role, is_suspended）
+profiles           - ユーザープロフィール（id, display_name, role, is_suspended, created_at, updated_at）
 genres             - ジャンルマスタ（id, slug, name, sort_order）
 listings           - 掲載情報（id, user_id, genre_id, title, description, website_url, prefecture, ward, address, service_areas, click_count, status, created_at, created_by, updated_at, updated_by）
 categories         - カテゴリマスタ（id, genre_id, slug, name, sort_order）
@@ -318,9 +324,13 @@ increment_click_count(listing_id uuid)      → クリックカウント+1（ア
 | 3 | 検索: キーワード全文検索（タイトル部分一致のみ） | 未実装 |
 | 4 | ~~ページネーション~~ | ✅ 実装済み |
 | 5 | 画像アップロード | 未実装 |
-| 6 | 管理者パネル（`/admin`） | 未実装 |
-| 7 | プロフィール設定ページ（`/profile`） | 未実装 |
-| 8 | ~~地域フィルタ~~ | ✅ 実装済み（地方→都道府県2階層ナビ） |
+| 6 | ~~管理者パネル（`/sbbm-control`）~~ | ✅ 実装済み（リスティング管理・カテゴリ管理） |
+| 7 | ~~地域フィルタ~~ | ✅ 実装済み（地方→都道府県2階層ナビ） |
+| 8 | ~~通報機能~~ | ✅ 実装済み（モーダルフォーム・管理画面で件数/内容表示） |
+| 9 | ~~ダークモード対策~~ | ✅ 実装済み（全画面ライトモード固定） |
+| 10 | ~~サイドメニュー改善~~ | ✅ 実装済み（トップリンク追加・選択時自動閉じ） |
+| 11 | ~~カテゴリ並べ替え~~ | ✅ 実装済み（ドラッグ＆ドロップ） |
+| 12 | アカウント停止機能（Admin） | 未実装 |
 
 ---
 
@@ -328,10 +338,9 @@ increment_click_count(listing_id uuid)      → クリックカウント+1（ア
 
 | ブランチ | 状態 | 説明 |
 |---|---|---|
-| `master` | 本番デプロイ済み（READY） | age-gate・新レイアウト**未適用** |
-| `feature/age-gate` | プレビューデプロイ済み（READY） | 年齢確認・新レイアウト実装済み |
+| `master` | 本番デプロイ済み（READY） | age-gate・新レイアウト・全機能が統合済み |
 
-→ `feature/age-gate` を master にマージすると本番に適用される
+`feature/age-gate` は master にマージ済み。
 
 ---
 
@@ -471,7 +480,7 @@ ALTER TABLE categories ADD COLUMN genre_id uuid REFERENCES genres(id) ON DELETE 
 
 ##### 管理画面からの追加
 
-- 管理者（admin）は管理画面（`/admin/categories`）から：
+- 管理者（admin）は管理画面（`/sbbm-control/categories`）から：
   - ジャンルごとのカテゴリ一覧表示
   - カテゴリの追加（name / slug / sort_order / genre_id）
   - カテゴリの編集
@@ -567,7 +576,7 @@ increment_click_count(listing_id uuid)   -- クリックカウント+1
 | 5 | ✅ カテゴリチェックの検索方式 | **OR検索**。ただしマッサージ・売り専の「ニューハーフマッサージ」は特殊扱い（後述 §15.8.1） |
 | 6 | ✅ カテゴリ未選択時の挙動 | **全件表示**（ジャンルのみで絞り込み） |
 | 7 | ✅ 件数 0 ジャンルの表示有無 | **0件でも表示、クリック可能**（ジャンル一覧画面を表示） |
-| 8 | 管理画面 `/admin/categories` の権限制御 | RLS or Service Role Key |
+| 8 | 管理画面 `/sbbm-control/categories` の権限制御 | RLS or Service Role Key |
 | 9 | ✅ リスティング登録時のジャンル変更時、カテゴリの扱い | **自動クリア**（ジャンル変更時にカテゴリ選択状態をリセット。実装済み） |
 
 #### 15.8.1 マッサージ・売り専のニューハーフマッサージ除外ロジック
@@ -835,7 +844,7 @@ Section 15〜17 の未決事項および追加論点について、以下のと�
 
 - 登録フォームの **カテゴリセクション自体を非表示**
 - ジャンル別一覧ページでも **カテゴリ絞り込み UI を非表示**
-- 管理画面 `/admin/categories` でカテゴリが追加されたら自動的に表示されるようにする（件数ベースで判定）
+- 管理画面 `/sbbm-control/categories` でカテゴリが追加されたら自動的に表示されるようにする（件数ベースで判定）
 
 ### 18.4 センシティブコンテンツ表示
 
@@ -860,7 +869,7 @@ Section 15〜17 の未決事項および追加論点について、以下のと�
 
 ### 18.7 管理画面の認証方針（暫定）
 
-- 当面は同一リポジトリ内の `/admin/*` ルートで実装
+- 当面は同一リポジトリ内の `/sbbm-control/*` ルートで実装
 - middleware で `profiles.role = 'admin'` をチェック、非 admin は `/` へリダイレクト
 - 別リポジトリ/別ドメイン化は Phase 3 後半で検討
 
@@ -875,7 +884,7 @@ Section 15〜17 の未決事項および追加論点について、以下のと�
 7. **ダッシュボード**: ジャンル別カード + 新着10件
 8. **登録フォーム**: Section 17 の並び順で再構築
 9. **未ログイン時ログイン案内**: `LoginRequired` コンポーネント
-10. **管理画面 `/admin/categories`**: カテゴリCRUD
+10. **管理画面 `/sbbm-control/categories`**: カテゴリCRUD
 11. **feature ブランチから master へマージ**
 
 ### 18.9 この時点で残る未決事項
@@ -998,13 +1007,13 @@ Phase 2 時点で以下の管理画面を実装する（当初案より拡張）
 
 | パス | 機能 |
 |---|---|
-| `/admin/categories` | カテゴリCRUD（ジャンル別） |
-| `/admin/listings` | **全リスティングの一覧・編集・削除**（登録者アカウント情報を同一行に表示） |
+| `/sbbm-control/categories` | カテゴリCRUD（ジャンル別） |
+| `/sbbm-control/listings` | **全リスティングの一覧・編集・削除**（登録者アカウント情報を同一行に表示） |
 
-`/admin/listings` の一覧カラム:
+`/sbbm-control/listings` の一覧カラム:
 - 名称 / ジャンル / 都道府県 / ステータス / **登録者メール or ユーザー名** / 登録日時 / 編集ボタン / 削除ボタン
 
-通報管理 `/admin/reports` とユーザー停止 `/admin/users` は Phase 3 で追加。
+通報管理 `/sbbm-control/reports` とユーザー停止 `/sbbm-control/users` は Phase 3 で追加。
 
 ### 20.5 削除方針 確定
 
@@ -1019,7 +1028,7 @@ Phase 2 時点で以下の管理画面を実装する（当初案より拡張）
 | # | 項目 | 備考 |
 |---|---|---|
 | 1 | 通報モーダル or 通報ページ | Phase 3 で決定 |
-| 2 | `/admin/listings` で admin 編集時の監査ログ | Phase 3 以降 |
+| 2 | `/sbbm-control/listings` で admin 編集時の監査ログ | Phase 3 以降 |
 | 3 | 削除時の関連データ（`listing_categories` 等）のカスケード | 推奨: FK `ON DELETE CASCADE` |
 | 4 | 管理画面 admin 判定 | `profiles.role = 'admin'` チェック（Section 18.7 準拠） |
 
@@ -1056,21 +1065,21 @@ Phase 2 時点で以下の管理画面を実装する（当初案より拡張）
 
 - INSERT 時: `created_by = auth.uid()`, `updated_by = auth.uid()`
 - UPDATE 時: `updated_at = now()`, `updated_by = auth.uid()`（トリガーまたはアプリ側で設定）
-- 管理画面 `/admin/listings` の一覧カラムに以下を追加表示:
+- 管理画面 `/sbbm-control/listings` の一覧カラムに以下を追加表示:
   - 登録日時 / 登録者（メール or 表示名）/ 更新日時 / 更新者（メール or 表示名）
 
 ### 21.3 アカウント停止（Admin権限）
 
-- 管理者は `/admin/listings` または `/admin/users` から、**特定の情報登録者のアカウントを利用不可**にできる
+- 管理者は `/sbbm-control/listings` から、**特定の情報登録者のアカウントを利用不可**にできる
 - **復元不可**（元に戻す機能は実装しない）
 - 実装方針:
-  - `profiles.is_disabled boolean default false` カラム追加
-  - Admin 操作で `is_disabled = true` に更新
-  - middleware / auth ガードで `is_disabled = true` のユーザーは全ページアクセス不可（age-gate と auth の間で判定し、専用の「アカウント停止中」ページへリダイレクト）
-  - RLS: `listings` の INSERT/UPDATE/DELETE は `NOT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_disabled)` を条件に追加
+  - `profiles.is_suspended boolean default false` カラム（既存）を使用
+  - Admin 操作で `is_suspended = true` に更新
+  - middleware / auth ガードで `is_suspended = true` のユーザーは全ページアクセス不可（age-gate と auth の間で判定し、専用の「アカウント停止中」ページへリダイレクト）
+  - RLS: `listings` の INSERT/UPDATE/DELETE は `NOT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_suspended)` を条件に追加
 - 停止済みアカウントの既存リスティングは **そのまま残す**（自動削除はしない、必要なら admin が個別削除）
 - UI:
-  - `/admin/listings` の登録者列の横に「このユーザーを停止」ボタン
+  - `/sbbm-control/listings` の登録者列の横に「このユーザーを停止」ボタン
   - 確認ダイアログ（「この操作は取り消せません。本当に停止しますか？」）
   - 停止成功後、該当ユーザーの行に「停止済み」バッジ
 
@@ -1081,7 +1090,7 @@ Section 18.8 のステップ1に以下を追加：
 - `listings.created_by uuid`（既存 `user_id` を流用 or リネーム）
 - `listings.updated_by uuid`
 - `listings.updated_at` の自動更新トリガー
-- `profiles.is_disabled boolean default false`
+- `profiles.is_suspended boolean default false`（既存カラム）
 - `reports.reason` に CHECK `char_length(reason) <= 50`
 - `reports.reporter_user_id` を NULL 許容に変更（匿名通報対応）
 - `reports` の RLS: anon INSERT 許可
@@ -1092,10 +1101,10 @@ Section 18.8 のステップ1に以下を追加：
 |---|---|---|
 | 新規 | `app/src/app/listings/[id]/report/page.tsx` | 通報フォーム画面（ログイン不要） |
 | 新規 | `app/src/app/listings/[id]/report/complete/page.tsx` | 報告完了画面 |
-| 新規 | `app/src/app/account-disabled/page.tsx` | 停止済みユーザー向け案内ページ |
-| 変更 | `app/src/middleware.ts` | `is_disabled` チェック追加 |
-| 変更 | `app/src/app/admin/listings/page.tsx` | 監査カラム + 停止ボタン |
-| 新規 | `app/src/app/admin/users/disable/route.ts` | ユーザー停止 API |
+| 新規 | `app/src/app/account-suspended/page.tsx` | 停止済みユーザー向け案内ページ |
+| 変更 | `app/src/middleware.ts` | `is_suspended` チェック追加 |
+| 変更 | `app/src/app/sbbm-control/(protected)/listings/page.tsx` | 停止ボタン追加 |
+| 新規 | `app/src/app/api/sbbm-control/users/suspend/route.ts` | ユーザー停止 API |
 
 ### 21.6 未決事項
 
@@ -1163,8 +1172,8 @@ Section 18.8 のステップ1に以下を追加：
 ### 22.9 管理画面の独立方針（追加確定）
 
 - **一般利用者からは管理画面の存在が分からないように隠蔽する**
-  - トップ／サイドバー／ヘッダー／フッター等、公開ページからは `/admin` へのリンクを一切張らない
-  - 管理画面URLは推測されにくいパスにする（例: `/admin` ではなく `/sbbm-control` 等、最終パスは実装時に決定）
+  - トップ／サイドバー／ヘッダー／フッター等、公開ページからは管理画面へのリンクを一切張らない
+  - 管理画面URLは推測されにくいパス `/sbbm-control` を使用（確定・実装済み）
   - `robots.txt` で該当パスを `Disallow` に追加、`noindex` メタタグ付与
   - 未認証 or 非 admin のアクセスは **404 を返す**（403/ログイン画面リダイレクトは存在を示唆するため避ける）
 - Phase 2 で **新規に専用画面として実装**（既存のユーザー向けUIを流用せず、独立レイアウトで構築）
@@ -1205,7 +1214,7 @@ Section 18.8 に 20/21/22 の追加要件を統合した最終的な実装手順
    - `listings.friendliness` **DROP**（実施済み: マイグレーション 00003）
    - `listings.click_count integer NOT NULL DEFAULT 0`（実施済み: マイグレーション 00003）
    - `listings.latitude` / `longitude` は残す（NULL許容、フォーム未使用）
-   - `profiles.is_disabled boolean default false` 追加
+   - `profiles.is_suspended boolean default false`（既存カラム）
    - `reports.reason` CHECK `char_length(reason) <= 50`、`reporter_user_id` NULL 許容
    - `updated_at` 自動更新トリガー作成
    - FK `ON DELETE CASCADE`（`listing_categories` 等）
@@ -1221,7 +1230,7 @@ Section 18.8 に 20/21/22 の追加要件を統合した最終的な実装手順
    - `app/src/lib/constants/genres.ts` 11ジャンル
 5. **認証拡張**
    - Email+Password（既存）+ **Google OAuth** 追加（Supabase設定 + ログイン画面ボタン）
-   - `is_disabled` チェックを middleware に追加 → `/account-disabled` へ
+   - `is_suspended` チェックを middleware に追加 → `/account-suspended` へ
 6. **サイドバー再設計**（Section 15 + 22.1）
    - 11ジャンル（件数付き、アコーディオン廃止、クリックで `/genres/[slug]`）
    - **「マイリスティング」リンクを常時表示**（ログイン有無に関わらず）。未ログイン時は `/my-listings` 側で認証ゲートを表示
@@ -1251,8 +1260,8 @@ Section 18.8 に 20/21/22 の追加要件を統合した最終的な実装手順
     - `/listings/[id]/report` ログイン不要フォーム
     - `/listings/[id]/report/complete` 完了画面
 14. **管理画面**（Section 20.4 + 21.3）
-    - `/admin/categories` CRUD
-    - `/admin/listings` 全件CRUD + 登録者情報/監査列表示 + ユーザー停止ボタン
+    - `/sbbm-control/categories` CRUD
+    - `/sbbm-control/listings` 全件CRUD + 登録者情報/監査列表示 + ユーザー停止ボタン
     - admin 判定: `profiles.role = 'admin'`
 15. **初期データ**
     - `goldenapplepart2@hotmail.com` を admin 化（SQL 手動実行）
@@ -1299,8 +1308,8 @@ Section 18.8 に 20/21/22 の追加要件を統合した最終的な実装手順
 | サービス提供者の年代 | 一覧画面レイアウト | カテゴリ絞り込みの下 |
 | サービス提供地域 | 対象 | マッサージ・売り専のみ |
 | サービス提供地域 | 選択肢 | 関東/東京23区/東京23区外/関西/東海/北海道/東北/中部/中国/四国/九州/沖縄/全国対応 |
-| 管理画面 Phase 2 | 範囲 | /admin/categories + /admin/listings（全件CRUD+監査） |
-| 管理画面 Phase 3 | 範囲 | /admin/reports + /admin/users |
+| 管理画面 Phase 2 | 範囲 | /sbbm-control/categories + /sbbm-control/listings（全件CRUD+通報件数表示） ✅ 実装済み |
+| 管理画面 Phase 3 | 範囲 | アカウント停止機能 |
 
 ---
 
@@ -1316,6 +1325,7 @@ Section 18.8 に 20/21/22 の追加要件を統合した最終的な実装手順
 | 1.5 | 2026-04-10 | Section 25 追加（マイリスティング画面仕様 — 一覧/編集/削除/ページング） |
 | 1.6 | 2026-04-11 | Section 25 更新（削除モーダルボタン構成確定、status非表示、RLS DELETEポリシー確認） |
 | 1.7 | 2026-04-12 | 仕様書全体を最新実装に同期（DB変更・ソート7種・クリックカウント・所在地2階層ナビ・モバイルヘッダー反映） |
+| 1.8 | 2026-04-14 | 仕様書整理: ブランチ状態更新（master統合済み）、プロフィールページ削除、TODO/実装状態を最新化、管理画面パスを `/sbbm-control` に統一、`is_disabled` → `is_suspended` に統一、ジャンル→登録画面の引き継ぎ追加 |
 
 ---
 

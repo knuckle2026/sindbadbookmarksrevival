@@ -59,7 +59,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
-      <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+      <h1 className="mb-6 text-2xl font-bold text-zinc-900">
         ダッシュボード
       </h1>
 
@@ -67,7 +67,7 @@ export default async function DashboardPage() {
         {visibleGenres.map(([slug, genre]) => (
           <section
             key={slug}
-            className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+            className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm"
           >
             <Link
               href={`/genres/${slug}`}
@@ -77,15 +77,15 @@ export default async function DashboardPage() {
               {genre.name}
             </Link>
             {genre.categories.length > 0 ? (
-              <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <ul className="divide-y divide-zinc-100">
                 {genre.categories.map((cat) => (
                   <li key={cat.slug}>
                     <Link
                       href={`/genres/${slug}?category=${cat.slug}`}
-                      className="flex items-center justify-between px-4 py-2 text-sm text-zinc-800 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                      className="flex items-center justify-between px-4 py-2 text-sm text-zinc-800 hover:bg-zinc-50"
                     >
                       <span>{cat.name}</span>
-                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                      <span className="text-xs text-zinc-500">
                         ({cat.count})
                       </span>
                     </Link>
@@ -93,7 +93,7 @@ export default async function DashboardPage() {
                 ))}
               </ul>
             ) : (
-              <p className="px-4 py-4 text-sm text-zinc-500 dark:text-zinc-400">
+              <p className="px-4 py-4 text-sm text-zinc-500">
                 登録情報はまだありません
               </p>
             )}

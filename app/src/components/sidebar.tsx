@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { GENRES } from "@/lib/constants/genres";
 
 interface SidebarProps {
@@ -9,12 +10,12 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onCloseSidebar }: SidebarProps) {
-  const router = useRouter();
+  const pathname = usePathname();
 
-  const handleNavigate = (href: string) => {
+  // パスが変わったら（画面遷移完了後）サイドバーを閉じる
+  useEffect(() => {
     if (onCloseSidebar) onCloseSidebar();
-    router.push(href);
-  };
+  }, [pathname]);
 
   return (
     <aside
@@ -22,27 +23,27 @@ export function Sidebar({ onCloseSidebar }: SidebarProps) {
       style={{ backgroundColor: "#B21000" }}
     >
       <nav className="py-3">
-        <button
-          onClick={() => handleNavigate("/")}
+        <Link
+          href="/"
           className="block w-full border-b border-white/20 px-3 py-2.5 text-left text-sm font-semibold hover:bg-white/10"
         >
           トップ
-        </button>
+        </Link>
         {GENRES.map((g) => (
-          <button
+          <Link
             key={g.slug}
-            onClick={() => handleNavigate(`/genres/${g.slug}`)}
+            href={`/genres/${g.slug}`}
             className="block w-full border-b border-white/20 px-3 py-2.5 text-left text-sm font-medium hover:bg-white/10"
           >
             {g.name}
-          </button>
+          </Link>
         ))}
-        <button
-          onClick={() => handleNavigate("/my-listings")}
+        <Link
+          href="/my-listings"
           className="mt-2 block w-full border-y border-white/20 bg-white/10 px-3 py-2.5 text-left text-sm font-semibold hover:bg-white/20"
         >
           マイリスティング
-        </button>
+        </Link>
       </nav>
     </aside>
   );

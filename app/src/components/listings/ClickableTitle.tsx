@@ -25,7 +25,8 @@ export default function ClickableTitle({
         target="_blank"
         rel="noopener noreferrer"
         onClick={handleClick}
-        className="block text-base font-semibold text-zinc-900 hover:underline active:text-red-600"
+        className="block text-base font-semibold hover:underline active:opacity-70"
+        style={{ color: "#B21000" }}
       >
         {title}
       </a>
@@ -33,7 +34,7 @@ export default function ClickableTitle({
   }
 
   return (
-    <span className="block text-base font-semibold text-zinc-900">
+    <span className="block text-base font-semibold" style={{ color: "#B21000" }}>
       {title}
     </span>
   );

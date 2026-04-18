@@ -232,7 +232,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
 
   let listingsQuery = supabase
     .from("listings")
-    .select("id, title, description, website_url, prefecture")
+    .select("id, title, description, website_url, prefecture, listing_categories(categories(id, name))")
     .eq("genre_id", genreRow.id)
     .eq("status", "published")
     .order(sortColumn, { ascending: sortAsc })
@@ -336,9 +336,26 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
                   />
                   <ReportButton listingId={l.id} listingTitle={l.title} variant="card" />
                 </div>
-                <p className="mt-1 text-sm text-zinc-600">
-                  {l.description}
-                </p>
+                {l.description && (
+                  <p className="mt-1 text-sm text-zinc-600">
+                    {l.description}
+                  </p>
+                )}
+                {l.listing_categories?.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {l.listing_categories.map((lc) =>
+                      lc.categories ? (
+                        <span
+                          key={lc.categories.id}
+                          className="rounded-full bg-red-50 px-2 py-0.5 text-xs"
+                          style={{ color: "#B21000" }}
+                        >
+                          {lc.categories.name}
+                        </span>
+                      ) : null
+                    )}
+                  </div>
+                )}
               </li>
             ))}
           </ul>

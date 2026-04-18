@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Header } from "@/components/header";
 import { Sidebar } from "@/components/sidebar";
+import { Footer } from "@/components/footer";
 import { GENRE_MAP } from "@/lib/constants/genres";
 
 // Paths where the header + sidebar chrome should NOT appear
@@ -48,6 +49,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         {sidebarOpen && <Sidebar onCloseSidebar={() => setSidebarOpen(false)} />}
         <main className="flex-1 overflow-y-auto bg-zinc-50">
           {children}
+          <Footer />
         </main>
       </div>
     </div>

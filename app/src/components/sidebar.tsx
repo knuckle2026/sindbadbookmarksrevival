@@ -28,7 +28,7 @@ export function Sidebar({ onCloseSidebar }: SidebarProps) {
       <nav className="py-3">
         <Link
           href="/"
-          className="block w-full border-b border-white/20 px-3 py-2.5 text-left text-sm font-semibold hover:bg-white/10"
+          className="block w-full border-b border-white/20 px-3 py-2.5 text-left text-sm font-semibold hover:bg-white/10 active:bg-white/10"
         >
           トップ
         </Link>
@@ -36,14 +36,14 @@ export function Sidebar({ onCloseSidebar }: SidebarProps) {
           <Link
             key={g.slug}
             href={`/genres/${g.slug}`}
-            className="block w-full border-b border-white/20 px-3 py-2.5 text-left text-sm font-medium hover:bg-white/10"
+            className="block w-full border-b border-white/20 px-3 py-2.5 text-left text-sm font-medium hover:bg-white/10 active:bg-white/10"
           >
             {g.name}
           </Link>
         ))}
         <Link
           href="/my-listings"
-          className="mt-2 block w-full border-y border-white/20 bg-white/10 px-3 py-2.5 text-left text-sm font-semibold hover:bg-white/20"
+          className="mt-2 block w-full border-y border-white/20 bg-white/10 px-3 py-2.5 text-left text-sm font-semibold hover:bg-white/20 active:bg-white/20"
         >
           マイリスティング
         </Link>

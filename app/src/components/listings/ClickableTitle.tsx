@@ -25,7 +25,7 @@ export default function ClickableTitle({
         target="_blank"
         rel="noopener noreferrer"
         onClick={handleClick}
-        className="block text-base font-semibold text-zinc-900 hover:underline"
+        className="block text-base font-semibold text-zinc-900 hover:underline active:text-red-600"
       >
         {title}
       </a>

@@ -48,7 +48,7 @@ export default function SortTabs({
             className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
               isActive
                 ? "border-red-600 bg-red-600 text-white"
-                : "border-zinc-300 bg-white text-zinc-600 hover:border-red-400"
+                : "border-zinc-300 bg-white text-zinc-600 hover:border-red-400 active:bg-red-50"
             }`}
           >
             {opt.label}

@@ -72,14 +72,14 @@ export default function ReportButton({
       {variant === "card" ? (
         <button
           onClick={handleOpen}
-          className="shrink-0 text-xs text-zinc-400 hover:text-red-500 transition-colors"
+          className="shrink-0 text-xs text-zinc-400 hover:text-red-500 active:text-red-500 transition-colors"
         >
           ✉ 運営へ報告
         </button>
       ) : (
         <button
           onClick={handleOpen}
-          className="text-sm text-zinc-500 hover:text-red-600 transition-colors"
+          className="text-sm text-zinc-500 hover:text-red-600 active:text-red-600 transition-colors"
         >
           この情報を報告する
         </button>
@@ -107,7 +107,7 @@ export default function ReportButton({
                 </p>
                 <button
                   onClick={handleClose}
-                  className="rounded-lg border border-zinc-300 px-6 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
+                  className="rounded-lg border border-zinc-300 px-6 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 active:bg-zinc-100"
                 >
                   閉じる
                 </button>
@@ -121,7 +121,7 @@ export default function ReportButton({
                   </h2>
                   <button
                     onClick={handleClose}
-                    className="rounded p-1 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
+                    className="rounded p-1 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 active:text-zinc-600 active:bg-zinc-100"
                   >
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
                       <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
@@ -170,14 +170,14 @@ export default function ReportButton({
                   <button
                     onClick={handleClose}
                     disabled={submitting}
-                    className="flex-1 rounded-lg border border-zinc-300 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50"
+                    className="flex-1 rounded-lg border border-zinc-300 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 active:bg-zinc-100 disabled:opacity-50"
                   >
                     キャンセル
                   </button>
                   <button
                     onClick={handleSubmit}
                     disabled={submitting || !reason.trim()}
-                    className="flex-1 rounded-lg bg-red-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                    className="flex-1 rounded-lg bg-red-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-700 active:bg-red-700 disabled:opacity-50"
                   >
                     {submitting ? "送信中..." : "運営へ報告"}
                   </button>

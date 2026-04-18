@@ -46,7 +46,7 @@ export function Header({ onHamburgerClick, onCloseSidebar, genreName, genreSlug,
         <button
           onClick={onHamburgerClick}
           aria-label="サイドバーを開閉"
-          className="flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-lg hover:bg-white/10"
+          className="flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-lg hover:bg-white/10 active:bg-white/10"
         >
           <span className="block h-0.5 w-6 bg-white" />
           <span className="block h-0.5 w-6 bg-white" />
@@ -81,7 +81,7 @@ export function Header({ onHamburgerClick, onCloseSidebar, genreName, genreSlug,
       {!hideRegisterButton && (
         <button
           onClick={handleRegister}
-          className="rounded-full bg-white/15 px-5 py-2.5 text-sm font-medium text-white ring-1 ring-white/40 transition-colors hover:bg-white/25"
+          className="rounded-full bg-white/15 px-5 py-2.5 text-sm font-medium text-white ring-1 ring-white/40 transition-colors hover:bg-white/25 active:bg-white/25"
         >
           情報を登録
         </button>

@@ -1,7 +1,7 @@
 export const revalidate = 300; // 5分キャッシュ
 
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { PressableLink } from "@/components/PressableLink";
 import { GENRES } from "@/lib/constants/genres";
 
 type CategoryCountRow = {
@@ -65,26 +65,28 @@ export default async function DashboardPage() {
             key={slug}
             className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm"
           >
-            <Link
+            <PressableLink
               href={`/genres/${slug}`}
-              className="block px-4 py-3 text-base font-bold text-white hover:opacity-90"
+              className="block px-4 py-3 text-base font-bold text-white hover:opacity-90 active:opacity-70"
+              pendingClassName="block px-4 py-3 text-base font-bold text-white opacity-70"
               style={{ backgroundColor: "#B21000" }}
             >
               {genre.name}
-            </Link>
+            </PressableLink>
             {genre.categories.length > 0 ? (
               <ul className="divide-y divide-zinc-100">
                 {genre.categories.map((cat) => (
                   <li key={cat.slug}>
-                    <Link
+                    <PressableLink
                       href={`/genres/${slug}?category=${cat.slug}`}
-                      className="flex items-center justify-between px-4 py-2 text-sm text-zinc-800 hover:bg-zinc-50"
+                      className="flex items-center justify-between px-4 py-2 text-sm text-zinc-800 hover:bg-zinc-50 active:bg-zinc-100"
+                      pendingClassName="flex items-center justify-between px-4 py-2 text-sm text-zinc-800 bg-zinc-100"
                     >
                       <span>{cat.name}</span>
                       <span className="text-xs text-zinc-500">
                         ({cat.count})
                       </span>
-                    </Link>
+                    </PressableLink>
                   </li>
                 ))}
               </ul>

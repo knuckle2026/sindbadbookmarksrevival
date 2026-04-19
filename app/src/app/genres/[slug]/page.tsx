@@ -1,10 +1,11 @@
 // @ts-nocheck
 import { Suspense } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { GENRES } from "@/lib/constants/genres";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
+import { TOKYO_OUTSIDE_SLUG } from "@/lib/constants/tokyo-wards";
 import Pagination from "@/components/listings/Pagination";
 import SortSelect, { type SortKey } from "@/components/listings/SortSelect";
 import ClickableTitle from "@/components/listings/ClickableTitle";
@@ -13,6 +14,7 @@ import GenreFilters from "./GenreFilters";
 import RegionPrefectureNav from "./RegionPrefectureNav";
 import ServiceAreaFilter from "./ServiceAreaFilter";
 import ProviderAgeFilter from "./ProviderAgeFilter";
+import TokyoWardFilter from "./TokyoWardFilter";
 
 export const revalidate = 60; // 1分キャッシュ
 
@@ -28,6 +30,7 @@ interface PageProps {
     sort?: string;
     exclude_nh?: string;
     provider_age?: string;
+    ward?: string;
     page?: string;
   }>;
 }
@@ -42,6 +45,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     sort: sortParam,
     exclude_nh: excludeNhParam,
     provider_age: providerAgeParam,
+    ward: wardParam,
     page: pageParam,
   } = await searchParams;
   const currentPage = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
@@ -58,6 +62,20 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   const genreMeta = GENRES.find((g) => g.slug === slug);
   if (!genreMeta) notFound();
 
+  // hasPrefecture ジャンルで region/prefecture が未指定の場合は tokyo にリダイレクト
+  if (genreMeta.hasPrefecture && !regionParam && !prefectureParam) {
+    const params = new URLSearchParams();
+    params.set("prefecture", "tokyo");
+    if (categoryParam) params.set("category", categoryParam);
+    if (serviceAreaParam) params.set("service_area", serviceAreaParam);
+    if (sortParam) params.set("sort", sortParam);
+    if (excludeNhParam) params.set("exclude_nh", excludeNhParam);
+    if (providerAgeParam) params.set("provider_age", providerAgeParam);
+    if (wardParam) params.set("ward", wardParam);
+    if (pageParam) params.set("page", pageParam);
+    redirect(`/genres/${slug}?${params.toString()}`);
+  }
+
   const supabase = await createClient();
 
   // Resolve genre_id
@@ -69,11 +87,12 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
 
   if (!genreRow) notFound();
 
-  // === 並列クエリ: カテゴリ・都道府県件数・出張エリア件数を同時取得 ===
+  // === 並列クエリ: カテゴリ・都道府県件数・出張エリア件数・区件数を同時取得 ===
   const [
     { data: categories },
     { data: prefCounts },
     { data: svcListings },
+    { data: wardCounts },
   ] = await Promise.all([
     // Categories of this genre
     supabase
@@ -99,6 +118,15 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
           .eq("status", "published")
           .not("service_areas", "is", null)
       : Promise.resolve({ data: null }),
+    // 東京の区ごとの件数 (prefecture=tokyo のときのみ)
+    genreMeta.hasPrefecture && prefectureParam === "tokyo"
+      ? supabase
+          .from("listings")
+          .select("ward")
+          .eq("genre_id", genreRow.id)
+          .eq("status", "published")
+          .eq("prefecture", "tokyo")
+      : Promise.resolve({ data: null }),
   ]);
 
   // 都道府県カウント集計
@@ -118,6 +146,13 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     (r.service_areas as string[]).forEach((area) => {
       areaCountMap[area] = (areaCountMap[area] ?? 0) + 1;
     });
+  });
+
+  // 東京の区カウント集計（ward が null の場合は 23区外 扱い）
+  const wardCountMap: Record<string, number> = {};
+  (wardCounts ?? []).forEach((row) => {
+    const w = row.ward ?? TOKYO_OUTSIDE_SLUG;
+    wardCountMap[w] = (wardCountMap[w] ?? 0) + 1;
   });
 
   // === Region resolution ===
@@ -195,6 +230,15 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     .split(",")
     .filter(Boolean);
 
+  // 5. 東京の区フィルタ（prefecture=tokyo のときのみ有効）
+  const selectedWardsRaw = (wardParam ?? "").split(",").filter(Boolean);
+  const wardFilterActive =
+    prefectureFilter === "tokyo" && selectedWardsRaw.length > 0;
+  const wardIncludesOutside = selectedWardsRaw.includes(TOKYO_OUTSIDE_SLUG);
+  const wardSpecificSlugs = selectedWardsRaw.filter(
+    (w) => w !== TOKYO_OUTSIDE_SLUG,
+  );
+
   // === クエリ構築 ===
 
   // 総件数
@@ -213,6 +257,17 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     countQuery = countQuery.overlaps("service_areas", selectedServiceAreas);
   if (selectedProviderAges.length > 0)
     countQuery = countQuery.overlaps("provider_ages", selectedProviderAges);
+  if (wardFilterActive) {
+    if (wardIncludesOutside && wardSpecificSlugs.length > 0) {
+      countQuery = countQuery.or(
+        `ward.in.(${wardSpecificSlugs.join(",")}),ward.is.null`,
+      );
+    } else if (wardIncludesOutside) {
+      countQuery = countQuery.is("ward", null);
+    } else {
+      countQuery = countQuery.in("ward", wardSpecificSlugs);
+    }
+  }
 
   // Sort mapping
   const sortConfig: Record<SortKey, { column: string; ascending: boolean }> = {
@@ -247,6 +302,17 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     listingsQuery = listingsQuery.overlaps("service_areas", selectedServiceAreas);
   if (selectedProviderAges.length > 0)
     listingsQuery = listingsQuery.overlaps("provider_ages", selectedProviderAges);
+  if (wardFilterActive) {
+    if (wardIncludesOutside && wardSpecificSlugs.length > 0) {
+      listingsQuery = listingsQuery.or(
+        `ward.in.(${wardSpecificSlugs.join(",")}),ward.is.null`,
+      );
+    } else if (wardIncludesOutside) {
+      listingsQuery = listingsQuery.is("ward", null);
+    } else {
+      listingsQuery = listingsQuery.in("ward", wardSpecificSlugs);
+    }
+  }
 
   // === 並列クエリ: 件数とリスティングを同時取得 ===
   const [{ count }, { data: listings }] = await Promise.all([
@@ -267,6 +333,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   if (currentSort !== "created_desc") extraParams.sort = currentSort;
   if (excludeNhParam === "1") extraParams.exclude_nh = "1";
   if (providerAgeParam) extraParams.provider_age = providerAgeParam;
+  if (wardParam) extraParams.ward = wardParam;
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
@@ -292,14 +359,19 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
 
       {/* 2. 所在地絞り込み (hasPrefecture ジャンルのみ) */}
       {genreMeta.hasPrefecture && (
-        <RegionPrefectureNav
-          slug={slug}
-          prefCountMap={prefCountMap}
-          selectedRegion={regionParam ?? null}
-          selectedPrefecture={prefectureFilter}
-          categoryParam={categoryParam ?? ""}
-          serviceAreaParam={serviceAreaParam ?? ""}
-        />
+        <>
+          <RegionPrefectureNav
+            slug={slug}
+            prefCountMap={prefCountMap}
+            selectedRegion={regionParam ?? null}
+            selectedPrefecture={prefectureFilter}
+            categoryParam={categoryParam ?? ""}
+            serviceAreaParam={serviceAreaParam ?? ""}
+          />
+          {prefectureFilter === "tokyo" && (
+            <TokyoWardFilter wardCountMap={wardCountMap} />
+          )}
+        </>
       )}
 
       {/* 3. 出張サービス (マッサージ・売り専のみ) */}

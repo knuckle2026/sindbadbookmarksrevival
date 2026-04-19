@@ -29,6 +29,14 @@ export const TOKYO_WARDS: TokyoWard[] = [
   { slug: "edogawa", name: "江戸川区" },
 ];
 
+export const TOKYO_OUTSIDE_SLUG = "outside";
+export const TOKYO_OUTSIDE_NAME = "23区外";
+
+export const TOKYO_WARD_FILTER_OPTIONS: TokyoWard[] = [
+  ...TOKYO_WARDS,
+  { slug: TOKYO_OUTSIDE_SLUG, name: TOKYO_OUTSIDE_NAME },
+];
+
 export const TOKYO_WARD_MAP: Record<string, string> = Object.fromEntries(
-  TOKYO_WARDS.map((w) => [w.slug, w.name])
+  TOKYO_WARD_FILTER_OPTIONS.map((w) => [w.slug, w.name])
 );

@@ -10,6 +10,12 @@ interface RegionPrefectureNavProps {
   serviceAreaParam: string;
 }
 
+const CITY_SHORTCUTS: { label: string; prefecture: string }[] = [
+  { label: "東京", prefecture: "tokyo" },
+  { label: "大阪", prefecture: "osaka" },
+  { label: "名古屋", prefecture: "aichi" },
+];
+
 function buildHref(
   slug: string,
   categoryParam: string,
@@ -48,9 +54,35 @@ export default function RegionPrefectureNav({
 
   return (
     <div className="mb-6">
-      <p className="mb-2 text-xs font-semibold text-zinc-500">
-        所在地絞り込み
-      </p>
+      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <p className="text-xs font-semibold text-zinc-500">
+          所在地絞り込み
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {CITY_SHORTCUTS.map((c) => {
+            const isActive = selectedPrefecture === c.prefecture;
+            return (
+              <Link
+                key={c.prefecture}
+                href={buildHref(
+                  slug,
+                  categoryParam,
+                  serviceAreaParam,
+                  undefined,
+                  c.prefecture,
+                )}
+                className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                  isActive
+                    ? "border-red-500 bg-red-50 font-medium text-red-700"
+                    : "border-zinc-300 bg-white text-zinc-700 hover:border-red-400 hover:bg-red-50"
+                }`}
+              >
+                {c.label}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         {regionCounts

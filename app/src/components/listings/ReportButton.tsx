@@ -151,7 +151,7 @@ export default function ReportButton({
                     }}
                     placeholder="報告する理由を入力してください"
                     rows={3}
-                    className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                    className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none"
                     maxLength={MAX_REASON_LENGTH}
                   />
                 </div>

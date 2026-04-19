@@ -24,10 +24,14 @@ export function Sidebar({ onCloseSidebar }: SidebarProps) {
 
   const handleNav = (href: string) => {
     if (pendingHref) return;
-    setPendingHref(href);
     if (typeof navigator !== "undefined" && navigator.vibrate) {
       navigator.vibrate(10);
     }
+    if (href === pathname) {
+      if (onCloseSidebar) onCloseSidebar();
+      return;
+    }
+    setPendingHref(href);
     router.push(href);
   };
 

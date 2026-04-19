@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PressableLink } from "@/components/PressableLink";
 
 interface PaginationProps {
   currentPage: number;
@@ -39,13 +39,14 @@ export default function Pagination({
     >
       {/* 前へ */}
       {currentPage > 1 ? (
-        <Link
+        <PressableLink
           href={buildHref(currentPage - 1)}
           className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100"
+          pendingClassName="rounded-lg border border-red-600 bg-red-600 px-3 py-2 text-sm text-white"
           aria-label="前のページ"
         >
           &lt;
-        </Link>
+        </PressableLink>
       ) : (
         <span className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-300">
           &lt;
@@ -62,7 +63,7 @@ export default function Pagination({
             ...
           </span>
         ) : (
-          <Link
+          <PressableLink
             key={p}
             href={buildHref(p as number)}
             className={`rounded-lg px-3 py-2 text-sm font-medium ${
@@ -70,22 +71,24 @@ export default function Pagination({
                 ? "bg-red-600 text-white"
                 : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100"
             }`}
+            pendingClassName="rounded-lg border border-red-600 bg-red-600 px-3 py-2 text-sm font-medium text-white"
             aria-current={p === currentPage ? "page" : undefined}
           >
             {p}
-          </Link>
+          </PressableLink>
         ),
       )}
 
       {/* 次へ */}
       {currentPage < totalPages ? (
-        <Link
+        <PressableLink
           href={buildHref(currentPage + 1)}
           className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100"
+          pendingClassName="rounded-lg border border-red-600 bg-red-600 px-3 py-2 text-sm text-white"
           aria-label="次のページ"
         >
           &gt;
-        </Link>
+        </PressableLink>
       ) : (
         <span className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-300">
           &gt;

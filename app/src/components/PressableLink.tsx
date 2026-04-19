@@ -10,6 +10,8 @@ interface PressableLinkProps {
   style?: React.CSSProperties;
   pendingStyle?: React.CSSProperties;
   children: React.ReactNode;
+  "aria-label"?: string;
+  "aria-current"?: React.AriaAttributes["aria-current"];
 }
 
 export function PressableLink({
@@ -19,6 +21,8 @@ export function PressableLink({
   style,
   pendingStyle,
   children,
+  "aria-label": ariaLabel,
+  "aria-current": ariaCurrent,
 }: PressableLinkProps) {
   const [pending, setPending] = useState(false);
   const router = useRouter();
@@ -39,6 +43,8 @@ export function PressableLink({
       onClick={handleClick}
       className={pending ? (pendingClassName ?? className) : className}
       style={pending ? (pendingStyle ?? style) : style}
+      aria-label={ariaLabel}
+      aria-current={ariaCurrent}
     >
       {children}
     </a>

@@ -52,9 +52,10 @@ export default function RegionPrefectureNav({
         所在地絞り込み
       </p>
 
-      {!regionObj ? (
-        <div className="flex flex-wrap gap-2">
-          {regionCounts.map((r) => (
+      <div className="flex flex-wrap gap-2">
+        {regionCounts
+          .filter((r) => r.slug !== selectedRegion)
+          .map((r) => (
             <Link
               key={r.slug}
               href={buildHref(slug, categoryParam, serviceAreaParam, r.slug)}
@@ -66,9 +67,10 @@ export default function RegionPrefectureNav({
               </span>
             </Link>
           ))}
-        </div>
-      ) : (
-        <>
+      </div>
+
+      {regionObj && (
+        <div className="mt-4">
           <p className="mb-2 text-sm font-medium text-zinc-700">
             {regionObj.name}
           </p>
@@ -105,7 +107,7 @@ export default function RegionPrefectureNav({
               );
             })}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

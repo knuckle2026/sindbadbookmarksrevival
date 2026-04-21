@@ -43,7 +43,7 @@ export default function DeleteAccountButton() {
       <p className="mb-3 text-red-800">
         本当にアカウントを削除しますか？
         <br />
-        登録したリスティングもすべて削除され、元に戻せません。
+        登録したリスティングは残りますが、アカウントは元に戻せません。
       </p>
       {error && (
         <p className="mb-2 rounded bg-white px-2 py-1 text-xs text-red-700">

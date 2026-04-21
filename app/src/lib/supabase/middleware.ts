@@ -25,7 +25,19 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  return supabaseResponse;
+  let isSuspended = false;
+  if (user) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("is_suspended")
+      .eq("id", user.id)
+      .single();
+    isSuspended = data?.is_suspended ?? false;
+  }
+
+  return { response: supabaseResponse, isSuspended };
 }

@@ -69,19 +69,6 @@ export default async function MyListingsPage({ searchParams }: PageProps) {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-zinc-900">
-          マイリスティング
-        </h1>
-        <Link
-          href="/listings/new"
-          className="inline-block rounded-lg px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-          style={{ backgroundColor: "#B21000" }}
-        >
-          新規登録
-        </Link>
-      </div>
-
       {listings && listings.length > 0 ? (
         <>
           <ul className="space-y-3">

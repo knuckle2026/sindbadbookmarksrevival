@@ -23,11 +23,17 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   // 登録・編集画面のヘッダー表示
   const isNewListing = pathname === "/listings/new";
   const isEditListing = /^\/listings\/[^/]+\/edit$/.test(pathname);
+  const isMyListings = pathname === "/my-listings";
+  const isOperator = pathname === "/operator";
   const headerTitle = isNewListing
     ? "情報を登録"
     : isEditListing
       ? "登録情報の編集"
-      : genreName;
+      : isMyListings
+        ? "マイリスティング"
+        : isOperator
+          ? "運営事務局"
+          : genreName;
   const hideRegisterButton = isNewListing || isEditListing;
   const showLogo = pathname === "/";
 

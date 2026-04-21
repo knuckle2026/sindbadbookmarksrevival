@@ -52,10 +52,9 @@ export default async function DashboardPage() {
     entry.categories.sort((a, b) => a.sort - b.sort);
   }
 
-  // Render order: by genre sortOrder, hide "other" when it has 0 categories
-  const visibleGenres = Array.from(byGenre.entries())
-    .filter(([slug, v]) => !(slug === "other" && v.categories.length === 0))
-    .sort(([, a], [, b]) => a.sort - b.sort);
+  const visibleGenres = Array.from(byGenre.entries()).sort(
+    ([, a], [, b]) => a.sort - b.sort,
+  );
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">

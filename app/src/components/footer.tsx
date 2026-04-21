@@ -8,7 +8,7 @@ export function Footer() {
     >
       <Link
         href="/operator"
-        className="text-sm font-medium text-white hover:underline active:opacity-80"
+        className="text-[11px] font-light text-white/90 hover:underline active:opacity-80"
       >
         運営事務局
       </Link>

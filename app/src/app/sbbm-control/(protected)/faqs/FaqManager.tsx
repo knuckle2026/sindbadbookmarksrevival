@@ -153,24 +153,24 @@ export default function FaqManager({ initialItems }: Props) {
         <div className="mb-4 space-y-3 rounded-lg border border-zinc-200 bg-white p-4">
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-500">
-              質問（最大200文字）
+              質問（最大100文字）
             </label>
             <input
               type="text"
               value={newQuestion}
               onChange={(e) => setNewQuestion(e.target.value)}
-              maxLength={200}
+              maxLength={100}
               className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
             />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-500">
-              回答（最大2000文字）
+              回答（最大200文字）
             </label>
             <textarea
               value={newAnswer}
               onChange={(e) => setNewAnswer(e.target.value)}
-              maxLength={2000}
+              maxLength={200}
               rows={4}
               className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
             />
@@ -201,13 +201,13 @@ export default function FaqManager({ initialItems }: Props) {
                   type="text"
                   value={editQuestion}
                   onChange={(e) => setEditQuestion(e.target.value)}
-                  maxLength={200}
+                  maxLength={100}
                   className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
                 />
                 <textarea
                   value={editAnswer}
                   onChange={(e) => setEditAnswer(e.target.value)}
-                  maxLength={2000}
+                  maxLength={200}
                   rows={4}
                   className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
                 />

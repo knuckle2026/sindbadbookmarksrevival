@@ -1,11 +1,19 @@
 "use client";
 
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import { safeRedirectPath } from "@/lib/utils/safe-redirect";
 
-export default function AgeGatePage() {
+function AgeGate() {
+  const searchParams = useSearchParams();
+  const rawNext = searchParams.get("next");
+  const nextPath = safeRedirectPath(rawNext, "/");
+  const target = nextPath.startsWith("/age-gate") ? "/" : nextPath;
+
   function handleEnter() {
     document.cookie = "age_verified=1; path=/; max-age=86400; SameSite=Lax";
-    window.location.href = "/";
+    window.location.href = target;
   }
 
   function handleExit() {
@@ -51,5 +59,13 @@ export default function AgeGatePage() {
         &copy; {new Date().getFullYear()} sindbadbookmarks
       </p>
     </div>
+  );
+}
+
+export default function AgeGatePage() {
+  return (
+    <Suspense fallback={null}>
+      <AgeGate />
+    </Suspense>
   );
 }

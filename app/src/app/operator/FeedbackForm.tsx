@@ -43,13 +43,6 @@ export default function FeedbackForm() {
     return (
       <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
         ご意見ご要望をお送りいただきありがとうございました。
-        <button
-          type="button"
-          onClick={() => setDone(false)}
-          className="ml-3 text-xs text-emerald-700 underline hover:text-emerald-900"
-        >
-          もう一件送信する
-        </button>
       </div>
     );
   }
@@ -59,14 +52,14 @@ export default function FeedbackForm() {
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        maxLength={1000}
+        maxLength={200}
         required
         rows={5}
-        placeholder="ご意見・ご要望をお聞かせください（1000文字以内）"
+        placeholder="ご意見・ご要望をお聞かせください（200文字以内）"
         className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-red-600 focus:outline-none"
       />
       <div className="flex items-center justify-between">
-        <span className="text-xs text-zinc-400">{body.length} / 1000</span>
+        <span className="text-xs text-zinc-400">{body.length} / 200</span>
         <button
           type="submit"
           disabled={loading || !body.trim()}

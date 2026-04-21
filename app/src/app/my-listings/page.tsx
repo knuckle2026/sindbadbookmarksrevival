@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import Pagination from "@/components/listings/Pagination";
+import DeleteAccountButton from "./DeleteAccountButton";
 
 export const dynamic = "force-dynamic";
 
@@ -23,9 +24,6 @@ export default async function MyListingsPage({ searchParams }: PageProps) {
   if (!user) {
     return (
       <div className="mx-auto max-w-xl px-4 py-16 text-center">
-        <h1 className="mb-4 text-2xl font-bold text-zinc-900">
-          マイリスティング
-        </h1>
         <p className="mb-8 text-sm text-zinc-600">
           マイリスティングを表示するにはログインが必要です。
         </p>
@@ -114,6 +112,10 @@ export default async function MyListingsPage({ searchParams }: PageProps) {
           まだ登録したリスティングがありません。
         </p>
       )}
+
+      <div className="mt-12 flex justify-start">
+        <DeleteAccountButton />
+      </div>
     </div>
   );
 }

@@ -160,12 +160,12 @@ export default function AnnouncementManager({ initialItems }: Props) {
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-zinc-500">
-              本文（最大2000文字）
+              本文（最大200文字）
             </label>
             <textarea
               value={newBody}
               onChange={(e) => setNewBody(e.target.value)}
-              maxLength={2000}
+              maxLength={200}
               rows={4}
               className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
             />
@@ -202,7 +202,7 @@ export default function AnnouncementManager({ initialItems }: Props) {
                 <textarea
                   value={editBody}
                   onChange={(e) => setEditBody(e.target.value)}
-                  maxLength={2000}
+                  maxLength={200}
                   rows={4}
                   className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
                 />

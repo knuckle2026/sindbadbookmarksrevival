@@ -1,9 +1,7 @@
-// @ts-nocheck
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 export default function DeleteAccountButton() {
   const router = useRouter();
@@ -14,14 +12,13 @@ export default function DeleteAccountButton() {
   const handleDelete = async () => {
     setLoading(true);
     setError("");
-    const supabase = createClient();
-    const { error: err } = await supabase.rpc("delete_my_account");
-    if (err) {
-      setError(err.message);
+    const res = await fetch("/api/account/delete", { method: "DELETE" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: "unknown" }));
+      setError(body.error ?? "削除に失敗しました");
       setLoading(false);
       return;
     }
-    await supabase.auth.signOut();
     router.push("/");
     router.refresh();
   };

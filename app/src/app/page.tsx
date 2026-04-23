@@ -1,26 +1,12 @@
 export const revalidate = 300; // 5分キャッシュ
 
-import { createClient } from "@/lib/supabase/server";
 import { PressableLink } from "@/components/PressableLink";
 import { GENRES } from "@/lib/constants/genres";
-
-type CategoryCountRow = {
-  genre_slug: string;
-  genre_name: string;
-  genre_sort: number;
-  category_slug: string | null;
-  category_name: string | null;
-  category_sort: number | null;
-  listing_count: number;
-};
+import { getCategoryCountsAll } from "@/lib/db/queries/categories";
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_category_counts_all");
+  const rows = await getCategoryCountsAll();
 
-  const rows: CategoryCountRow[] = error || !data ? [] : (data as CategoryCountRow[]);
-
-  // Group by genre
   const byGenre = new Map<
     string,
     {
@@ -47,7 +33,6 @@ export default async function DashboardPage() {
     }
   }
 
-  // Sort categories within each genre
   for (const entry of byGenre.values()) {
     entry.categories.sort((a, b) => a.sort - b.sort);
   }

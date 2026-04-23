@@ -1,8 +1,6 @@
-// @ts-nocheck
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 export default function FeedbackForm() {
   const [body, setBody] = useState("");
@@ -18,18 +16,15 @@ export default function FeedbackForm() {
     setLoading(true);
     setError("");
 
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const { error: err } = await supabase.from("feedback").insert({
-      body: trimmed,
-      user_id: user?.id ?? null,
+    const res = await fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body: trimmed }),
     });
 
-    if (err) {
-      setError(err.message);
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({ error: "unknown" }));
+      setError(payload.error ?? "送信に失敗しました");
       setLoading(false);
       return;
     }

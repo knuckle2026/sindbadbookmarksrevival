@@ -19,3 +19,12 @@ export async function upsertProfileOnSignIn(
     .bind(id, displayName)
     .run();
 }
+
+export async function getSuspendedFlag(id: string): Promise<boolean> {
+  const db = await getDB();
+  const row = await db
+    .prepare("SELECT is_suspended FROM profiles WHERE id = ?")
+    .bind(id)
+    .first<{ is_suspended: 0 | 1 }>();
+  return row?.is_suspended === 1;
+}

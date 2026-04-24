@@ -1,12 +1,16 @@
-// @ts-nocheck
-import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { GENRES } from "@/lib/constants/genres";
+import { createClient } from "@/lib/supabase/server";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import { TOKYO_WARDS } from "@/lib/constants/tokyo-wards";
 import { SERVICE_AREA_MAP } from "@/lib/constants/service-areas";
 import ReportButton from "@/components/listings/ReportButton";
+import { getDB } from "@/lib/db/client";
+import {
+  getCategoriesForListings,
+  getListingById,
+} from "@/lib/db/queries/listings";
+import type { GenreRow } from "@/lib/db/types";
 
 function prefectureName(slug: string | null): string | null {
   if (!slug) return null;
@@ -22,47 +26,48 @@ function wardName(slug: string | null): string | null {
   return TOKYO_WARDS.find((w) => w.slug === slug)?.name ?? slug;
 }
 
+function parseJsonArray(value: string | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 export default async function ListingDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
 
-  const { data: listing } = await supabase
-    .from("listings")
-    .select("*")
-    .eq("id", id)
-    .single();
-
+  const listing = await getListingById(id);
   if (!listing) notFound();
 
-  // ジャンル名を取得
-  const { data: genre } = listing.genre_id
-    ? await supabase.from("genres").select("slug, name").eq("id", listing.genre_id).single()
-    : { data: null };
+  const db = await getDB();
+  const genre = listing.genre_id
+    ? await db
+        .prepare("SELECT * FROM genres WHERE id = ?")
+        .bind(listing.genre_id)
+        .first<GenreRow>()
+    : null;
 
-  // カテゴリを取得
-  const { data: lcData } = await supabase
-    .from("listing_categories")
-    .select("categories(id, name)")
-    .eq("listing_id", id);
+  const catMap = await getCategoriesForListings([id]);
+  const categoryNames = (catMap[id] ?? []).map((c) => c.name);
 
-  const categoryNames = (lcData ?? [])
-    .map((lc: any) => lc.categories?.name)
-    .filter(Boolean) as string[];
-
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   const isOwner = user?.id === listing.user_id;
 
   const pref = prefectureName(listing.prefecture);
   const w = wardName(listing.ward);
-  const serviceAreaNames = (listing.service_areas ?? [])
-    .map((s: string) => SERVICE_AREA_MAP[s] ?? s);
+  const serviceAreaNames = parseJsonArray(listing.service_areas).map(
+    (s) => SERVICE_AREA_MAP[s] ?? s
+  );
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -138,7 +143,7 @@ export default async function ListingDetailPage({
               出張エリア
             </p>
             <div className="flex flex-wrap gap-2">
-              {serviceAreaNames.map((name: string) => (
+              {serviceAreaNames.map((name) => (
                 <span key={name} className="text-sm bg-blue-50 text-blue-700 px-3 py-1 rounded-full">
                   {name}
                 </span>

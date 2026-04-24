@@ -1,6 +1,21 @@
 import { getDB } from "../client";
 import type { CategoryRow } from "../types";
 
+export type CategoryWithGenreSlug = CategoryRow & { genre_slug: string };
+
+export async function listAllCategoriesWithGenreSlug(): Promise<CategoryWithGenreSlug[]> {
+  const db = await getDB();
+  const { results } = await db
+    .prepare(
+      `SELECT c.*, g.slug AS genre_slug
+       FROM categories c
+       JOIN genres g ON g.id = c.genre_id
+       ORDER BY c.sort_order, c.slug`
+    )
+    .all<CategoryWithGenreSlug>();
+  return results;
+}
+
 export async function listCategoriesByGenre(genreId: string): Promise<CategoryRow[]> {
   const db = await getDB();
   const { results } = await db

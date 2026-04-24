@@ -1,9 +1,7 @@
-// @ts-nocheck
 "use client";
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { GENRES } from "@/lib/constants/genres";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import { TOKYO_WARDS } from "@/lib/constants/tokyo-wards";
@@ -128,16 +126,6 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
     setError("");
     setLoading(true);
 
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      router.push("/login?next=/listings/new");
-      return;
-    }
-
     const showWard = prefecture === "tokyo";
     const showServiceAreas = !!genreMeta?.hasServiceAreas;
     const showProviderAges = !!genreMeta?.hasProviderAges;
@@ -154,64 +142,28 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
       provider_ages:
         showProviderAges && providerAges.length > 0 ? providerAges : null,
       address: address.trim() || null,
-      updated_by: user.id,
+      category_ids: selectedCategories,
     };
 
-    let listingId: string;
+    const isEdit = mode === "edit" && !!initialValues?.id;
+    const url = isEdit ? `/api/listings/${initialValues.id}` : "/api/listings";
+    const method = isEdit ? "PATCH" : "POST";
 
-    if (mode === "edit" && initialValues?.id) {
-      // 更新モード
-      const { error: updateError } = await supabase
-        .from("listings")
-        .update(payload)
-        .eq("id", initialValues.id);
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-      if (updateError) {
-        setError(updateError.message ?? "更新に失敗しました");
-        setLoading(false);
-        return;
-      }
-      listingId = initialValues.id;
-
-      // カテゴリを差し替え: 既存を削除して再挿入
-      await supabase
-        .from("listing_categories")
-        .delete()
-        .eq("listing_id", listingId);
-    } else {
-      // 新規登録モード
-      const { data: listing, error: insertError } = await supabase
-        .from("listings")
-        .insert({
-          ...payload,
-          user_id: user.id,
-          created_by: user.id,
-        })
-        .select("id")
-        .single();
-
-      if (insertError || !listing) {
-        setError(insertError?.message ?? "登録に失敗しました");
-        setLoading(false);
-        return;
-      }
-      listingId = listing.id;
+    if (res.status === 401) {
+      router.push("/login?next=/listings/new");
+      return;
     }
-
-    if (selectedCategories.length > 0) {
-      const { error: catError } = await supabase
-        .from("listing_categories")
-        .insert(
-          selectedCategories.map((categoryId) => ({
-            listing_id: listingId,
-            category_id: categoryId,
-          })),
-        );
-      if (catError) {
-        setError(`カテゴリ保存エラー: ${catError.message}`);
-        setLoading(false);
-        return;
-      }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: "unknown" }));
+      setError(body.error ?? (isEdit ? "更新に失敗しました" : "登録に失敗しました"));
+      setLoading(false);
+      return;
     }
 
     router.push(redirectTo ?? "/my-listings");
@@ -222,14 +174,12 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
     setDeleting(true);
     setError("");
 
-    const supabase = createClient();
-    const { error: deleteError } = await supabase
-      .from("listings")
-      .delete()
-      .eq("id", initialValues.id);
-
-    if (deleteError) {
-      setError(deleteError.message ?? "削除に失敗しました");
+    const res = await fetch(`/api/listings/${initialValues.id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: "unknown" }));
+      setError(body.error ?? "削除に失敗しました");
       setDeleting(false);
       setShowDeleteModal(false);
       return;

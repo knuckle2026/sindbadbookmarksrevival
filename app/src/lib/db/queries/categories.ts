@@ -59,3 +59,73 @@ export async function getCategoryCountsAll(): Promise<CategoryCountRow[]> {
     .all<CategoryCountRow>();
   return results;
 }
+
+export type CategoryWithGenre = CategoryRow & {
+  genre_slug: string;
+  genre_name: string;
+};
+
+export async function listAllCategoriesWithGenre(): Promise<CategoryWithGenre[]> {
+  const db = await getDB();
+  const { results } = await db
+    .prepare(
+      `SELECT c.*, g.slug AS genre_slug, g.name AS genre_name
+       FROM categories c
+       JOIN genres g ON g.id = c.genre_id
+       ORDER BY g.sort_order, c.sort_order`
+    )
+    .all<CategoryWithGenre>();
+  return results;
+}
+
+export async function createCategory(input: {
+  genre_id: string;
+  name: string;
+  slug: string;
+  sort_order: number;
+}): Promise<CategoryRow> {
+  const db = await getDB();
+  const id = crypto.randomUUID();
+  await db
+    .prepare(
+      `INSERT INTO categories (id, genre_id, name, slug, sort_order)
+       VALUES (?, ?, ?, ?, ?)`
+    )
+    .bind(id, input.genre_id, input.name, input.slug, input.sort_order)
+    .run();
+  const row = await db
+    .prepare("SELECT * FROM categories WHERE id = ?")
+    .bind(id)
+    .first<CategoryRow>();
+  if (!row) throw new Error("Failed to read inserted category");
+  return row;
+}
+
+export async function updateCategory(
+  id: string,
+  input: { name: string; slug: string }
+): Promise<void> {
+  const db = await getDB();
+  await db
+    .prepare("UPDATE categories SET name = ?, slug = ? WHERE id = ?")
+    .bind(input.name, input.slug, id)
+    .run();
+}
+
+export async function deleteCategory(id: string): Promise<void> {
+  const db = await getDB();
+  await db.prepare("DELETE FROM categories WHERE id = ?").bind(id).run();
+}
+
+export async function reorderCategories(
+  items: { id: string; sort_order: number }[]
+): Promise<void> {
+  if (items.length === 0) return;
+  const db = await getDB();
+  const stmts = items.map((it) =>
+    db
+      .prepare("UPDATE categories SET sort_order = ? WHERE id = ?")
+      .bind(it.sort_order, it.id)
+  );
+  await db.batch(stmts);
+}

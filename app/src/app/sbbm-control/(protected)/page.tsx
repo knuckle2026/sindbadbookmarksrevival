@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { getAdminClient } from "@/lib/supabase/admin";
 
-export default async function AdminDashboard() {
-  await getAdminClient();
+export default function AdminDashboard() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-10">
       <h1 className="mb-8 text-2xl font-bold text-zinc-900">SBBM Control Panel</h1>

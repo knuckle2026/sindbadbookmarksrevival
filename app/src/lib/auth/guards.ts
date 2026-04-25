@@ -39,6 +39,15 @@ export async function requireAdmin(): Promise<CurrentUser> {
   return current;
 }
 
+export async function checkAdminApi(): Promise<
+  { ok: true; current: CurrentUser } | { ok: false; status: 401 | 403 }
+> {
+  const current = await getCurrentUser();
+  if (!current) return { ok: false, status: 401 };
+  if (current.profile.role !== "admin") return { ok: false, status: 403 };
+  return { ok: true, current };
+}
+
 export async function requireOwnerOrAdmin(
   listingId: string
 ): Promise<CurrentUser> {

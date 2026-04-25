@@ -1,9 +1,7 @@
-// @ts-nocheck
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 interface Faq {
   id: string;
@@ -17,9 +15,16 @@ interface Props {
   initialItems: Faq[];
 }
 
+async function jsonOrThrow(res: Response): Promise<unknown> {
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 export default function FaqManager({ initialItems }: Props) {
   const router = useRouter();
-  const supabase = createClient();
 
   const [items, setItems] = useState<Faq[]>(initialItems);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -42,28 +47,29 @@ export default function FaqManager({ initialItems }: Props) {
     const nextSortOrder =
       items.length > 0 ? Math.max(...items.map((i) => i.sort_order)) + 1 : 1;
 
-    const { data, error: err } = await supabase
-      .from("faqs")
-      .insert({
-        question: newQuestion.trim(),
-        answer: newAnswer.trim(),
-        sort_order: nextSortOrder,
-      })
-      .select("id, question, answer, sort_order, created_at")
-      .single();
-
-    if (err) {
-      setError(err.message);
+    try {
+      const res = await fetch("/api/admin/faqs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: newQuestion.trim(),
+          answer: newAnswer.trim(),
+          sort_order: nextSortOrder,
+        }),
+      });
+      const created = (await jsonOrThrow(res)) as Faq;
+      setItems((prev) =>
+        [...prev, created].sort((a, b) => a.sort_order - b.sort_order)
+      );
+      setNewQuestion("");
+      setNewAnswer("");
+      setShowAdd(false);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to add");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setItems((prev) => [...prev, data as Faq].sort((a, b) => a.sort_order - b.sort_order));
-    setNewQuestion("");
-    setNewAnswer("");
-    setShowAdd(false);
-    setLoading(false);
-    router.refresh();
   };
 
   const startEdit = (item: Faq) => {
@@ -78,38 +84,38 @@ export default function FaqManager({ initialItems }: Props) {
     setLoading(true);
     setError("");
 
-    const { error: err } = await supabase
-      .from("faqs")
-      .update({
-        question: editQuestion.trim(),
-        answer: editAnswer.trim(),
-        sort_order: editSortOrder,
-      })
-      .eq("id", editingId);
-
-    if (err) {
-      setError(err.message);
+    try {
+      const res = await fetch(`/api/admin/faqs/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: editQuestion.trim(),
+          answer: editAnswer.trim(),
+          sort_order: editSortOrder,
+        }),
+      });
+      await jsonOrThrow(res);
+      setItems((prev) =>
+        prev
+          .map((i) =>
+            i.id === editingId
+              ? {
+                  ...i,
+                  question: editQuestion.trim(),
+                  answer: editAnswer.trim(),
+                  sort_order: editSortOrder,
+                }
+              : i
+          )
+          .sort((a, b) => a.sort_order - b.sort_order)
+      );
+      setEditingId(null);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setItems((prev) =>
-      prev
-        .map((i) =>
-          i.id === editingId
-            ? {
-                ...i,
-                question: editQuestion.trim(),
-                answer: editAnswer.trim(),
-                sort_order: editSortOrder,
-              }
-            : i
-        )
-        .sort((a, b) => a.sort_order - b.sort_order)
-    );
-    setEditingId(null);
-    setLoading(false);
-    router.refresh();
   };
 
   const handleDelete = async (id: string, question: string) => {
@@ -117,17 +123,18 @@ export default function FaqManager({ initialItems }: Props) {
     setLoading(true);
     setError("");
 
-    const { error: err } = await supabase.from("faqs").delete().eq("id", id);
-
-    if (err) {
-      setError(err.message);
+    try {
+      const res = await fetch(`/api/admin/faqs/${id}`, {
+        method: "DELETE",
+      });
+      await jsonOrThrow(res);
+      setItems((prev) => prev.filter((i) => i.id !== id));
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    setLoading(false);
-    router.refresh();
   };
 
   return (
@@ -216,7 +223,9 @@ export default function FaqManager({ initialItems }: Props) {
                   <input
                     type="number"
                     value={editSortOrder}
-                    onChange={(e) => setEditSortOrder(parseInt(e.target.value, 10) || 0)}
+                    onChange={(e) =>
+                      setEditSortOrder(parseInt(e.target.value, 10) || 0)
+                    }
                     className="w-20 rounded-md border border-zinc-300 px-2 py-1 text-sm"
                   />
                   <button

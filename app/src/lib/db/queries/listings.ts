@@ -384,3 +384,80 @@ export async function deleteListing(id: string): Promise<void> {
   const db = await getDB();
   await db.prepare("DELETE FROM listings WHERE id = ?").bind(id).run();
 }
+
+export type AdminSortColumn = "title" | "url" | "description" | "created_at";
+
+export interface AdminSearchOpts {
+  q?: string | null;
+  genreId?: string | null;
+  sortColumn: AdminSortColumn;
+  sortOrder: "asc" | "desc";
+  limit: number;
+  offset: number;
+}
+
+export type AdminListingRow = Pick<
+  ListingRow,
+  "id" | "title" | "genre_id" | "website_url" | "description" | "created_at"
+>;
+
+const ADMIN_SORT_SQL: Record<AdminSortColumn, string> = {
+  title: "title",
+  url: "website_url",
+  description: "description",
+  created_at: "created_at",
+};
+
+function buildAdminFilter(opts: {
+  q?: string | null;
+  genreId?: string | null;
+}): { sql: string; binds: unknown[] } {
+  const parts: string[] = [];
+  const binds: unknown[] = [];
+  if (opts.genreId) {
+    parts.push("genre_id = ?");
+    binds.push(opts.genreId);
+  }
+  if (opts.q) {
+    parts.push("(title LIKE ? OR website_url LIKE ?)");
+    const pat = `%${opts.q}%`;
+    binds.push(pat, pat);
+  }
+  return {
+    sql: parts.length > 0 ? parts.join(" AND ") : "1 = 1",
+    binds,
+  };
+}
+
+export async function adminCountListings(opts: {
+  q?: string | null;
+  genreId?: string | null;
+}): Promise<number> {
+  const db = await getDB();
+  const { sql: where, binds } = buildAdminFilter(opts);
+  const row = await db
+    .prepare(`SELECT COUNT(*) AS c FROM listings WHERE ${where}`)
+    .bind(...binds)
+    .first<{ c: number }>();
+  return row?.c ?? 0;
+}
+
+export async function adminSearchListings(
+  opts: AdminSearchOpts
+): Promise<AdminListingRow[]> {
+  const db = await getDB();
+  const { sql: where, binds } = buildAdminFilter(opts);
+  const sortSql = ADMIN_SORT_SQL[opts.sortColumn];
+  const dir = opts.sortOrder === "asc" ? "ASC" : "DESC";
+  const { results } = await db
+    .prepare(
+      `SELECT id, title, genre_id, website_url, description, created_at
+       FROM listings
+       WHERE ${where}
+       ORDER BY ${sortSql} ${dir}
+       LIMIT ? OFFSET ?`
+    )
+    .bind(...binds, opts.limit, opts.offset)
+    .all<AdminListingRow>();
+  return results;
+}

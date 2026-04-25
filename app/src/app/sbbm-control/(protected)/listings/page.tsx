@@ -1,6 +1,12 @@
-// @ts-nocheck
 import Link from "next/link";
-import { getAdminClient } from "@/lib/supabase/admin";
+import {
+  adminCountListings,
+  adminSearchListings,
+  getCategoriesForListings,
+  type AdminSortColumn,
+} from "@/lib/db/queries/listings";
+import { listGenres } from "@/lib/db/queries/genres";
+import { getReportsByListingIds } from "@/lib/db/queries/reports";
 import ListingActions from "./ListingActions";
 import ReportCount from "./ReportCount";
 
@@ -8,10 +14,9 @@ export const dynamic = "force-dynamic";
 
 const PER_PAGE = 30;
 
-type SortColumn = "genre" | "title" | "url" | "description" | "created_at";
 type SortOrder = "asc" | "desc";
 
-const SORT_COLUMNS: { key: SortColumn; label: string }[] = [
+const SORT_COLUMNS: { key: AdminSortColumn | "genre"; label: string }[] = [
   { key: "genre", label: "Genre" },
   { key: "title", label: "Title" },
   { key: "url", label: "URL" },
@@ -38,84 +43,61 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
     order: orderParam,
   } = await searchParams;
 
-  const sortColumn: SortColumn = SORT_COLUMNS.some((c) => c.key === sortParam)
-    ? (sortParam as SortColumn)
+  const sortColumn: AdminSortColumn | "genre" = SORT_COLUMNS.some(
+    (c) => c.key === sortParam
+  )
+    ? (sortParam as AdminSortColumn | "genre")
     : "created_at";
   const sortOrder: SortOrder = orderParam === "asc" ? "asc" : "desc";
 
   const currentPage = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
 
-  const { supabase } = await getAdminClient();
+  const genres = await listGenres();
+  const genreMap = Object.fromEntries(genres.map((g) => [g.id, g]));
+  const filterGenre = genreFilter
+    ? genres.find((g) => g.slug === genreFilter)
+    : null;
+  const filterGenreId = filterGenre?.id ?? null;
 
-  // Get genres for filter dropdown
-  const { data: genres } = await supabase
-    .from("genres")
-    .select("id, slug, name")
-    .order("sort_order", { ascending: true });
-
-  const genreMap = Object.fromEntries(
-    (genres ?? []).map((g) => [g.id, g])
-  );
-
-  // Build query
-  let countQuery = supabase
-    .from("listings")
-    .select("id", { count: "exact", head: true });
-
-  let dataQuery = supabase
-    .from("listings")
-    .select("id, title, genre_id, website_url, description, created_at, listing_categories(categories(name)), reports(id, reason, status, created_at)");
-
-  // Apply filters
-  if (genreFilter) {
-    const genre = (genres ?? []).find((g) => g.slug === genreFilter);
-    if (genre) {
-      countQuery = countQuery.eq("genre_id", genre.id);
-      dataQuery = dataQuery.eq("genre_id", genre.id);
-    }
-  }
-
-  if (searchQuery) {
-    const orFilter = `title.ilike.%${searchQuery}%,website_url.ilike.%${searchQuery}%`;
-    countQuery = countQuery.or(orFilter);
-    dataQuery = dataQuery.or(orFilter);
-  }
-
-  const { count } = await countQuery;
-  const totalCount = count ?? 0;
+  const totalCount = await adminCountListings({
+    q: searchQuery ?? null,
+    genreId: filterGenreId,
+  });
   const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
-  const from = (safePage - 1) * PER_PAGE;
-  const to = from + PER_PAGE - 1;
+  const offset = (safePage - 1) * PER_PAGE;
 
-  // Apply sort — genre is sorted client-side after fetch
-  const dbSortMap: Record<string, string> = {
-    title: "title",
-    url: "website_url",
-    description: "description",
-    created_at: "created_at",
-  };
-  if (dbSortMap[sortColumn]) {
-    dataQuery = dataQuery.order(dbSortMap[sortColumn], { ascending: sortOrder === "asc" });
-  } else {
-    dataQuery = dataQuery.order("created_at", { ascending: false });
-  }
+  // For DB-side sorts, fetch with the requested order. For "genre", fetch by
+  // created_at then sort client-side (mirrors original behavior).
+  const dbSortColumn: AdminSortColumn =
+    sortColumn === "genre" ? "created_at" : sortColumn;
+  const dbSortOrder: SortOrder = sortColumn === "genre" ? "desc" : sortOrder;
 
-  const { data: rawListings } = await dataQuery.range(from, to);
-  let listings = rawListings;
+  let listings = await adminSearchListings({
+    q: searchQuery ?? null,
+    genreId: filterGenreId,
+    sortColumn: dbSortColumn,
+    sortOrder: dbSortOrder,
+    limit: PER_PAGE,
+    offset,
+  });
 
-  // Client-side sort for genre column
-  if (sortColumn === "genre" && listings) {
+  if (sortColumn === "genre") {
     listings = [...listings].sort((a, b) => {
-      const aName = genreMap[a.genre_id]?.name ?? "";
-      const bName = genreMap[b.genre_id]?.name ?? "";
+      const aName = genreMap[a.genre_id ?? ""]?.name ?? "";
+      const bName = genreMap[b.genre_id ?? ""]?.name ?? "";
       return sortOrder === "asc"
         ? aName.localeCompare(bName, "ja")
         : bName.localeCompare(aName, "ja");
     });
   }
 
-  // Build URL with params
+  const listingIds = listings.map((l) => l.id);
+  const [categoriesByListing, reportsByListing] = await Promise.all([
+    getCategoriesForListings(listingIds),
+    getReportsByListingIds(listingIds),
+  ]);
+
   const buildBaseParams = () => {
     const params = new URLSearchParams();
     if (genreFilter) params.set("genre", genreFilter);
@@ -134,7 +116,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
     return `/sbbm-control/listings${qs ? `?${qs}` : ""}`;
   };
 
-  const buildSortUrl = (col: SortColumn) => {
+  const buildSortUrl = (col: AdminSortColumn | "genre") => {
     const params = new URLSearchParams();
     if (genreFilter) params.set("genre", genreFilter);
     if (searchQuery) params.set("q", searchQuery);
@@ -145,7 +127,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
     return `/sbbm-control/listings${qs ? `?${qs}` : ""}`;
   };
 
-  const sortIndicator = (col: SortColumn) => {
+  const sortIndicator = (col: AdminSortColumn | "genre") => {
     if (col !== sortColumn) return " ↕";
     return sortOrder === "asc" ? " ↑" : " ↓";
   };
@@ -154,9 +136,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
     <div className="mx-auto max-w-6xl px-6 py-8">
       <h1 className="mb-6 text-2xl font-bold text-zinc-900">Listing Management</h1>
 
-      {/* Filters */}
       <form method="GET" action="/sbbm-control/listings" className="mb-6 flex flex-wrap items-end gap-3">
-        {/* Search */}
         <div>
           <label className="mb-1 block text-xs font-medium text-zinc-500">Search</label>
           <input
@@ -168,7 +148,6 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
           />
         </div>
 
-        {/* Genre filter */}
         <div>
           <label className="mb-1 block text-xs font-medium text-zinc-500">Genre</label>
           <select
@@ -177,7 +156,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
             className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
           >
             <option value="">All genres</option>
-            {(genres ?? []).map((g) => (
+            {genres.map((g) => (
               <option key={g.slug} value={g.slug}>
                 {g.name}
               </option>
@@ -193,10 +172,8 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
         </button>
       </form>
 
-      {/* Count */}
       <p className="mb-3 text-sm text-zinc-500">{totalCount} listings</p>
 
-      {/* Table */}
       <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
         <table className="w-full text-sm">
           <thead>
@@ -220,24 +197,20 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
             </tr>
           </thead>
           <tbody>
-            {(listings ?? []).length === 0 ? (
+            {listings.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-4 py-6 text-center text-zinc-400">
                   No listings found
                 </td>
               </tr>
             ) : (
-              (listings ?? []).map((listing) => {
-                const genre = genreMap[listing.genre_id];
-                const catNames = (listing.listing_categories ?? [])
-                  .map((lc: any) => {
-                    const cat = Array.isArray(lc.categories) ? lc.categories[0] : lc.categories;
-                    return cat?.name;
-                  })
-                  .filter(Boolean)
-                  .join(", ");
+              listings.map((listing) => {
+                const genre = listing.genre_id ? genreMap[listing.genre_id] : null;
+                const cats = categoriesByListing[listing.id] ?? [];
+                const catNames = cats.map((c) => c.name).join(", ");
                 const desc = listing.description ?? "";
                 const shortDesc = desc.length > 20 ? desc.slice(0, 20) + "…" : desc;
+                const reports = reportsByListing[listing.id] ?? [];
 
                 return (
                   <tr
@@ -282,7 +255,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
                       <ListingActions listingId={listing.id} title={listing.title} />
                     </td>
                     <td className="px-4 py-2 text-center">
-                      <ReportCount reports={listing.reports ?? []} />
+                      <ReportCount reports={reports} />
                     </td>
                   </tr>
                 );
@@ -292,7 +265,6 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
         </table>
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-4 flex items-center justify-center gap-2">
           {safePage > 1 && (

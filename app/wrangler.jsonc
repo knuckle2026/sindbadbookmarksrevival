@@ -16,12 +16,6 @@
 			"binding": "DB",
 			"database_name": "sindbadbookmarks",
 			"database_id": "a37191b1-4993-4938-b2ee-4578b2ec9f86"
-		},
-		{
-			"binding": "sindbadbookmarks",
-			"database_name": "sindbadbookmarks",
-			"database_id": "a37191b1-4993-4938-b2ee-4578b2ec9f86",
-			"remote": true
 		}
 	],
 	"vars": {

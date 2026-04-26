@@ -1,6 +1,21 @@
 import { getDB } from "../client";
 import type { ReportRow } from "../types";
 
+export async function insertReport(
+  listingId: string,
+  reason: string,
+  reporterUserId: string | null
+): Promise<void> {
+  const db = await getDB();
+  await db
+    .prepare(
+      `INSERT INTO reports (id, listing_id, reporter_user_id, reason)
+       VALUES (?, ?, ?, ?)`
+    )
+    .bind(crypto.randomUUID(), listingId, reporterUserId, reason)
+    .run();
+}
+
 export type ListingReportRow = Pick<
   ReportRow,
   "id" | "listing_id" | "reason" | "status" | "created_at"

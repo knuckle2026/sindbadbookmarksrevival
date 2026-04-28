@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/guards";
+import { getListingById } from "@/lib/db/queries/listings";
 import { insertReport } from "@/lib/db/queries/reports";
 
 export async function POST(req: Request) {
@@ -18,18 +19,12 @@ export async function POST(req: Request) {
     );
   }
 
-  const current = await getCurrentUser();
-  try {
-    await insertReport(body.listing_id, reason, current?.authUser.id ?? null);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "";
-    if (msg.includes("FOREIGN KEY")) {
-      return NextResponse.json(
-        { error: "Listing not found" },
-        { status: 404 }
-      );
-    }
-    throw e;
+  const listing = await getListingById(body.listing_id);
+  if (!listing) {
+    return NextResponse.json({ error: "Listing not found" }, { status: 404 });
   }
+
+  const current = await getCurrentUser();
+  await insertReport(body.listing_id, reason, current?.authUser.id ?? null);
   return NextResponse.json({ ok: true });
 }

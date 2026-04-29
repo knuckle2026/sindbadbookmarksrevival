@@ -1,7 +1,7 @@
-// @ts-nocheck
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import Pagination from "@/components/listings/Pagination";
+import { listMyListings } from "@/lib/db/queries/listings";
 import DeleteAccountButton from "./DeleteAccountButton";
 
 export const dynamic = "force-dynamic";
@@ -46,28 +46,21 @@ export default async function MyListingsPage({ searchParams }: PageProps) {
     );
   }
 
-  // 総件数を取得
-  const { count } = await supabase
-    .from("listings")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id);
+  const totalPages = 1;
+  const safePageInitial = Math.min(currentPage, totalPages);
+  const offset = (currentPage - 1) * PER_PAGE;
+  const { rows: listings, total } = await listMyListings(
+    user.id,
+    offset,
+    PER_PAGE
+  );
 
-  const totalCount = count ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
-  const safePage = Math.min(currentPage, totalPages);
-  const from = (safePage - 1) * PER_PAGE;
-  const to = from + PER_PAGE - 1;
-
-  const { data: listings } = await supabase
-    .from("listings")
-    .select("id, title, description, website_url, created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .range(from, to);
+  const realTotalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+  const safePage = Math.min(safePageInitial, realTotalPages);
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
-      {listings && listings.length > 0 ? (
+      {listings.length > 0 ? (
         <>
           <ul className="space-y-3">
             {listings.map((l) => (
@@ -84,9 +77,7 @@ export default async function MyListingsPage({ searchParams }: PageProps) {
                   >
                     {l.title}
                   </a>
-                  <p className="mt-1 text-sm text-zinc-600">
-                    {l.description}
-                  </p>
+                  <p className="mt-1 text-sm text-zinc-600">{l.description}</p>
                   <p className="mt-1 text-xs text-zinc-400">
                     登録日: {new Date(l.created_at).toLocaleDateString("ja-JP")}
                   </p>
@@ -103,7 +94,7 @@ export default async function MyListingsPage({ searchParams }: PageProps) {
 
           <Pagination
             currentPage={safePage}
-            totalPages={totalPages}
+            totalPages={realTotalPages}
             basePath="/my-listings"
           />
         </>

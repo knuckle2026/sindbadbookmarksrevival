@@ -1,18 +1,24 @@
-// @ts-nocheck
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { listGenres } from "@/lib/db/queries/genres";
+import { listAllCategoriesWithGenreSlug } from "@/lib/db/queries/categories";
+import {
+  getListingById,
+  getListingCategoryIds,
+} from "@/lib/db/queries/listings";
 import ListingForm from "../../new/ListingForm";
 
 export const dynamic = "force-dynamic";
 
-type CategoryRow = {
-  id: string;
-  slug: string;
-  name: string;
-  sort_order: number;
-  genre_id: string;
-  genres: { slug: string } | { slug: string }[] | null;
-};
+function parseJsonArray(value: string | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 export default async function EditListingPage({
   params,
@@ -25,62 +31,30 @@ export default async function EditListingPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) redirect(`/login?next=/listings/${id}/edit`);
 
-  if (!user) {
-    redirect(`/login?next=/listings/${id}/edit`);
-  }
-
-  // 既存のリスティングを取得
-  const { data: listing } = await supabase
-    .from("listings")
-    .select("*")
-    .eq("id", id)
-    .single();
-
+  const listing = await getListingById(id);
   if (!listing) notFound();
+  if (listing.user_id !== user.id) redirect(`/listings/${id}`);
 
-  // オーナーのみ編集可
-  if (listing.user_id !== user.id) {
-    redirect(`/listings/${id}`);
-  }
+  const [selectedCategoryIds, genres, rawCategories] = await Promise.all([
+    getListingCategoryIds(id),
+    listGenres(),
+    listAllCategoriesWithGenreSlug(),
+  ]);
 
-  // 既存のカテゴリ選択を取得
-  const { data: existingCats } = await supabase
-    .from("listing_categories")
-    .select("category_id")
-    .eq("listing_id", id);
-
-  const selectedCategoryIds = (existingCats ?? []).map((c: any) => c.category_id);
-
-  // カテゴリ一覧を取得
-  const { data: rawCategories } = await supabase
-    .from("categories")
-    .select("id, slug, name, sort_order, genre_id, genres(slug)")
-    .order("sort_order", { ascending: true });
-
-  const categories = ((rawCategories ?? []) as unknown as CategoryRow[]).map(
-    (c) => {
-      const g = Array.isArray(c.genres) ? c.genres[0] : c.genres;
-      return {
-        id: c.id,
-        slug: c.slug,
-        name: c.name,
-        sortOrder: c.sort_order,
-        genreSlug: g?.slug ?? "",
-      };
-    },
-  );
-
-  // ジャンル一覧を取得
-  const { data: genres } = await supabase
-    .from("genres")
-    .select("id, slug, name, sort_order")
-    .order("sort_order", { ascending: true });
+  const categories = rawCategories.map((c) => ({
+    id: c.id,
+    slug: c.slug,
+    name: c.name,
+    sortOrder: c.sort_order,
+    genreSlug: c.genre_slug,
+  }));
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
       <ListingForm
-        genres={(genres ?? []).map((g) => ({ id: g.id, slug: g.slug, name: g.name }))}
+        genres={genres.map((g) => ({ id: g.id, slug: g.slug, name: g.name }))}
         categories={categories}
         mode="edit"
         initialValues={{
@@ -92,8 +66,8 @@ export default async function EditListingPage({
           selectedCategories: selectedCategoryIds,
           prefecture: listing.prefecture ?? "",
           ward: listing.ward ?? "",
-          serviceAreas: listing.service_areas ?? [],
-          providerAges: listing.provider_ages ?? [],
+          serviceAreas: parseJsonArray(listing.service_areas),
+          providerAges: parseJsonArray(listing.provider_ages),
           address: listing.address ?? "",
         }}
       />

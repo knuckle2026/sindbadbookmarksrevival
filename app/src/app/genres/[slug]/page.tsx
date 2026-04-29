@@ -1,8 +1,5 @@
-// @ts-nocheck
 import { Suspense } from "react";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { GENRES } from "@/lib/constants/genres";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import { TOKYO_OUTSIDE_SLUG } from "@/lib/constants/tokyo-wards";
@@ -10,13 +7,25 @@ import Pagination from "@/components/listings/Pagination";
 import SortSelect, { type SortKey } from "@/components/listings/SortSelect";
 import ClickableTitle from "@/components/listings/ClickableTitle";
 import ReportButton from "@/components/listings/ReportButton";
+import { getGenreBySlug } from "@/lib/db/queries/genres";
+import { listCategoriesByGenre } from "@/lib/db/queries/categories";
+import {
+  getAllPublishedListingIds,
+  getCategoriesForListings,
+  getListingIdsByCategories,
+  getPrefectureCounts,
+  getServiceAreasJson,
+  getWardCountsTokyo,
+  searchGenreListings,
+  type SortKey as DbSortKey,
+} from "@/lib/db/queries/listings";
 import GenreFilters from "./GenreFilters";
 import RegionPrefectureNav from "./RegionPrefectureNav";
 import ServiceAreaFilter from "./ServiceAreaFilter";
 import ProviderAgeFilter from "./ProviderAgeFilter";
 import TokyoWardFilter from "./TokyoWardFilter";
 
-export const revalidate = 60; // 1分キャッシュ
+export const revalidate = 60;
 
 const PER_PAGE = 20;
 
@@ -50,10 +59,14 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   } = await searchParams;
   const currentPage = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
 
-  // Resolve sort key
   const validSorts: SortKey[] = [
-    "created_desc", "created_asc", "updated_desc", "updated_asc",
-    "title_asc", "title_desc", "popular",
+    "created_desc",
+    "created_asc",
+    "updated_desc",
+    "updated_asc",
+    "title_asc",
+    "title_desc",
+    "popular",
   ];
   const currentSort: SortKey = validSorts.includes(sortParam as SortKey)
     ? (sortParam as SortKey)
@@ -62,269 +75,140 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   const genreMeta = GENRES.find((g) => g.slug === slug);
   if (!genreMeta) notFound();
 
-  // hasPrefecture ジャンルで region/prefecture が未指定の場合は tokyo にリダイレクト
   if (genreMeta.hasPrefecture && !regionParam && !prefectureParam) {
-    const params = new URLSearchParams();
-    params.set("prefecture", "tokyo");
-    if (categoryParam) params.set("category", categoryParam);
-    if (serviceAreaParam) params.set("service_area", serviceAreaParam);
-    if (sortParam) params.set("sort", sortParam);
-    if (excludeNhParam) params.set("exclude_nh", excludeNhParam);
-    if (providerAgeParam) params.set("provider_age", providerAgeParam);
-    if (wardParam) params.set("ward", wardParam);
-    if (pageParam) params.set("page", pageParam);
-    redirect(`/genres/${slug}?${params.toString()}`);
+    const p = new URLSearchParams();
+    p.set("prefecture", "tokyo");
+    if (categoryParam) p.set("category", categoryParam);
+    if (serviceAreaParam) p.set("service_area", serviceAreaParam);
+    if (sortParam) p.set("sort", sortParam);
+    if (excludeNhParam) p.set("exclude_nh", excludeNhParam);
+    if (providerAgeParam) p.set("provider_age", providerAgeParam);
+    if (wardParam) p.set("ward", wardParam);
+    if (pageParam) p.set("page", pageParam);
+    redirect(`/genres/${slug}?${p.toString()}`);
   }
 
-  const supabase = await createClient();
-
-  // Resolve genre_id
-  const { data: genreRow } = await supabase
-    .from("genres")
-    .select("id, name, slug")
-    .eq("slug", slug)
-    .maybeSingle();
-
+  const genreRow = await getGenreBySlug(slug);
   if (!genreRow) notFound();
 
-  // === 並列クエリ: カテゴリ・都道府県件数・出張エリア件数・区件数を同時取得 ===
-  const [
-    { data: categories },
-    { data: prefCounts },
-    { data: svcListings },
-    { data: wardCounts },
-  ] = await Promise.all([
-    // Categories of this genre
-    supabase
-      .from("categories")
-      .select("id, slug, name, sort_order")
-      .eq("genre_id", genreRow.id)
-      .order("sort_order", { ascending: true }),
-    // Prefecture counts (hasPrefecture ジャンルのみ)
-    genreMeta.hasPrefecture
-      ? supabase
-          .from("listings")
-          .select("prefecture")
-          .eq("genre_id", genreRow.id)
-          .eq("status", "published")
-          .not("prefecture", "is", null)
-      : Promise.resolve({ data: null }),
-    // 出張サービス件数 (マッサージ・売り専のみ)
-    genreMeta.hasServiceAreas
-      ? supabase
-          .from("listings")
-          .select("service_areas")
-          .eq("genre_id", genreRow.id)
-          .eq("status", "published")
-          .not("service_areas", "is", null)
-      : Promise.resolve({ data: null }),
-    // 東京の区ごとの件数 (prefecture=tokyo のときのみ)
-    genreMeta.hasPrefecture && prefectureParam === "tokyo"
-      ? supabase
-          .from("listings")
-          .select("ward")
-          .eq("genre_id", genreRow.id)
-          .eq("status", "published")
-          .eq("prefecture", "tokyo")
-      : Promise.resolve({ data: null }),
-  ]);
+  const [categories, prefCountMap, svcJsonRows, wardCountRawMap] =
+    await Promise.all([
+      listCategoriesByGenre(genreRow.id),
+      genreMeta.hasPrefecture
+        ? getPrefectureCounts(genreRow.id)
+        : Promise.resolve({} as Record<string, number>),
+      genreMeta.hasServiceAreas
+        ? getServiceAreasJson(genreRow.id)
+        : Promise.resolve<string[]>([]),
+      genreMeta.hasPrefecture && prefectureParam === "tokyo"
+        ? getWardCountsTokyo(genreRow.id)
+        : Promise.resolve({} as Record<string, number>),
+    ]);
 
-  // 都道府県カウント集計
-  const prefCountMap: Record<string, number> = {};
-  (prefCounts ?? []).forEach((row) => {
-    const p = row.prefecture;
-    if (p) prefCountMap[p] = (prefCountMap[p] ?? 0) + 1;
-  });
-
-  // 出張エリアカウント集計
-  const validListings = (svcListings ?? []).filter(
-    (r) => r.service_areas && r.service_areas.length > 0,
-  );
-  const serviceListingCount = validListings.length;
   const areaCountMap: Record<string, number> = {};
-  validListings.forEach((r) => {
-    (r.service_areas as string[]).forEach((area) => {
-      areaCountMap[area] = (areaCountMap[area] ?? 0) + 1;
-    });
-  });
+  let serviceListingCount = 0;
+  for (const json of svcJsonRows) {
+    let arr: unknown;
+    try {
+      arr = JSON.parse(json);
+    } catch {
+      continue;
+    }
+    if (!Array.isArray(arr) || arr.length === 0) continue;
+    serviceListingCount++;
+    for (const v of arr) {
+      if (typeof v === "string") areaCountMap[v] = (areaCountMap[v] ?? 0) + 1;
+    }
+  }
 
-  // 東京の区カウント集計（ward が null の場合は 23区外 扱い）
   const wardCountMap: Record<string, number> = {};
-  (wardCounts ?? []).forEach((row) => {
-    const w = row.ward ?? TOKYO_OUTSIDE_SLUG;
-    wardCountMap[w] = (wardCountMap[w] ?? 0) + 1;
-  });
+  for (const [k, v] of Object.entries(wardCountRawMap)) {
+    wardCountMap[k === "__null" ? TOKYO_OUTSIDE_SLUG : k] = v;
+  }
 
-  // === Region resolution ===
   const selectedRegion = regionParam
     ? PREFECTURE_REGIONS.find((r) => r.slug === regionParam)
     : null;
 
-  // === フィルタ処理 ===
-
-  // 1. カテゴリフィルタ (OR検索、ニューハーフマッサージ除外の特殊ルール)
   const selectedCategorySlugs = (categoryParam ?? "")
     .split(",")
     .filter(Boolean);
 
-  let listingIds: string[] | null = null;
   const isMassage = slug === "massage-urisen";
   const newhalfCat = isMassage
-    ? (categories ?? []).find((c) => c.slug === "newhalf")
+    ? categories.find((c) => c.slug === "newhalf")
     : null;
   const excludeNhActive = excludeNhParam === "1";
 
-  // ニューハーフ除外対象IDを取得（exclude_nh=1 のときのみ）
-  let excludeNewhalfIds: Set<string> = new Set();
+  let excludeNewhalfIds = new Set<string>();
   if (isMassage && newhalfCat && excludeNhActive) {
-    const { data: nhLc } = await supabase
-      .from("listing_categories")
-      .select("listing_id")
-      .eq("category_id", newhalfCat.id);
-    excludeNewhalfIds = new Set((nhLc ?? []).map((r) => r.listing_id));
+    excludeNewhalfIds = new Set(
+      await getListingIdsByCategories([newhalfCat.id])
+    );
   }
 
+  let listingIds: string[] | null = null;
   if (selectedCategorySlugs.length > 0) {
-    const matchedCats = (categories ?? []).filter((c) =>
-      selectedCategorySlugs.includes(c.slug),
+    const matchedCats = categories.filter((c) =>
+      selectedCategorySlugs.includes(c.slug)
     );
     if (matchedCats.length > 0) {
-      const { data: lc } = await supabase
-        .from("listing_categories")
-        .select("listing_id")
-        .in(
-          "category_id",
-          matchedCats.map((c) => c.id),
-        );
-      let ids = [...new Set((lc ?? []).map((r) => r.listing_id))];
+      let ids = await getListingIdsByCategories(matchedCats.map((c) => c.id));
       if (excludeNewhalfIds.size > 0) {
         ids = ids.filter((id) => !excludeNewhalfIds.has(id));
       }
-      listingIds = ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"];
+      listingIds = ids.length > 0 ? ids : ["__none__"];
     }
   } else if (isMassage && excludeNhActive && excludeNewhalfIds.size > 0) {
-    const { data: allListings } = await supabase
-      .from("listings")
-      .select("id")
-      .eq("genre_id", genreRow.id)
-      .eq("status", "published");
-    const ids = (allListings ?? [])
-      .map((l) => l.id)
-      .filter((id) => !excludeNewhalfIds.has(id));
-    listingIds = ids.length > 0 ? ids : ["00000000-0000-0000-0000-000000000000"];
+    const allIds = await getAllPublishedListingIds(genreRow.id);
+    const ids = allIds.filter((id) => !excludeNewhalfIds.has(id));
+    listingIds = ids.length > 0 ? ids : ["__none__"];
   }
 
-  // 2. 都道府県 / 地方フィルタ
   const prefectureFilter = prefectureParam ?? "";
   const regionPrefectureSlugs = selectedRegion
     ? selectedRegion.prefectures.map((p) => p.slug)
     : null;
+  const prefectures = prefectureFilter
+    ? [prefectureFilter]
+    : regionPrefectureSlugs;
 
-  // 3. 出張エリアフィルタ
   const selectedServiceAreas = (serviceAreaParam ?? "")
     .split(",")
     .filter(Boolean);
-
-  // 4. サービス提供者の年代フィルタ
   const selectedProviderAges = (providerAgeParam ?? "")
     .split(",")
     .filter(Boolean);
 
-  // 5. 東京の区フィルタ（prefecture=tokyo のときのみ有効）
   const selectedWardsRaw = (wardParam ?? "").split(",").filter(Boolean);
   const wardFilterActive =
     prefectureFilter === "tokyo" && selectedWardsRaw.length > 0;
   const wardIncludesOutside = selectedWardsRaw.includes(TOKYO_OUTSIDE_SLUG);
   const wardSpecificSlugs = selectedWardsRaw.filter(
-    (w) => w !== TOKYO_OUTSIDE_SLUG,
+    (w) => w !== TOKYO_OUTSIDE_SLUG
   );
 
-  // === クエリ構築 ===
-
-  // 総件数
-  let countQuery = supabase
-    .from("listings")
-    .select("id", { count: "exact", head: true })
-    .eq("genre_id", genreRow.id)
-    .eq("status", "published");
-  if (listingIds) countQuery = countQuery.in("id", listingIds);
-  if (prefectureFilter) {
-    countQuery = countQuery.eq("prefecture", prefectureFilter);
-  } else if (regionPrefectureSlugs) {
-    countQuery = countQuery.in("prefecture", regionPrefectureSlugs);
-  }
-  if (selectedServiceAreas.length > 0)
-    countQuery = countQuery.overlaps("service_areas", selectedServiceAreas);
-  if (selectedProviderAges.length > 0)
-    countQuery = countQuery.overlaps("provider_ages", selectedProviderAges);
-  if (wardFilterActive) {
-    if (wardIncludesOutside && wardSpecificSlugs.length > 0) {
-      countQuery = countQuery.or(
-        `ward.in.(${wardSpecificSlugs.join(",")}),ward.is.null`,
-      );
-    } else if (wardIncludesOutside) {
-      countQuery = countQuery.is("ward", null);
-    } else {
-      countQuery = countQuery.in("ward", wardSpecificSlugs);
-    }
-  }
-
-  // Sort mapping
-  const sortConfig: Record<SortKey, { column: string; ascending: boolean }> = {
-    created_desc: { column: "created_at", ascending: false },
-    created_asc: { column: "created_at", ascending: true },
-    updated_desc: { column: "updated_at", ascending: false },
-    updated_asc: { column: "updated_at", ascending: true },
-    title_asc: { column: "title", ascending: true },
-    title_desc: { column: "title", ascending: false },
-    popular: { column: "click_count", ascending: false },
-  };
-  const { column: sortColumn, ascending: sortAsc } = sortConfig[currentSort];
-
-  // currentPage ベースで range を先に計算（件数超過時は空結果になるだけ）
   const from = (currentPage - 1) * PER_PAGE;
-  const to = from + PER_PAGE - 1;
+  const { rows: listings, total: totalCount } = await searchGenreListings({
+    genreId: genreRow.id,
+    sort: currentSort as DbSortKey,
+    limit: PER_PAGE,
+    offset: from,
+    listingIds,
+    prefectures,
+    serviceAreas: selectedServiceAreas.length > 0 ? selectedServiceAreas : null,
+    providerAges: selectedProviderAges.length > 0 ? selectedProviderAges : null,
+    wardSpecific: wardFilterActive && wardSpecificSlugs.length > 0
+      ? wardSpecificSlugs
+      : null,
+    wardIncludesNull: wardFilterActive ? wardIncludesOutside : false,
+  });
 
-  let listingsQuery = supabase
-    .from("listings")
-    .select("id, title, description, website_url, prefecture, listing_categories(categories(id, name))")
-    .eq("genre_id", genreRow.id)
-    .eq("status", "published")
-    .order(sortColumn, { ascending: sortAsc })
-    .range(from, to);
-  if (listingIds) listingsQuery = listingsQuery.in("id", listingIds);
-  if (prefectureFilter) {
-    listingsQuery = listingsQuery.eq("prefecture", prefectureFilter);
-  } else if (regionPrefectureSlugs) {
-    listingsQuery = listingsQuery.in("prefecture", regionPrefectureSlugs);
-  }
-  if (selectedServiceAreas.length > 0)
-    listingsQuery = listingsQuery.overlaps("service_areas", selectedServiceAreas);
-  if (selectedProviderAges.length > 0)
-    listingsQuery = listingsQuery.overlaps("provider_ages", selectedProviderAges);
-  if (wardFilterActive) {
-    if (wardIncludesOutside && wardSpecificSlugs.length > 0) {
-      listingsQuery = listingsQuery.or(
-        `ward.in.(${wardSpecificSlugs.join(",")}),ward.is.null`,
-      );
-    } else if (wardIncludesOutside) {
-      listingsQuery = listingsQuery.is("ward", null);
-    } else {
-      listingsQuery = listingsQuery.in("ward", wardSpecificSlugs);
-    }
-  }
+  const catMap = await getCategoriesForListings(listings.map((l) => l.id));
 
-  // === 並列クエリ: 件数とリスティングを同時取得 ===
-  const [{ count }, { data: listings }] = await Promise.all([
-    countQuery,
-    listingsQuery,
-  ]);
-
-  const totalCount = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
 
-  // extraParams for pagination links
   const extraParams: Record<string, string> = {};
   if (categoryParam) extraParams.category = categoryParam;
   if (regionParam) extraParams.region = regionParam;
@@ -337,12 +221,10 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
-
-      {/* 1. カテゴリ絞り込み */}
       <Suspense>
         <GenreFilters
           slug={slug}
-          categories={(categories ?? []).map((c) => ({
+          categories={categories.map((c) => ({
             id: c.id,
             slug: c.slug,
             name: c.name,
@@ -350,14 +232,12 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
         />
       </Suspense>
 
-      {/* 1.5 サービス提供者の年代 (マッサージ・売り専のみ) */}
       {genreMeta.hasProviderAges && (
         <Suspense>
           <ProviderAgeFilter />
         </Suspense>
       )}
 
-      {/* 2. 所在地絞り込み (hasPrefecture ジャンルのみ) */}
       {genreMeta.hasPrefecture && (
         <>
           <RegionPrefectureNav
@@ -374,22 +254,22 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
         </>
       )}
 
-      {/* 3. 出張サービス (マッサージ・売り専のみ) */}
       {genreMeta.hasServiceAreas && (
         <Suspense>
-          <ServiceAreaFilter serviceListingCount={serviceListingCount} areaCountMap={areaCountMap} />
+          <ServiceAreaFilter
+            serviceListingCount={serviceListingCount}
+            areaCountMap={areaCountMap}
+          />
         </Suspense>
       )}
 
-      {/* 並び順 */}
       <SortSelect
         currentSort={currentSort}
         basePath={`/genres/${slug}`}
         extraParams={extraParams}
       />
 
-      {/* Listings */}
-      {listings && listings.length > 0 ? (
+      {listings.length > 0 ? (
         <>
           <p className="mb-3 text-sm text-zinc-500">
             {totalCount}件の登録情報
@@ -409,23 +289,19 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
                   <ReportButton listingId={l.id} listingTitle={l.title} variant="card" />
                 </div>
                 {l.description && (
-                  <p className="mt-1 text-sm text-zinc-600">
-                    {l.description}
-                  </p>
+                  <p className="mt-1 text-sm text-zinc-600">{l.description}</p>
                 )}
-                {l.listing_categories?.length > 0 && (
+                {(catMap[l.id]?.length ?? 0) > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
-                    {l.listing_categories.map((lc) =>
-                      lc.categories ? (
-                        <span
-                          key={lc.categories.id}
-                          className="rounded-full bg-red-50 px-2 py-0.5 text-xs"
-                          style={{ color: "#B21000" }}
-                        >
-                          {lc.categories.name}
-                        </span>
-                      ) : null
-                    )}
+                    {catMap[l.id].map((c) => (
+                      <span
+                        key={c.id}
+                        className="rounded-full bg-red-50 px-2 py-0.5 text-xs"
+                        style={{ color: "#B21000" }}
+                      >
+                        {c.name}
+                      </span>
+                    ))}
                   </div>
                 )}
               </li>

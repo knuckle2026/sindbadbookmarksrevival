@@ -1,9 +1,7 @@
-// @ts-nocheck
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 export default function DeleteAccountButton() {
   const router = useRouter();
@@ -14,14 +12,13 @@ export default function DeleteAccountButton() {
   const handleDelete = async () => {
     setLoading(true);
     setError("");
-    const supabase = createClient();
-    const { error: err } = await supabase.rpc("delete_my_account");
-    if (err) {
-      setError(err.message);
+    const res = await fetch("/api/account/delete", { method: "DELETE" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: "unknown" }));
+      setError(body.error ?? "削除に失敗しました");
       setLoading(false);
       return;
     }
-    await supabase.auth.signOut();
     router.push("/");
     router.refresh();
   };
@@ -43,7 +40,11 @@ export default function DeleteAccountButton() {
       <p className="mb-3 text-red-800">
         本当にアカウントを削除しますか？
         <br />
-        登録したリスティングもすべて削除され、元に戻せません。
+        登録したリスティングは残りますが、アカウントは元に戻せません。
+        <br />
+        <span className="text-xs text-red-700">
+          ※ 同じメールアドレスで再度サインアップは可能ですが、新しいアカウントとして扱われ、削除前のデータには紐づきません。
+        </span>
       </p>
       {error && (
         <p className="mb-2 rounded bg-white px-2 py-1 text-xs text-red-700">

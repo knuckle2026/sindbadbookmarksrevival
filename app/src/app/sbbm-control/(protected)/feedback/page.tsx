@@ -1,5 +1,5 @@
-// @ts-nocheck
-import { getAdminClient } from "@/lib/supabase/admin";
+import { listFeedback } from "@/lib/db/queries/feedback";
+import { getUserEmailsByIds } from "@/lib/supabase/admin";
 import Pagination from "@/components/listings/Pagination";
 
 export const dynamic = "force-dynamic";
@@ -14,39 +14,22 @@ export default async function AdminFeedbackPage({ searchParams }: PageProps) {
   const { page: pageParam } = await searchParams;
   const currentPage = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
 
-  const { supabase } = await getAdminClient();
-
-  const { count } = await supabase
-    .from("feedback")
-    .select("id", { count: "exact", head: true });
-
-  const totalCount = count ?? 0;
+  // Probe with page 1 to get total, then fetch the actual page if needed.
+  const probe = await listFeedback(0, PER_PAGE);
+  const totalCount = probe.total;
   const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
-  const from = (safePage - 1) * PER_PAGE;
-  const to = from + PER_PAGE - 1;
+  const offset = (safePage - 1) * PER_PAGE;
 
-  const { data: feedbacks } = await supabase
-    .from("feedback")
-    .select("id, user_id, body, created_at")
-    .order("created_at", { ascending: false })
-    .range(from, to);
+  const feedbacks =
+    safePage === 1
+      ? probe.rows
+      : (await listFeedback(offset, PER_PAGE)).rows;
 
-  // 送信者のメールをまとめて取得
   const userIds = Array.from(
-    new Set((feedbacks ?? []).map((f) => f.user_id).filter(Boolean))
-  ) as string[];
-
-  let emailMap: Record<string, string> = {};
-  if (userIds.length > 0) {
-    const { data: emails } = await supabase.rpc("get_user_emails", {
-      user_ids: userIds,
-    });
-    emailMap = (emails ?? []).reduce<Record<string, string>>((acc, row: { id: string; email: string }) => {
-      acc[row.id] = row.email;
-      return acc;
-    }, {});
-  }
+    new Set(feedbacks.map((f) => f.user_id).filter((v): v is string => !!v))
+  );
+  const emailMap = await getUserEmailsByIds(userIds);
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
@@ -54,7 +37,7 @@ export default async function AdminFeedbackPage({ searchParams }: PageProps) {
 
       <p className="mb-4 text-sm text-zinc-500">全{totalCount}件</p>
 
-      {feedbacks && feedbacks.length > 0 ? (
+      {feedbacks.length > 0 ? (
         <>
           <ul className="space-y-3">
             {feedbacks.map((f) => (
@@ -64,7 +47,9 @@ export default async function AdminFeedbackPage({ searchParams }: PageProps) {
               >
                 <div className="mb-2 flex items-baseline justify-between gap-3 text-xs text-zinc-500">
                   <span>
-                    {f.user_id ? emailMap[f.user_id] ?? "（不明ユーザー）" : "（匿名）"}
+                    {f.user_id
+                      ? emailMap[f.user_id] ?? "（不明ユーザー）"
+                      : "（匿名）"}
                   </span>
                   <time>
                     {new Date(f.created_at).toLocaleString("ja-JP")}

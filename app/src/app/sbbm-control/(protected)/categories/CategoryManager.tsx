@@ -1,9 +1,7 @@
-// @ts-nocheck
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import {
   DndContext,
   closestCenter,
@@ -36,7 +34,6 @@ interface Props {
   initialCategories: Category[];
 }
 
-// --- Sortable Row Component ---
 function SortableRow({
   cat,
   onEdit,
@@ -106,7 +103,6 @@ function SortableRow({
   );
 }
 
-// --- Editing Row Component ---
 function EditingRow({
   editName,
   editSlug,
@@ -162,9 +158,16 @@ function EditingRow({
   );
 }
 
+async function jsonOrThrow(res: Response): Promise<unknown> {
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 export default function CategoryManager({
   genreId,
-  genreSlug,
   genreName,
   initialCategories,
 }: Props) {
@@ -174,15 +177,12 @@ export default function CategoryManager({
   const [editName, setEditName] = useState("");
   const [editSlug, setEditSlug] = useState("");
 
-  // New category form
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [newSlug, setNewSlug] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const supabase = createClient();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -193,7 +193,6 @@ export default function CategoryManager({
     })
   );
 
-  // --- Drag End ---
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -202,31 +201,28 @@ export default function CategoryManager({
     const newIndex = categories.findIndex((c) => c.id === over.id);
     const reordered = arrayMove(categories, oldIndex, newIndex);
 
-    // Assign new sort_order based on position
     const updated = reordered.map((c, i) => ({ ...c, sort_order: i + 1 }));
     setCategories(updated);
 
-    // Batch update to DB
     setLoading(true);
     setError("");
     try {
-      await Promise.all(
-        updated.map((c) =>
-          supabase
-            .from("categories")
-            .update({ sort_order: c.sort_order })
-            .eq("id", c.id)
-        )
-      );
+      const res = await fetch("/api/admin/categories", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: updated.map((c) => ({ id: c.id, sort_order: c.sort_order })),
+        }),
+      });
+      await jsonOrThrow(res);
       router.refresh();
-    } catch (e: any) {
-      setError(e.message || "Failed to save order");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save order");
     } finally {
       setLoading(false);
     }
   };
 
-  // --- Add ---
   const handleAdd = async () => {
     if (!newName.trim() || !newSlug.trim()) return;
     setLoading(true);
@@ -237,34 +233,32 @@ export default function CategoryManager({
         ? Math.max(...categories.map((c) => c.sort_order)) + 1
         : 1;
 
-    const { data, error: err } = await supabase
-      .from("categories")
-      .insert({
-        genre_id: genreId,
-        name: newName.trim(),
-        slug: newSlug.trim(),
-        sort_order: nextSortOrder,
-      })
-      .select("id, slug, name, sort_order")
-      .single();
-
-    if (err) {
-      setError(err.message);
+    try {
+      const res = await fetch("/api/admin/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          genre_id: genreId,
+          name: newName.trim(),
+          slug: newSlug.trim(),
+          sort_order: nextSortOrder,
+        }),
+      });
+      const created = (await jsonOrThrow(res)) as Category;
+      setCategories((prev) =>
+        [...prev, created].sort((a, b) => a.sort_order - b.sort_order)
+      );
+      setNewName("");
+      setNewSlug("");
+      setShowAdd(false);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to add");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setCategories((prev) =>
-      [...prev, data].sort((a, b) => a.sort_order - b.sort_order)
-    );
-    setNewName("");
-    setNewSlug("");
-    setShowAdd(false);
-    setLoading(false);
-    router.refresh();
   };
 
-  // --- Edit ---
   const startEdit = (cat: Category) => {
     setEditingId(cat.id);
     setEditName(cat.name);
@@ -276,52 +270,49 @@ export default function CategoryManager({
     setLoading(true);
     setError("");
 
-    const { error: err } = await supabase
-      .from("categories")
-      .update({
-        name: editName.trim(),
-        slug: editSlug.trim(),
-      })
-      .eq("id", editingId);
-
-    if (err) {
-      setError(err.message);
+    try {
+      const res = await fetch(`/api/admin/categories/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editName.trim(),
+          slug: editSlug.trim(),
+        }),
+      });
+      await jsonOrThrow(res);
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.id === editingId
+            ? { ...c, name: editName.trim(), slug: editSlug.trim() }
+            : c
+        )
+      );
+      setEditingId(null);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setCategories((prev) =>
-      prev.map((c) =>
-        c.id === editingId
-          ? { ...c, name: editName.trim(), slug: editSlug.trim() }
-          : c
-      )
-    );
-    setEditingId(null);
-    setLoading(false);
-    router.refresh();
   };
 
-  // --- Delete ---
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete category "${name}"?`)) return;
     setLoading(true);
     setError("");
 
-    const { error: err } = await supabase
-      .from("categories")
-      .delete()
-      .eq("id", id);
-
-    if (err) {
-      setError(err.message);
+    try {
+      const res = await fetch(`/api/admin/categories/${id}`, {
+        method: "DELETE",
+      });
+      await jsonOrThrow(res);
+      setCategories((prev) => prev.filter((c) => c.id !== id));
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setCategories((prev) => prev.filter((c) => c.id !== id));
-    setLoading(false);
-    router.refresh();
   };
 
   return (
@@ -346,7 +337,6 @@ export default function CategoryManager({
         <div className="mb-4 text-xs text-zinc-400">Saving...</div>
       )}
 
-      {/* Add form */}
       {showAdd && (
         <div className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
           <div className="grid gap-3 sm:grid-cols-3">
@@ -387,7 +377,6 @@ export default function CategoryManager({
         </div>
       )}
 
-      {/* Category table with drag-and-drop */}
       <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white">
         <table className="w-full text-sm">
           <thead>

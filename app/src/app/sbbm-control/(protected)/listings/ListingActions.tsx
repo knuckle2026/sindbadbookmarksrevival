@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 interface Props {
   listingId: string;
@@ -14,14 +13,13 @@ export default function ListingActions({ listingId, title }: Props) {
   const handleDelete = async () => {
     if (!confirm(`Delete listing "${title}"?`)) return;
 
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("listings")
-      .delete()
-      .eq("id", listingId);
+    const res = await fetch(`/api/admin/listings/${listingId}`, {
+      method: "DELETE",
+    });
 
-    if (error) {
-      alert(`Error: ${error.message}`);
+    if (!res.ok) {
+      const text = await res.text();
+      alert(`Error: ${text}`);
       return;
     }
 

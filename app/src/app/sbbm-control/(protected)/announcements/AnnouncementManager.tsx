@@ -1,9 +1,7 @@
-// @ts-nocheck
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 interface Announcement {
   id: string;
@@ -17,9 +15,16 @@ interface Props {
   initialItems: Announcement[];
 }
 
+async function jsonOrThrow(res: Response): Promise<unknown> {
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 export default function AnnouncementManager({ initialItems }: Props) {
   const router = useRouter();
-  const supabase = createClient();
 
   const [items, setItems] = useState<Announcement[]>(initialItems);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -42,28 +47,29 @@ export default function AnnouncementManager({ initialItems }: Props) {
     const nextSortOrder =
       items.length > 0 ? Math.max(...items.map((i) => i.sort_order)) + 1 : 1;
 
-    const { data, error: err } = await supabase
-      .from("announcements")
-      .insert({
-        title: newTitle.trim(),
-        body: newBody.trim(),
-        sort_order: nextSortOrder,
-      })
-      .select("id, title, body, sort_order, created_at")
-      .single();
-
-    if (err) {
-      setError(err.message);
+    try {
+      const res = await fetch("/api/admin/announcements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newTitle.trim(),
+          body: newBody.trim(),
+          sort_order: nextSortOrder,
+        }),
+      });
+      const created = (await jsonOrThrow(res)) as Announcement;
+      setItems((prev) =>
+        [...prev, created].sort((a, b) => a.sort_order - b.sort_order)
+      );
+      setNewTitle("");
+      setNewBody("");
+      setShowAdd(false);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to add");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setItems((prev) => [...prev, data as Announcement].sort((a, b) => a.sort_order - b.sort_order));
-    setNewTitle("");
-    setNewBody("");
-    setShowAdd(false);
-    setLoading(false);
-    router.refresh();
   };
 
   const startEdit = (item: Announcement) => {
@@ -78,33 +84,38 @@ export default function AnnouncementManager({ initialItems }: Props) {
     setLoading(true);
     setError("");
 
-    const { error: err } = await supabase
-      .from("announcements")
-      .update({
-        title: editTitle.trim(),
-        body: editBody.trim(),
-        sort_order: editSortOrder,
-      })
-      .eq("id", editingId);
-
-    if (err) {
-      setError(err.message);
+    try {
+      const res = await fetch(`/api/admin/announcements/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editTitle.trim(),
+          body: editBody.trim(),
+          sort_order: editSortOrder,
+        }),
+      });
+      await jsonOrThrow(res);
+      setItems((prev) =>
+        prev
+          .map((i) =>
+            i.id === editingId
+              ? {
+                  ...i,
+                  title: editTitle.trim(),
+                  body: editBody.trim(),
+                  sort_order: editSortOrder,
+                }
+              : i
+          )
+          .sort((a, b) => a.sort_order - b.sort_order)
+      );
+      setEditingId(null);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setItems((prev) =>
-      prev
-        .map((i) =>
-          i.id === editingId
-            ? { ...i, title: editTitle.trim(), body: editBody.trim(), sort_order: editSortOrder }
-            : i
-        )
-        .sort((a, b) => a.sort_order - b.sort_order)
-    );
-    setEditingId(null);
-    setLoading(false);
-    router.refresh();
   };
 
   const handleDelete = async (id: string, title: string) => {
@@ -112,17 +123,18 @@ export default function AnnouncementManager({ initialItems }: Props) {
     setLoading(true);
     setError("");
 
-    const { error: err } = await supabase.from("announcements").delete().eq("id", id);
-
-    if (err) {
-      setError(err.message);
+    try {
+      const res = await fetch(`/api/admin/announcements/${id}`, {
+        method: "DELETE",
+      });
+      await jsonOrThrow(res);
+      setItems((prev) => prev.filter((i) => i.id !== id));
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    setLoading(false);
-    router.refresh();
   };
 
   return (
@@ -211,7 +223,9 @@ export default function AnnouncementManager({ initialItems }: Props) {
                   <input
                     type="number"
                     value={editSortOrder}
-                    onChange={(e) => setEditSortOrder(parseInt(e.target.value, 10) || 0)}
+                    onChange={(e) =>
+                      setEditSortOrder(parseInt(e.target.value, 10) || 0)
+                    }
                     className="w-20 rounded-md border border-zinc-300 px-2 py-1 text-sm"
                   />
                   <button

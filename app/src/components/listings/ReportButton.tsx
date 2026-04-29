@@ -1,8 +1,6 @@
-// @ts-nocheck
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 interface Props {
   listingId: string;
@@ -40,24 +38,18 @@ export default function ReportButton({
     setError("");
 
     try {
-      const supabase = createClient();
-
-      // ログイン中ならuser_idを取得
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      const { error: insertError } = await supabase.from("reports").insert({
-        listing_id: listingId,
-        reason: reason.trim(),
-        ...(user ? { reporter_user_id: user.id } : {}),
+      const res = await fetch("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          listing_id: listingId,
+          reason: reason.trim(),
+        }),
       });
-
-      if (insertError) {
+      if (!res.ok) {
         setError("送信に失敗しました。もう一度お試しください。");
         return;
       }
-
       setDone(true);
     } catch {
       setError("送信に失敗しました。もう一度お試しください。");
@@ -68,7 +60,6 @@ export default function ReportButton({
 
   return (
     <>
-      {/* Trigger button */}
       {variant === "card" ? (
         <button
           onClick={handleOpen}
@@ -85,7 +76,6 @@ export default function ReportButton({
         </button>
       )}
 
-      {/* Modal */}
       {open && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
@@ -96,7 +86,6 @@ export default function ReportButton({
             onClick={(e) => e.stopPropagation()}
           >
             {done ? (
-              /* 完了表示 */
               <div className="text-center">
                 <div className="mb-3 text-3xl">✓</div>
                 <h2 className="mb-2 text-lg font-bold text-zinc-900">
@@ -113,7 +102,6 @@ export default function ReportButton({
                 </button>
               </div>
             ) : (
-              /* フォーム */
               <>
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-lg font-bold text-zinc-900">

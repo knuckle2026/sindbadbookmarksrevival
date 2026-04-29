@@ -1,0 +1,28 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "g-ankers",
+	"main": ".open-next/worker.js",
+	"compatibility_date": "2026-04-01",
+	"compatibility_flags": [
+		"nodejs_compat",
+		"global_fetch_strictly_public"
+	],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "sindbadbookmarks",
+			"database_id": "a37191b1-4993-4938-b2ee-4578b2ec9f86"
+		}
+	],
+	"vars": {
+		"NEXT_PUBLIC_SUPABASE_URL": "https://kawiaabwfdjwvlxcbwul.supabase.co",
+		"NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imthd2lhYWJ3ZmRqd3ZseGNid3VsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMDg1MDAsImV4cCI6MjA5MDg4NDUwMH0.bNvsplcJJpPKntsr32GwKwwtJ1k4cFJtoDXyT2lU_5I"
+	},
+	"observability": {
+		"enabled": true
+	}
+}

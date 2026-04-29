@@ -1,9 +1,10 @@
-export default function AdminProtectedLayout({
+import { requireAdmin } from "@/lib/auth/guards";
+
+export default async function AdminProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Auth check moved to individual pages via getAdminClient()
-  // to avoid token refresh issues with separate Supabase clients.
+  await requireAdmin();
   return <>{children}</>;
 }

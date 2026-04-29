@@ -157,6 +157,7 @@ export interface SearchGenreOpts {
   providerAges?: string[] | null;
   wardSpecific?: string[] | null;
   wardIncludesNull?: boolean;
+  keyword?: string | null;
 }
 
 export type GenreListingRow = Pick<
@@ -215,6 +216,11 @@ function buildGenreFilter(opts: SearchGenreOpts): {
     if (opts.wardIncludesNull) wardParts.push("ward IS NULL");
     if (wardParts.length > 0) parts.push(`(${wardParts.join(" OR ")})`);
   }
+  if (opts.keyword) {
+    parts.push("(title LIKE ? OR description LIKE ?)");
+    const pat = `%${opts.keyword}%`;
+    binds.push(pat, pat);
+  }
 
   return { sql: parts.join(" AND "), binds };
 }
@@ -242,6 +248,36 @@ export async function searchGenreListings(
     .bind(...binds, opts.limit, opts.offset)
     .all<GenreListingRow>();
 
+  return { rows: results, total };
+}
+
+export async function searchListingsByKeyword(
+  q: string,
+  offset: number,
+  limit: number
+): Promise<{ rows: GenreListingRow[]; total: number }> {
+  const db = await getDB();
+  const pat = `%${q}%`;
+  const countRow = await db
+    .prepare(
+      `SELECT COUNT(*) AS c FROM listings
+       WHERE status = 'published'
+         AND (title LIKE ? OR description LIKE ?)`
+    )
+    .bind(pat, pat)
+    .first<{ c: number }>();
+  const total = countRow?.c ?? 0;
+  const { results } = await db
+    .prepare(
+      `SELECT id, title, description, website_url, prefecture
+       FROM listings
+       WHERE status = 'published'
+         AND (title LIKE ? OR description LIKE ?)
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`
+    )
+    .bind(pat, pat, limit, offset)
+    .all<GenreListingRow>();
   return { rows: results, total };
 }
 

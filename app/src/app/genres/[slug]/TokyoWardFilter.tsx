@@ -21,9 +21,16 @@ export default function TokyoWardFilter({ wardCountMap }: Props) {
     return new Set(param.split(",").filter(Boolean));
   });
 
+  const [isOpen, setIsOpen] = useState<boolean>(() => {
+    const param = searchParams.get("ward") ?? "";
+    return param.split(",").filter(Boolean).length > 0;
+  });
+
   useEffect(() => {
     const param = searchParams.get("ward") ?? "";
-    setChecked(new Set(param.split(",").filter(Boolean)));
+    const next = new Set(param.split(",").filter(Boolean));
+    setChecked(next);
+    if (next.size > 0) setIsOpen(true);
   }, [searchParams]);
 
   const syncToUrl = (next: Set<string>) => {
@@ -53,30 +60,44 @@ export default function TokyoWardFilter({ wardCountMap }: Props) {
     syncToUrl(next);
   };
 
+  const summary =
+    checked.size > 0 ? `（${checked.size}件選択中）` : "";
+
   return (
     <div className="mb-6">
-      <p className="mb-2 text-xs font-semibold text-zinc-500">
-        東京の区で絞り込み（複数選択可）
-      </p>
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-        {TOKYO_WARD_FILTER_OPTIONS.map((w) => {
-          const count = wardCountMap[w.slug] ?? 0;
-          return (
-            <label key={w.slug} className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={checked.has(w.slug)}
-                onChange={() => toggleWard(w.slug)}
-                className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
-              />
-              <span className="text-sm text-zinc-800">
-                {w.name}
-                <span className="ml-0.5 text-xs text-zinc-400">({count})</span>
-              </span>
-            </label>
-          );
-        })}
-      </div>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 text-xs font-semibold text-zinc-500 hover:text-zinc-700 cursor-pointer"
+      >
+        <span className={`transition-transform ${isOpen ? "rotate-90" : ""}`}>
+          ▶
+        </span>
+        <span>東京の区で絞り込み（複数選択可）{summary}</span>
+      </button>
+
+      {isOpen && (
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+          {TOKYO_WARD_FILTER_OPTIONS.map((w) => {
+            const count = wardCountMap[w.slug] ?? 0;
+            return (
+              <label key={w.slug} className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={checked.has(w.slug)}
+                  onChange={() => toggleWard(w.slug)}
+                  className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
+                />
+                <span className="text-sm text-zinc-800">
+                  {w.name}
+                  <span className="ml-0.5 text-xs text-zinc-400">({count})</span>
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      )}
+
       {isPending && (
         <p className="mt-2 text-xs text-zinc-400">読み込み中...</p>
       )}

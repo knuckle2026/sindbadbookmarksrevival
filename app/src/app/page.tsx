@@ -1,6 +1,8 @@
 export const revalidate = 300; // 5分キャッシュ
 
+import { Suspense } from "react";
 import { PressableLink } from "@/components/PressableLink";
+import SearchBar from "@/components/listings/SearchBar";
 import { GENRES } from "@/lib/constants/genres";
 import { getCategoryCountsAll } from "@/lib/db/queries/categories";
 
@@ -42,8 +44,12 @@ export default async function DashboardPage() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <>
+      <Suspense>
+        <SearchBar targetPath="/search" />
+      </Suspense>
+      <div className="mx-auto max-w-7xl px-6 py-8">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {visibleGenres.map(([slug, genre]) => (
           <section
             key={slug}
@@ -81,7 +87,8 @@ export default async function DashboardPage() {
             )}
           </section>
         ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

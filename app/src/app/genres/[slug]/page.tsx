@@ -7,6 +7,7 @@ import Pagination from "@/components/listings/Pagination";
 import SortSelect, { type SortKey } from "@/components/listings/SortSelect";
 import ClickableTitle from "@/components/listings/ClickableTitle";
 import ReportButton from "@/components/listings/ReportButton";
+import SearchBar from "@/components/listings/SearchBar";
 import { getGenreBySlug } from "@/lib/db/queries/genres";
 import { listCategoriesByGenre } from "@/lib/db/queries/categories";
 import {
@@ -41,6 +42,7 @@ interface PageProps {
     provider_age?: string;
     ward?: string;
     page?: string;
+    q?: string;
   }>;
 }
 
@@ -56,7 +58,9 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     provider_age: providerAgeParam,
     ward: wardParam,
     page: pageParam,
+    q: qParam,
   } = await searchParams;
+  const keyword = (qParam ?? "").trim();
   const currentPage = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
 
   const validSorts: SortKey[] = [
@@ -85,6 +89,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     if (providerAgeParam) p.set("provider_age", providerAgeParam);
     if (wardParam) p.set("ward", wardParam);
     if (pageParam) p.set("page", pageParam);
+    if (keyword) p.set("q", keyword);
     redirect(`/genres/${slug}?${p.toString()}`);
   }
 
@@ -202,6 +207,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
       ? wardSpecificSlugs
       : null,
     wardIncludesNull: wardFilterActive ? wardIncludesOutside : false,
+    keyword: keyword || null,
   });
 
   const catMap = await getCategoriesForListings(listings.map((l) => l.id));
@@ -218,19 +224,25 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   if (excludeNhParam === "1") extraParams.exclude_nh = "1";
   if (providerAgeParam) extraParams.provider_age = providerAgeParam;
   if (wardParam) extraParams.ward = wardParam;
+  if (keyword) extraParams.q = keyword;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
+    <>
       <Suspense>
-        <GenreFilters
-          slug={slug}
-          categories={categories.map((c) => ({
-            id: c.id,
-            slug: c.slug,
-            name: c.name,
-          }))}
-        />
+        <SearchBar />
       </Suspense>
+
+      <div className="mx-auto max-w-5xl px-6 py-8">
+        <Suspense>
+          <GenreFilters
+            slug={slug}
+            categories={categories.map((c) => ({
+              id: c.id,
+              slug: c.slug,
+              name: c.name,
+            }))}
+          />
+        </Suspense>
 
       {genreMeta.hasProviderAges && (
         <Suspense>
@@ -269,56 +281,57 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
         extraParams={extraParams}
       />
 
-      {listings.length > 0 ? (
-        <>
-          <p className="mb-3 text-sm text-zinc-500">
-            {totalCount}件の登録情報
-          </p>
-          <ul className="space-y-3">
-            {listings.map((l) => (
-              <li
-                key={l.id}
-                className="rounded-lg border border-zinc-200 bg-white p-4"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <ClickableTitle
-                    listingId={l.id}
-                    title={l.title}
-                    websiteUrl={l.website_url}
-                  />
-                  <ReportButton listingId={l.id} listingTitle={l.title} variant="card" />
-                </div>
-                {l.description && (
-                  <p className="mt-1 text-sm text-zinc-600">{l.description}</p>
-                )}
-                {(catMap[l.id]?.length ?? 0) > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {catMap[l.id].map((c) => (
-                      <span
-                        key={c.id}
-                        className="rounded-full bg-red-50 px-2 py-0.5 text-xs"
-                        style={{ color: "#B21000" }}
-                      >
-                        {c.name}
-                      </span>
-                    ))}
+        {listings.length > 0 ? (
+          <>
+            <p className="mb-3 text-sm text-zinc-500">
+              {totalCount}件の登録情報
+            </p>
+            <ul className="space-y-3">
+              {listings.map((l) => (
+                <li
+                  key={l.id}
+                  className="rounded-lg border border-zinc-200 bg-white p-4"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <ClickableTitle
+                      listingId={l.id}
+                      title={l.title}
+                      websiteUrl={l.website_url}
+                    />
+                    <ReportButton listingId={l.id} listingTitle={l.title} variant="card" />
                   </div>
-                )}
-              </li>
-            ))}
-          </ul>
-          <Pagination
-            currentPage={safePage}
-            totalPages={totalPages}
-            basePath={`/genres/${slug}`}
-            extraParams={extraParams}
-          />
-        </>
-      ) : (
-        <p className="rounded-lg border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-500">
-          登録情報はまだありません
-        </p>
-      )}
-    </div>
+                  {l.description && (
+                    <p className="mt-1 text-sm text-zinc-600">{l.description}</p>
+                  )}
+                  {(catMap[l.id]?.length ?? 0) > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {catMap[l.id].map((c) => (
+                        <span
+                          key={c.id}
+                          className="rounded-full bg-red-50 px-2 py-0.5 text-xs"
+                          style={{ color: "#B21000" }}
+                        >
+                          {c.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <Pagination
+              currentPage={safePage}
+              totalPages={totalPages}
+              basePath={`/genres/${slug}`}
+              extraParams={extraParams}
+            />
+          </>
+        ) : (
+          <p className="rounded-lg border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-500">
+            登録情報はまだありません
+          </p>
+        )}
+      </div>
+    </>
   );
 }

@@ -41,6 +41,10 @@ export default function DeleteAccountButton() {
         本当にアカウントを削除しますか？
         <br />
         登録したリスティングは残りますが、アカウントは元に戻せません。
+        <br />
+        <span className="text-xs text-red-700">
+          ※ 同じメールアドレスで再度サインアップは可能ですが、新しいアカウントとして扱われ、削除前のデータには紐づきません。
+        </span>
       </p>
       {error && (
         <p className="mb-2 rounded bg-white px-2 py-1 text-xs text-red-700">

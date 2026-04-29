@@ -11,7 +11,7 @@
     "test:watch": "vitest",
     "cf:build": "opennextjs-cloudflare build",
     "cf:dev": "opennextjs-cloudflare preview",
-    "cf:deploy": "opennextjs-cloudflare deploy"
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

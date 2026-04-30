@@ -59,7 +59,7 @@ export default function FeedbackForm() {
           type="submit"
           disabled={loading || !body.trim()}
           className="rounded-lg px-5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-40"
-          style={{ backgroundColor: "#B21000" }}
+          style={{ backgroundColor: "#003A66" }}
         >
           {loading ? "送信中..." : "送信する"}
         </button>

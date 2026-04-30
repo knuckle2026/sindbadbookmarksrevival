@@ -4,7 +4,7 @@ export function Footer() {
   return (
     <footer
       className="mt-24 flex h-24 shrink-0 items-center justify-center"
-      style={{ backgroundColor: "#B21000" }}
+      style={{ backgroundColor: "#003A66" }}
     >
       <Link
         href="/operator"

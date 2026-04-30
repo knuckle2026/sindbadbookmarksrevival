@@ -59,7 +59,7 @@ export default async function DashboardPage() {
               href={`/genres/${slug}`}
               className="block px-4 py-3 text-base font-bold text-white hover:opacity-90 active:opacity-70"
               pendingClassName="block px-4 py-3 text-base font-bold text-white opacity-70"
-              style={{ backgroundColor: "#B21000" }}
+              style={{ backgroundColor: "#003A66" }}
             >
               {genre.name}
             </PressableLink>

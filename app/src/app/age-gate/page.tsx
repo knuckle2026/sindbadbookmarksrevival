@@ -23,10 +23,10 @@ function AgeGate() {
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-zinc-950 text-white px-6 overflow-y-auto">
       <Image
-        src="/images/gate.jpg"
-        alt="sindbadbookmarks"
+        src="/images/gankersmain.png"
+        alt="g-ankers"
         width={300}
-        height={200}
+        height={300}
         className="mb-6 w-full max-w-xs rounded-lg object-contain"
         priority
       />

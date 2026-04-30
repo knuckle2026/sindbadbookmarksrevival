@@ -38,7 +38,7 @@ export function Header({ onHamburgerClick, onCloseSidebar, genreName, genreSlug,
   return (
     <header
       className="flex h-24 shrink-0 items-center justify-between px-4 text-white shadow-md"
-      style={{ backgroundColor: "#B21000" }}
+      style={{ backgroundColor: "#003A66" }}
     >
       {/* 左: ハンバーガー + ロゴ/ジャンル名 */}
       <div className="flex items-center gap-3">
@@ -63,8 +63,8 @@ export function Header({ onHamburgerClick, onCloseSidebar, genreName, genreSlug,
             {showLogo && (
               <Link href="/" className="shrink-0">
                 <Image
-                  src="/images/sbbm_logo.jpg"
-                  alt="sindbadbookmarks revival logo"
+                  src="/images/gaks_logo.jpg"
+                  alt="g-ankers logo"
                   width={96}
                   height={96}
                   className="object-contain h-20 w-auto max-w-28 sm:max-w-none"

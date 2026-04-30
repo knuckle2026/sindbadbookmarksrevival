@@ -14,9 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "sindbadbookmarks - LGBTコミュニティポータル",
-  description:
-    "LGBTに関わるショップ・団体・メディアを見つけられる・登録できるポータルサイト",
+  title: "G-Ankers - 俺の秘密のコミュニティポータル",
+  description: "俺の秘密のコミュニティポータル",
 };
 
 export default function RootLayout({

@@ -91,7 +91,7 @@ function SignUpForm() {
             アカウント作成
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            sindbadbookmarks に登録
+            G-Ankers に登録
           </p>
         </div>
 

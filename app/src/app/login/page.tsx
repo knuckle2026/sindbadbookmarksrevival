@@ -60,7 +60,7 @@ function LoginForm() {
             ログイン
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            sindbadbookmarks にログイン
+            G-Ankers にログイン
           </p>
         </div>
 

@@ -56,7 +56,7 @@ function AgeGate() {
       </div>
 
       <p className="mt-6 text-xs text-zinc-600">
-        &copy; {new Date().getFullYear()} sindbadbookmarks
+        &copy; {new Date().getFullYear()} G-Ankers
       </p>
     </div>
   );

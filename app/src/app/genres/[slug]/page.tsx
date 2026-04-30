@@ -309,7 +309,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
                         <span
                           key={c.id}
                           className="rounded-full bg-red-50 px-2 py-0.5 text-xs"
-                          style={{ color: "#003A66" }}
+                          style={{ color: "#005766" }}
                         >
                           {c.name}
                         </span>

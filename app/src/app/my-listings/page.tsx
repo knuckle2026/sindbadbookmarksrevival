@@ -31,7 +31,7 @@ export default async function MyListingsPage({ searchParams }: PageProps) {
           <Link
             href="/login?next=/my-listings"
             className="inline-block rounded-lg px-5 py-2.5 text-sm font-medium text-white hover:opacity-90"
-            style={{ backgroundColor: "#003A66" }}
+            style={{ backgroundColor: "#005766" }}
           >
             ログイン
           </Link>

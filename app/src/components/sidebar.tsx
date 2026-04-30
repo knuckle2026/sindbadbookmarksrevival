@@ -40,7 +40,7 @@ export function Sidebar({ onCloseSidebar }: SidebarProps) {
   return (
     <aside
       className="w-44 shrink-0 overflow-y-auto text-white"
-      style={{ backgroundColor: "#003A66" }}
+      style={{ backgroundColor: "#005766" }}
     >
       <nav className="py-3">
         <button

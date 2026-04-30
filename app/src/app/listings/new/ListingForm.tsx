@@ -434,7 +434,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
           type="submit"
           disabled={loading}
           className="flex-1 rounded-lg py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-          style={{ backgroundColor: "#003A66" }}
+          style={{ backgroundColor: "#005766" }}
         >
           {loading ? (mode === "edit" ? "更新中..." : "登録中...") : (mode === "edit" ? "更新する" : "登録する")}
         </button>

@@ -38,7 +38,7 @@ export function Header({ onHamburgerClick, onCloseSidebar, genreName, genreSlug,
   return (
     <header
       className="flex h-24 shrink-0 items-center justify-between px-4 text-white shadow-md"
-      style={{ backgroundColor: "#003A66" }}
+      style={{ backgroundColor: "#005766" }}
     >
       {/* 左: ハンバーガー + ロゴ/ジャンル名 */}
       <div className="flex items-center gap-3">

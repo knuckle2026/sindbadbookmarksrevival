@@ -63,10 +63,10 @@ export function Header({ onHamburgerClick, onCloseSidebar, genreName, genreSlug,
             {showLogo && (
               <Link href="/" className="shrink-0">
                 <Image
-                  src="/images/gaks_logo.jpg"
-                  alt="g-ankers logo"
-                  width={96}
-                  height={96}
+                  src="/images/gankersmain.png"
+                  alt="G-Ankers"
+                  width={300}
+                  height={300}
                   className="object-contain h-20 w-auto max-w-28 sm:max-w-none"
                   priority
                 />

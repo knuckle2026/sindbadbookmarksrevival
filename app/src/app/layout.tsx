@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "G-Ankers - 俺の秘密のコミュニティポータル",
-  description: "俺の秘密のコミュニティポータル",
+  title: "G-Ankers 心高鳴るポータルサイト",
+  description: "心高鳴るポータルサイト",
 };
 
 export default function RootLayout({

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import Pagination from "@/components/listings/Pagination";
 import { listMyListings } from "@/lib/db/queries/listings";
 import DeleteAccountButton from "./DeleteAccountButton";
+import LogoutLink from "./LogoutLink";
 
 export const dynamic = "force-dynamic";
 
@@ -104,7 +105,8 @@ export default async function MyListingsPage({ searchParams }: PageProps) {
         </p>
       )}
 
-      <div className="mt-12 flex justify-start">
+      <div className="mt-12 flex flex-col items-start gap-3">
+        <LogoutLink />
         <DeleteAccountButton />
       </div>
     </div>

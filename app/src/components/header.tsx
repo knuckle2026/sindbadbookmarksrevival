@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { AccessCounter } from "@/components/access-counter";
 
 interface HeaderProps {
   onHamburgerClick?: () => void;
@@ -77,15 +78,18 @@ export function Header({ onHamburgerClick, onCloseSidebar, genreName, genreSlug,
         )}
       </div>
 
-      {/* 右: 情報を登録ボタン（登録・編集画面では非表示） */}
-      {!hideRegisterButton && (
-        <button
-          onClick={handleRegister}
-          className="rounded-full bg-white/15 px-5 py-2.5 text-sm font-medium text-white ring-1 ring-white/40 transition-colors hover:bg-white/25 active:bg-white/25"
-        >
-          情報を登録
-        </button>
-      )}
+      {/* 右: 情報を登録ボタン + アクセスカウンター */}
+      <div className="flex flex-col items-end gap-1">
+        {!hideRegisterButton && (
+          <button
+            onClick={handleRegister}
+            className="rounded-full bg-white/15 px-5 py-2.5 text-sm font-medium text-white ring-1 ring-white/40 transition-colors hover:bg-white/25 active:bg-white/25"
+          >
+            情報を登録
+          </button>
+        )}
+        <AccessCounter />
+      </div>
     </header>
   );
 }

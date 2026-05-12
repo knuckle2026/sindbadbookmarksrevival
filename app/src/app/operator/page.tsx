@@ -28,7 +28,7 @@ export default async function OperatorPage() {
                     {a.title}
                   </h3>
                   <time className="shrink-0 text-xs text-zinc-400">
-                    {new Date(a.created_at).toLocaleDateString("ja-JP")}
+                    {new Date(a.updated_at).toLocaleDateString("ja-JP")}
                   </time>
                 </div>
                 <p className="whitespace-pre-wrap text-sm text-zinc-700">

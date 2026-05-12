@@ -3,14 +3,14 @@ import type { AnnouncementRow } from "../types";
 
 export type AnnouncementListRow = Pick<
   AnnouncementRow,
-  "id" | "title" | "body" | "sort_order" | "created_at"
+  "id" | "title" | "body" | "sort_order" | "created_at" | "updated_at"
 >;
 
 export async function listAnnouncements(): Promise<AnnouncementListRow[]> {
   const db = await getDB();
   const { results } = await db
     .prepare(
-      `SELECT id, title, body, sort_order, created_at
+      `SELECT id, title, body, sort_order, created_at, updated_at
        FROM announcements
        ORDER BY sort_order ASC, created_at DESC`
     )
@@ -34,7 +34,7 @@ export async function createAnnouncement(input: {
     .run();
   const row = await db
     .prepare(
-      `SELECT id, title, body, sort_order, created_at
+      `SELECT id, title, body, sort_order, created_at, updated_at
        FROM announcements WHERE id = ?`
     )
     .bind(id)

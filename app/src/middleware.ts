@@ -2,7 +2,10 @@ import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
 // Paths that bypass the age gate
-const AGE_GATE_BYPASS = ["/age-gate", "/auth", "/_next", "/favicon", "/icon", "/apple-icon", "/sbbm-control"];
+// API routes are programmatic and must bypass the age gate so non-GET
+// requests (PATCH/DELETE/POST) are not 307-redirected to /age-gate, which
+// only accepts GET and would otherwise return 405 Method Not Allowed.
+const AGE_GATE_BYPASS = ["/age-gate", "/auth", "/api", "/_next", "/favicon", "/icon", "/apple-icon", "/sbbm-control"];
 
 // Paths that suspended users may still access (to avoid redirect loops / allow sign-out)
 const SUSPENDED_BYPASS = ["/age-gate", "/auth", "/login", "/signup", "/reset-password", "/_next", "/favicon", "/icon", "/apple-icon"];

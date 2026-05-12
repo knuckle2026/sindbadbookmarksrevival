@@ -34,6 +34,7 @@ interface PageProps {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{
     category?: string;
+    cat_op?: string;
     prefecture?: string;
     service_area?: string;
     region?: string;
@@ -50,6 +51,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const {
     category: categoryParam,
+    cat_op: catOpParam,
     prefecture: prefectureParam,
     service_area: serviceAreaParam,
     region: regionParam,
@@ -60,6 +62,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     page: pageParam,
     q: qParam,
   } = await searchParams;
+  const catOp: "and" | "or" = catOpParam === "and" ? "and" : "or";
   const keyword = (qParam ?? "").trim();
   const currentPage = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
 
@@ -83,6 +86,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     const p = new URLSearchParams();
     p.set("prefecture", "tokyo");
     if (categoryParam) p.set("category", categoryParam);
+    if (catOp === "and") p.set("cat_op", "and");
     if (serviceAreaParam) p.set("service_area", serviceAreaParam);
     if (sortParam) p.set("sort", sortParam);
     if (excludeNhParam) p.set("exclude_nh", excludeNhParam);
@@ -102,31 +106,21 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     .split(",")
     .filter(Boolean);
 
-  const isMassage = slug === "massage-urisen";
-  // massage-urisen のみ AND 結合するカテゴリ（出張・レズ・ニューハーフ）
-  const MASSAGE_AND_SLUGS = new Set(["delivery", "les", "newhalf"]);
-  const newhalfCat = isMassage
-    ? categories.find((c) => c.slug === "newhalf")
-    : null;
-  const lesCat = isMassage
-    ? categories.find((c) => c.slug === "les")
-    : null;
+  const newhalfCat = categories.find((c) => c.slug === "newhalf");
+  const lesCat = categories.find((c) => c.slug === "les");
   const excludeNhActive = excludeNhParam === "1";
 
-  // カテゴリ絞り込み・newhalf+les 除外はサブクエリで行う（D1 の bind 上限を避けるため）。
+  // カテゴリ絞り込み: cat_op=and のときは全カテゴリを AND、そうでなければ OR
+  // (D1 の bind 上限を避けるためサブクエリで行う)
   const matchedCats = selectedCategorySlugs.length > 0
     ? categories.filter((c) => selectedCategorySlugs.includes(c.slug))
     : [];
-  // massage-urisen では出張/レズ/ニューハーフを AND、それ以外は OR
-  const orCats = isMassage
-    ? matchedCats.filter((c) => !MASSAGE_AND_SLUGS.has(c.slug))
-    : matchedCats;
-  const andCats = isMassage
-    ? matchedCats.filter((c) => MASSAGE_AND_SLUGS.has(c.slug))
-    : [];
-  const categoryIdsInclude = orCats.length > 0 ? orCats.map((c) => c.id) : null;
-  const categoryIdsAndAll = andCats.length > 0 ? andCats.map((c) => c.id) : null;
-  const excludeIds = isMassage && excludeNhActive
+  const matchedIds = matchedCats.map((c) => c.id);
+  // AND モードはカテゴリが 2 つ以上のときのみ意味がある (1 つなら結果は同じ)
+  const useAnd = catOp === "and" && matchedIds.length > 1;
+  const categoryIdsInclude = !useAnd && matchedIds.length > 0 ? matchedIds : null;
+  const categoryIdsAndAll = useAnd ? matchedIds : null;
+  const excludeIds = excludeNhActive
     ? [newhalfCat?.id, lesCat?.id].filter((x): x is string => !!x)
     : [];
   const categoryIdsExclude = excludeIds.length > 0 ? excludeIds : null;
@@ -223,6 +217,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
 
   const extraParams: Record<string, string> = {};
   if (categoryParam) extraParams.category = categoryParam;
+  if (catOp === "and") extraParams.cat_op = "and";
   if (regionParam) extraParams.region = regionParam;
   if (prefectureFilter) extraParams.prefecture = prefectureFilter;
   if (serviceAreaParam) extraParams.service_area = serviceAreaParam;
@@ -264,6 +259,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
             selectedRegion={regionParam ?? null}
             selectedPrefecture={prefectureFilter}
             categoryParam={categoryParam ?? ""}
+            catOpParam={catOp === "and" ? "and" : ""}
             serviceAreaParam={serviceAreaParam ?? ""}
           />
           {prefectureFilter === "tokyo" && (

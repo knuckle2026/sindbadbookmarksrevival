@@ -35,20 +35,29 @@ export default function GenreFilters({
   const [excludeNh, setExcludeNh] = useState<boolean>(
     () => searchParams.get("exclude_nh") === "1",
   );
+  const [catOp, setCatOp] = useState<"or" | "and">(
+    () => (searchParams.get("cat_op") === "and" ? "and" : "or"),
+  );
 
   // URLからstateを同期（ブラウザバック対応）
   useEffect(() => {
     const catParam = searchParams.get("category") ?? "";
     setCheckedCats(new Set(catParam.split(",").filter(Boolean)));
     setExcludeNh(searchParams.get("exclude_nh") === "1");
+    setCatOp(searchParams.get("cat_op") === "and" ? "and" : "or");
   }, [searchParams]);
 
   // stateからURLを構築して遷移
-  const syncToUrl = (nextCats: Set<string>, nextExcludeNh: boolean) => {
+  const syncToUrl = (
+    nextCats: Set<string>,
+    nextExcludeNh: boolean,
+    nextCatOp: "or" | "and",
+  ) => {
     const params = new URLSearchParams();
     const catStr = [...nextCats].join(",");
     if (catStr) params.set("category", catStr);
     if (nextExcludeNh) params.set("exclude_nh", "1");
+    if (nextCatOp === "and") params.set("cat_op", "and");
     // 他のパラメータを現在のURLから保持
     const currentRegion = searchParams.get("region");
     if (currentRegion) params.set("region", currentRegion);
@@ -81,7 +90,7 @@ export default function GenreFilters({
       normalSlugs.forEach((s) => next.add(s));
     }
     setCheckedCats(next);
-    syncToUrl(next, excludeNh);
+    syncToUrl(next, excludeNh, catOp);
   };
 
   const toggleCat = (catSlug: string) => {
@@ -92,13 +101,19 @@ export default function GenreFilters({
       next.add(catSlug);
     }
     setCheckedCats(next);
-    syncToUrl(next, excludeNh);
+    syncToUrl(next, excludeNh, catOp);
   };
 
   const toggleExcludeNh = () => {
     const nextExclude = !excludeNh;
     setExcludeNh(nextExclude);
-    syncToUrl(checkedCats, nextExclude);
+    syncToUrl(checkedCats, nextExclude, catOp);
+  };
+
+  const selectCatOp = (next: "or" | "and") => {
+    if (next === catOp) return;
+    setCatOp(next);
+    syncToUrl(checkedCats, excludeNh, next);
   };
 
   return (
@@ -106,9 +121,41 @@ export default function GenreFilters({
       {/* カテゴリチェックボックス */}
       {categories.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-semibold text-zinc-500">
-            カテゴリで絞り込み（複数選択可）
-          </p>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-zinc-500">
+              カテゴリで絞り込み（複数選択可）
+            </p>
+            <div
+              role="group"
+              aria-label="複数カテゴリの結合方法"
+              className="inline-flex overflow-hidden rounded-md border border-zinc-300 text-xs"
+            >
+              <button
+                type="button"
+                onClick={() => selectCatOp("or")}
+                aria-pressed={catOp === "or"}
+                className={`px-2 py-0.5 transition-colors ${
+                  catOp === "or"
+                    ? "bg-red-600 font-medium text-white"
+                    : "bg-white text-zinc-600 hover:bg-zinc-50"
+                }`}
+              >
+                OR
+              </button>
+              <button
+                type="button"
+                onClick={() => selectCatOp("and")}
+                aria-pressed={catOp === "and"}
+                className={`border-l border-zinc-300 px-2 py-0.5 transition-colors ${
+                  catOp === "and"
+                    ? "bg-red-600 font-medium text-white"
+                    : "bg-white text-zinc-600 hover:bg-zinc-50"
+                }`}
+              >
+                AND
+              </button>
+            </div>
+          </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1.5">
             {/* すべて */}
             <label className="flex items-center gap-1.5 cursor-pointer">
@@ -166,7 +213,7 @@ export default function GenreFilters({
                   className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
                 />
                 <span className="text-sm font-medium text-zinc-800">
-                  ニューハーフマッサージ以外
+                  レズ・ニューハーフ以外
                 </span>
               </label>
             )}

@@ -28,6 +28,8 @@ export default function ProviderAgeFilter() {
     // 他のパラメータを保持
     const currentCategory = searchParams.get("category");
     if (currentCategory) params.set("category", currentCategory);
+    const currentCatOp = searchParams.get("cat_op");
+    if (currentCatOp === "and") params.set("cat_op", "and");
     const currentExcludeNh = searchParams.get("exclude_nh");
     if (currentExcludeNh) params.set("exclude_nh", currentExcludeNh);
     const currentRegion = searchParams.get("region");

@@ -7,6 +7,7 @@ interface RegionPrefectureNavProps {
   selectedRegion: string | null;
   selectedPrefecture: string;
   categoryParam: string;
+  catOpParam: string;
   serviceAreaParam: string;
 }
 
@@ -19,12 +20,14 @@ const CITY_SHORTCUTS: { label: string; prefecture: string }[] = [
 function buildHref(
   slug: string,
   categoryParam: string,
+  catOpParam: string,
   serviceAreaParam: string,
   region?: string,
   prefecture?: string,
 ): string {
   const params = new URLSearchParams();
   if (categoryParam) params.set("category", categoryParam);
+  if (catOpParam === "and") params.set("cat_op", "and");
   if (serviceAreaParam) params.set("service_area", serviceAreaParam);
   if (region) params.set("region", region);
   if (prefecture) params.set("prefecture", prefecture);
@@ -38,6 +41,7 @@ export default function RegionPrefectureNav({
   selectedRegion,
   selectedPrefecture,
   categoryParam,
+  catOpParam,
   serviceAreaParam,
 }: RegionPrefectureNavProps) {
   const regionObj = selectedRegion
@@ -61,12 +65,14 @@ export default function RegionPrefectureNav({
         <div className="flex flex-wrap gap-1.5">
           {CITY_SHORTCUTS.map((c) => {
             const isActive = selectedPrefecture === c.prefecture;
+            const count = prefCountMap[c.prefecture] ?? 0;
             return (
               <Link
                 key={c.prefecture}
                 href={buildHref(
                   slug,
                   categoryParam,
+                  catOpParam,
                   serviceAreaParam,
                   undefined,
                   c.prefecture,
@@ -77,7 +83,10 @@ export default function RegionPrefectureNav({
                     : "border-zinc-300 bg-white text-zinc-700 hover:border-red-400 hover:bg-red-50"
                 }`}
               >
-                {c.label}
+                {c.label}{" "}
+                <span className={isActive ? "text-red-500" : "text-zinc-400"}>
+                  ({count})
+                </span>
               </Link>
             );
           })}
@@ -90,7 +99,7 @@ export default function RegionPrefectureNav({
           .map((r) => (
             <Link
               key={r.slug}
-              href={buildHref(slug, categoryParam, serviceAreaParam, r.slug)}
+              href={buildHref(slug, categoryParam, catOpParam, serviceAreaParam, r.slug)}
               className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-700 transition-colors hover:border-red-400 hover:bg-red-50"
             >
               {r.name}{" "}
@@ -115,6 +124,7 @@ export default function RegionPrefectureNav({
                   href={buildHref(
                     slug,
                     categoryParam,
+                    catOpParam,
                     serviceAreaParam,
                     selectedRegion!,
                     p.slug,

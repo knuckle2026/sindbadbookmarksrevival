@@ -322,6 +322,16 @@ export async function searchGenreListings(
   return { rows: results, total };
 }
 
+export async function countGenreListings(opts: SearchGenreOpts): Promise<number> {
+  const db = await getDB();
+  const { sql: where, binds } = buildGenreFilter(opts);
+  const row = await db
+    .prepare(`SELECT COUNT(*) AS c FROM listings WHERE ${where}`)
+    .bind(...binds)
+    .first<{ c: number }>();
+  return row?.c ?? 0;
+}
+
 export async function searchListingsByKeyword(
   q: string,
   offset: number,

@@ -12,11 +12,20 @@ interface CategoryItem {
 interface GenreFiltersProps {
   slug: string;
   categories: CategoryItem[];
+  /** 各カテゴリを toggle した後の件数 (slug → count) */
+  categoryCounts?: Record<string, number>;
+  /** 「すべて」を toggle した後の件数 */
+  allToggleCount?: number;
+  /** 「レズ・ニューハーフ以外」を toggle した後の件数 */
+  excludeNhToggleCount?: number;
 }
 
 export default function GenreFilters({
   slug,
   categories,
+  categoryCounts,
+  allToggleCount,
+  excludeNhToggleCount,
 }: GenreFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -140,7 +149,7 @@ export default function GenreFilters({
                     : "bg-white text-zinc-600 hover:bg-zinc-50"
                 }`}
               >
-                OR
+                OR検索
               </button>
               <button
                 type="button"
@@ -152,7 +161,7 @@ export default function GenreFilters({
                     : "bg-white text-zinc-600 hover:bg-zinc-50"
                 }`}
               >
-                AND
+                AND検索
               </button>
             </div>
           </div>
@@ -167,6 +176,11 @@ export default function GenreFilters({
               />
               <span className="text-sm font-medium text-zinc-800">
                 すべて
+                {typeof allToggleCount === "number" && (
+                  <span className="ml-1 text-xs font-normal text-zinc-500">
+                    ({allToggleCount})
+                  </span>
+                )}
               </span>
             </label>
 
@@ -184,6 +198,11 @@ export default function GenreFilters({
                 />
                 <span className="text-sm text-zinc-800">
                   {c.name}
+                  {categoryCounts && typeof categoryCounts[c.slug] === "number" && (
+                    <span className="ml-1 text-xs text-zinc-500">
+                      ({categoryCounts[c.slug]})
+                    </span>
+                  )}
                 </span>
               </label>
             ))}
@@ -199,6 +218,12 @@ export default function GenreFilters({
                 />
                 <span className="text-sm text-zinc-800">
                   {newhalfCategory.name}
+                  {categoryCounts &&
+                    typeof categoryCounts[newhalfCategory.slug] === "number" && (
+                      <span className="ml-1 text-xs text-zinc-500">
+                        ({categoryCounts[newhalfCategory.slug]})
+                      </span>
+                    )}
                 </span>
               </label>
             )}
@@ -214,6 +239,11 @@ export default function GenreFilters({
                 />
                 <span className="text-sm font-medium text-zinc-800">
                   レズ・ニューハーフ以外
+                  {typeof excludeNhToggleCount === "number" && (
+                    <span className="ml-1 text-xs font-normal text-zinc-500">
+                      ({excludeNhToggleCount})
+                    </span>
+                  )}
                 </span>
               </label>
             )}

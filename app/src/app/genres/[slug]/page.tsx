@@ -12,6 +12,7 @@ import SearchBar from "@/components/listings/SearchBar";
 import { getGenreBySlug } from "@/lib/db/queries/genres";
 import { listCategoriesByGenre } from "@/lib/db/queries/categories";
 import {
+  countGenreListings,
   getCategoriesForListings,
   getPrefectureCounts,
   getServiceAreasJson,
@@ -212,6 +213,77 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
 
   const catMap = await getCategoriesForListings(listings.map((l) => l.id));
 
+  // 各カテゴリ checkbox の隣に出す件数 (toggle 後の件数を facet preview 風に表示)。
+  // newhalf も含む全カテゴリと、「すべて (通常カテゴリ全選択)」「ニューハーフ以外」の hypothetical を並列で計算。
+  const baseSearchOpts = {
+    genreId: genreRow.id,
+    sort: currentSort as DbSortKey,
+    limit: 0,
+    offset: 0,
+    prefectures,
+    serviceAreas: selectedServiceAreas.length > 0 ? selectedServiceAreas : null,
+    providerAges: selectedProviderAges.length > 0 ? selectedProviderAges : null,
+    wardSpecific: wardFilterActive && wardSpecificSlugs.length > 0
+      ? wardSpecificSlugs
+      : null,
+    wardIncludesNull: wardFilterActive ? wardIncludesOutside : false,
+    keyword: keyword || null,
+  };
+  const matchedIdSet = new Set(matchedIds);
+  const optsForSelection = (selectedIds: string[]) => {
+    const useAndH = catOp === "and" && selectedIds.length > 1;
+    return {
+      ...baseSearchOpts,
+      categoryIdsInclude:
+        !useAndH && selectedIds.length > 0 ? selectedIds : null,
+      categoryIdsAndAll: useAndH ? selectedIds : null,
+      categoryIdsExclude,
+    };
+  };
+  const normalCats = categories.filter((c) => c.slug !== "newhalf");
+  const allNormalIds = normalCats.map((c) => c.id);
+  const allNormalChecked =
+    allNormalIds.length > 0 && allNormalIds.every((id) => matchedIdSet.has(id));
+  const newhalfCatId = categories.find((c) => c.slug === "newhalf")?.id ?? null;
+  const lesCatId = lesCat?.id ?? null;
+
+  const [categoryCountMap, allToggleCount, excludeNhToggleCount] =
+    await Promise.all([
+      (async () => {
+        const entries = await Promise.all(
+          categories.map(async (c) => {
+            const next = matchedIdSet.has(c.id)
+              ? matchedIds.filter((id) => id !== c.id)
+              : [...matchedIds, c.id];
+            return [c.slug, await countGenreListings(optsForSelection(next))] as [
+              string,
+              number,
+            ];
+          }),
+        );
+        return Object.fromEntries(entries) as Record<string, number>;
+      })(),
+      (async () => {
+        const next = allNormalChecked
+          ? matchedIds.filter((id) => !allNormalIds.includes(id))
+          : Array.from(new Set([...matchedIds, ...allNormalIds]));
+        return countGenreListings(optsForSelection(next));
+      })(),
+      (async () => {
+        const ids = [newhalfCatId, lesCatId].filter(
+          (x): x is string => !!x,
+        );
+        if (ids.length === 0) return 0;
+        return countGenreListings({
+          ...baseSearchOpts,
+          categoryIdsInclude,
+          categoryIdsAndAll,
+          // toggle excludeNh => 反転
+          categoryIdsExclude: excludeNhActive ? null : ids,
+        });
+      })(),
+    ]);
+
   const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
 
@@ -242,6 +314,9 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
               slug: c.slug,
               name: c.name,
             }))}
+            categoryCounts={categoryCountMap}
+            allToggleCount={allToggleCount}
+            excludeNhToggleCount={excludeNhToggleCount}
           />
         </Suspense>
 

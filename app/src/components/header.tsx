@@ -64,7 +64,7 @@ export function Header({ onHamburgerClick, onCloseSidebar, genreName, genreSlug,
             {showLogo && (
               <Link href="/" className="shrink-0">
                 <Image
-                  src="/images/gaks_logo2.jpg"
+                  src="/images/gaks_logo3.jpg"
                   alt="G-Ankers"
                   width={300}
                   height={300}

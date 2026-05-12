@@ -87,6 +87,11 @@ const CATEGORY_ID = {
     "useful-site": "ab3e4611-cb92-467c-bfd6-07970455693e",
     abroad:        "fe6d6084-5c1b-4b31-981a-ac4bf0c603ac",
   },
+  "fashion-beauty": {
+    shop:      "bdbe8cf4-2753-44dd-90a3-ac629f420c21",
+    shirt:     "02b37132-282f-4133-b7ea-8e9ac790ba6b",
+    underwear: "b99f4943-6d48-4b3c-a030-6680dd03b74e",
+  },
 };
 
 const PREFECTURE_SLUG = {
@@ -177,7 +182,8 @@ const GPRESS_TO_GENRE = {
   tstg:         { genre: "org-consult",   category: "volunteer" },
   yaoi:         { genre: "video-gallery", category: "contents" },
   book:         { genre: "media-sns",     category: "publishing" },
-  app:          { genre: "matching",      category: "app" },
+  // gpress の "app" カテゴリは Apparel (服飾) — マッチングアプリではない
+  app:          { genre: "fashion-beauty", category: "shop" },
   etc:          { genre: "other",         category: "useful-site" },
 };
 

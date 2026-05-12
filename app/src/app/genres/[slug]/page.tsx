@@ -213,8 +213,8 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
 
   const catMap = await getCategoriesForListings(listings.map((l) => l.id));
 
-  // 各カテゴリ checkbox の隣に出す件数 (toggle 後の件数を facet preview 風に表示)。
-  // newhalf も含む全カテゴリと、「すべて (通常カテゴリ全選択)」「ニューハーフ以外」の hypothetical を並列で計算。
+  // 各カテゴリ checkbox の隣に出す件数: そのカテゴリにタグ付けされた listing 数
+  // (現在の location / exclude / keyword フィルタは適用するが、カテゴリ選択や AND/OR には依存しない)
   const baseSearchOpts = {
     genreId: genreRow.id,
     sort: currentSort as DbSortKey,
@@ -229,21 +229,6 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     wardIncludesNull: wardFilterActive ? wardIncludesOutside : false,
     keyword: keyword || null,
   };
-  const matchedIdSet = new Set(matchedIds);
-  const optsForSelection = (selectedIds: string[]) => {
-    const useAndH = catOp === "and" && selectedIds.length > 1;
-    return {
-      ...baseSearchOpts,
-      categoryIdsInclude:
-        !useAndH && selectedIds.length > 0 ? selectedIds : null,
-      categoryIdsAndAll: useAndH ? selectedIds : null,
-      categoryIdsExclude,
-    };
-  };
-  const normalCats = categories.filter((c) => c.slug !== "newhalf");
-  const allNormalIds = normalCats.map((c) => c.id);
-  const allNormalChecked =
-    allNormalIds.length > 0 && allNormalIds.every((id) => matchedIdSet.has(id));
   const newhalfCatId = categories.find((c) => c.slug === "newhalf")?.id ?? null;
   const lesCatId = lesCat?.id ?? null;
 
@@ -252,23 +237,27 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
       (async () => {
         const entries = await Promise.all(
           categories.map(async (c) => {
-            const next = matchedIdSet.has(c.id)
-              ? matchedIds.filter((id) => id !== c.id)
-              : [...matchedIds, c.id];
-            return [c.slug, await countGenreListings(optsForSelection(next))] as [
-              string,
-              number,
-            ];
+            return [
+              c.slug,
+              await countGenreListings({
+                ...baseSearchOpts,
+                categoryIdsInclude: [c.id],
+                categoryIdsAndAll: null,
+                categoryIdsExclude,
+              }),
+            ] as [string, number];
           }),
         );
         return Object.fromEntries(entries) as Record<string, number>;
       })(),
-      (async () => {
-        const next = allNormalChecked
-          ? matchedIds.filter((id) => !allNormalIds.includes(id))
-          : Array.from(new Set([...matchedIds, ...allNormalIds]));
-        return countGenreListings(optsForSelection(next));
-      })(),
+      // 「すべて」: カテゴリ無指定での件数 (= location/exclude フィルタ後の全件)
+      countGenreListings({
+        ...baseSearchOpts,
+        categoryIdsInclude: null,
+        categoryIdsAndAll: null,
+        categoryIdsExclude,
+      }),
+      // 「レズ・ニューハーフ以外」: チェックを反転した状態での件数
       (async () => {
         const ids = [newhalfCatId, lesCatId].filter(
           (x): x is string => !!x,
@@ -278,7 +267,6 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
           ...baseSearchOpts,
           categoryIdsInclude,
           categoryIdsAndAll,
-          // toggle excludeNh => 反転
           categoryIdsExclude: excludeNhActive ? null : ids,
         });
       })(),

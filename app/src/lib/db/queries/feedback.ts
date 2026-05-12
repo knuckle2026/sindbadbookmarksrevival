@@ -19,6 +19,11 @@ export type FeedbackListRow = Pick<
   "id" | "user_id" | "body" | "created_at"
 >;
 
+export async function deleteFeedback(id: string): Promise<void> {
+  const db = await getDB();
+  await db.prepare("DELETE FROM feedback WHERE id = ?").bind(id).run();
+}
+
 export async function listFeedback(
   offset: number,
   limit: number

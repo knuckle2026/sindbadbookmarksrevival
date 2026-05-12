@@ -1,6 +1,7 @@
 import { listFeedback } from "@/lib/db/queries/feedback";
 import { getUserEmailsByIds } from "@/lib/supabase/admin";
 import Pagination from "@/components/listings/Pagination";
+import DeleteFeedbackButton from "./DeleteFeedbackButton";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,9 @@ export default async function AdminFeedbackPage({ searchParams }: PageProps) {
                 <p className="whitespace-pre-wrap text-sm text-zinc-800">
                   {f.body}
                 </p>
+                <div className="mt-3 flex justify-end">
+                  <DeleteFeedbackButton id={f.id} />
+                </div>
               </li>
             ))}
           </ul>

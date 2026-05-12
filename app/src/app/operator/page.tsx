@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { listAnnouncements } from "@/lib/db/queries/announcements";
 import { listFaqs } from "@/lib/db/queries/faqs";
 import FeedbackForm from "./FeedbackForm";
@@ -44,6 +45,14 @@ export default async function OperatorPage() {
         )}
       </section>
 
+      <Image
+        src="/images/gankersA.jpg"
+        alt=""
+        width={2048}
+        height={2048}
+        className="h-auto w-full rounded-lg"
+      />
+
       <section>
         <h2 className="mb-4 text-xl font-bold text-zinc-900">FAQ</h2>
         {faqs.length > 0 ? (
@@ -68,6 +77,14 @@ export default async function OperatorPage() {
           </p>
         )}
       </section>
+
+      <Image
+        src="/images/gankersB.jpg"
+        alt=""
+        width={1024}
+        height={1024}
+        className="h-auto w-full rounded-lg"
+      />
 
       <section>
         <h2 className="mb-4 text-xl font-bold text-zinc-900">ご意見ご要望</h2>

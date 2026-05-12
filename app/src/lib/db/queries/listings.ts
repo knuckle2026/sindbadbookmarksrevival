@@ -48,18 +48,56 @@ export async function listMyListings(
   return { rows: results, total };
 }
 
+export interface CountFilterOpts {
+  /** カテゴリ ID のいずれかに紐づく listing のみ集計（OR） */
+  categoryIdsInclude?: string[] | null;
+  /** カテゴリ ID 全てに紐づいている listing のみ集計（AND） */
+  categoryIdsAndAll?: string[] | null;
+  /** カテゴリ ID のいずれかに紐づく listing を除外 */
+  categoryIdsExclude?: string[] | null;
+}
+
+function buildCountFilter(opts?: CountFilterOpts): { sql: string; binds: unknown[] } {
+  const parts: string[] = [];
+  const binds: unknown[] = [];
+  if (opts?.categoryIdsInclude && opts.categoryIdsInclude.length > 0) {
+    const ph = opts.categoryIdsInclude.map(() => "?").join(",");
+    parts.push(
+      `id IN (SELECT listing_id FROM listing_categories WHERE category_id IN (${ph}))`,
+    );
+    binds.push(...opts.categoryIdsInclude);
+  }
+  if (opts?.categoryIdsAndAll && opts.categoryIdsAndAll.length > 0) {
+    const ph = opts.categoryIdsAndAll.map(() => "?").join(",");
+    parts.push(
+      `id IN (SELECT listing_id FROM listing_categories WHERE category_id IN (${ph}) GROUP BY listing_id HAVING COUNT(DISTINCT category_id) = ${opts.categoryIdsAndAll.length})`,
+    );
+    binds.push(...opts.categoryIdsAndAll);
+  }
+  if (opts?.categoryIdsExclude && opts.categoryIdsExclude.length > 0) {
+    const ph = opts.categoryIdsExclude.map(() => "?").join(",");
+    parts.push(
+      `id NOT IN (SELECT listing_id FROM listing_categories WHERE category_id IN (${ph}))`,
+    );
+    binds.push(...opts.categoryIdsExclude);
+  }
+  return { sql: parts.length > 0 ? " AND " + parts.join(" AND ") : "", binds };
+}
+
 export async function getPrefectureCounts(
-  genreId: string
+  genreId: string,
+  opts?: CountFilterOpts,
 ): Promise<Record<string, number>> {
   const db = await getDB();
+  const { sql: extra, binds } = buildCountFilter(opts);
   const { results } = await db
     .prepare(
       `SELECT prefecture, COUNT(*) AS c
        FROM listings
-       WHERE genre_id = ? AND status = 'published' AND prefecture IS NOT NULL
-       GROUP BY prefecture`
+       WHERE genre_id = ? AND status = 'published' AND prefecture IS NOT NULL${extra}
+       GROUP BY prefecture`,
     )
-    .bind(genreId)
+    .bind(genreId, ...binds)
     .all<{ prefecture: string; c: number }>();
   const map: Record<string, number> = {};
   for (const r of results) map[r.prefecture] = r.c;
@@ -67,32 +105,37 @@ export async function getPrefectureCounts(
 }
 
 export async function getServiceAreasJson(
-  genreId: string
+  genreId: string,
+  opts?: CountFilterOpts,
 ): Promise<string[]> {
   const db = await getDB();
+  const { sql: extra, binds } = buildCountFilter(opts);
   const { results } = await db
     .prepare(
       `SELECT service_areas
        FROM listings
-       WHERE genre_id = ? AND status = 'published' AND service_areas IS NOT NULL`
+       WHERE genre_id = ? AND status = 'published' AND service_areas IS NOT NULL${extra}`,
     )
-    .bind(genreId)
+    .bind(genreId, ...binds)
     .all<{ service_areas: string }>();
   return results.map((r) => r.service_areas);
 }
 
-export async function getWardCountsTokyo(
-  genreId: string
+export async function getWardCounts(
+  genreId: string,
+  prefSlug: string,
+  opts?: CountFilterOpts,
 ): Promise<Record<string, number>> {
   const db = await getDB();
+  const { sql: extra, binds } = buildCountFilter(opts);
   const { results } = await db
     .prepare(
       `SELECT ward, COUNT(*) AS c
        FROM listings
-       WHERE genre_id = ? AND status = 'published' AND prefecture = 'tokyo'
-       GROUP BY ward`
+       WHERE genre_id = ? AND status = 'published' AND prefecture = ?${extra}
+       GROUP BY ward`,
     )
-    .bind(genreId)
+    .bind(genreId, prefSlug, ...binds)
     .all<{ ward: string | null; c: number }>();
   const map: Record<string, number> = {};
   for (const r of results) map[r.ward ?? "__null"] = r.c;
@@ -151,7 +194,14 @@ export interface SearchGenreOpts {
   sort: SortKey;
   limit: number;
   offset: number;
+  /** 旧方式: 個別の listing_id 配列で絞り込み。大量だと D1 の bind 上限に当たるため非推奨。 */
   listingIds?: string[] | null;
+  /** カテゴリ ID で IN サブクエリを使ってフィルタ（OR）。 */
+  categoryIdsInclude?: string[] | null;
+  /** カテゴリ ID 全てに紐づいている listing のみ通過（AND）。 */
+  categoryIdsAndAll?: string[] | null;
+  /** カテゴリ ID で NOT IN サブクエリを使って除外。 */
+  categoryIdsExclude?: string[] | null;
   prefectures?: string[] | null;
   serviceAreas?: string[] | null;
   providerAges?: string[] | null;
@@ -184,6 +234,27 @@ function buildGenreFilter(opts: SearchGenreOpts): {
       );
       binds.push(...opts.listingIds);
     }
+  }
+  if (opts.categoryIdsInclude && opts.categoryIdsInclude.length > 0) {
+    const ph = opts.categoryIdsInclude.map(() => "?").join(",");
+    parts.push(
+      `id IN (SELECT listing_id FROM listing_categories WHERE category_id IN (${ph}))`,
+    );
+    binds.push(...opts.categoryIdsInclude);
+  }
+  if (opts.categoryIdsAndAll && opts.categoryIdsAndAll.length > 0) {
+    const ph = opts.categoryIdsAndAll.map(() => "?").join(",");
+    parts.push(
+      `id IN (SELECT listing_id FROM listing_categories WHERE category_id IN (${ph}) GROUP BY listing_id HAVING COUNT(DISTINCT category_id) = ${opts.categoryIdsAndAll.length})`,
+    );
+    binds.push(...opts.categoryIdsAndAll);
+  }
+  if (opts.categoryIdsExclude && opts.categoryIdsExclude.length > 0) {
+    const ph = opts.categoryIdsExclude.map(() => "?").join(",");
+    parts.push(
+      `id NOT IN (SELECT listing_id FROM listing_categories WHERE category_id IN (${ph}))`,
+    );
+    binds.push(...opts.categoryIdsExclude);
   }
   if (opts.prefectures && opts.prefectures.length > 0) {
     parts.push(
@@ -434,7 +505,7 @@ export interface AdminSearchOpts {
 
 export type AdminListingRow = Pick<
   ListingRow,
-  "id" | "title" | "genre_id" | "website_url" | "description" | "created_at"
+  "id" | "title" | "genre_id" | "website_url" | "description" | "created_at" | "user_id"
 >;
 
 const ADMIN_SORT_SQL: Record<AdminSortColumn, string> = {
@@ -487,7 +558,7 @@ export async function adminSearchListings(
   const dir = opts.sortOrder === "asc" ? "ASC" : "DESC";
   const { results } = await db
     .prepare(
-      `SELECT id, title, genre_id, website_url, description, created_at
+      `SELECT id, title, genre_id, website_url, description, created_at, user_id
        FROM listings
        WHERE ${where}
        ORDER BY ${sortSql} ${dir}

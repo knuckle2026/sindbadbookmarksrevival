@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { GENRES } from "@/lib/constants/genres";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import { TOKYO_OUTSIDE_SLUG } from "@/lib/constants/tokyo-wards";
+import { OSAKA_OUTSIDE_SLUG } from "@/lib/constants/osaka-areas";
 import Pagination from "@/components/listings/Pagination";
 import SortSelect, { type SortKey } from "@/components/listings/SortSelect";
 import ClickableTitle from "@/components/listings/ClickableTitle";
@@ -11,12 +12,10 @@ import SearchBar from "@/components/listings/SearchBar";
 import { getGenreBySlug } from "@/lib/db/queries/genres";
 import { listCategoriesByGenre } from "@/lib/db/queries/categories";
 import {
-  getAllPublishedListingIds,
   getCategoriesForListings,
-  getListingIdsByCategories,
   getPrefectureCounts,
   getServiceAreasJson,
-  getWardCountsTokyo,
+  getWardCounts,
   searchGenreListings,
   type SortKey as DbSortKey,
 } from "@/lib/db/queries/listings";
@@ -25,6 +24,7 @@ import RegionPrefectureNav from "./RegionPrefectureNav";
 import ServiceAreaFilter from "./ServiceAreaFilter";
 import ProviderAgeFilter from "./ProviderAgeFilter";
 import TokyoWardFilter from "./TokyoWardFilter";
+import OsakaAreaFilter from "./OsakaAreaFilter";
 
 export const revalidate = 60;
 
@@ -96,19 +96,55 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   const genreRow = await getGenreBySlug(slug);
   if (!genreRow) notFound();
 
-  const [categories, prefCountMap, svcJsonRows, wardCountRawMap] =
-    await Promise.all([
-      listCategoriesByGenre(genreRow.id),
-      genreMeta.hasPrefecture
-        ? getPrefectureCounts(genreRow.id)
-        : Promise.resolve({} as Record<string, number>),
-      genreMeta.hasServiceAreas
-        ? getServiceAreasJson(genreRow.id)
-        : Promise.resolve<string[]>([]),
-      genreMeta.hasPrefecture && prefectureParam === "tokyo"
-        ? getWardCountsTokyo(genreRow.id)
-        : Promise.resolve({} as Record<string, number>),
-    ]);
+  const categories = await listCategoriesByGenre(genreRow.id);
+
+  const selectedCategorySlugs = (categoryParam ?? "")
+    .split(",")
+    .filter(Boolean);
+
+  const isMassage = slug === "massage-urisen";
+  // massage-urisen のみ AND 結合するカテゴリ（出張・レズ・ニューハーフ）
+  const MASSAGE_AND_SLUGS = new Set(["delivery", "les", "newhalf"]);
+  const newhalfCat = isMassage
+    ? categories.find((c) => c.slug === "newhalf")
+    : null;
+  const lesCat = isMassage
+    ? categories.find((c) => c.slug === "les")
+    : null;
+  const excludeNhActive = excludeNhParam === "1";
+
+  // カテゴリ絞り込み・newhalf+les 除外はサブクエリで行う（D1 の bind 上限を避けるため）。
+  const matchedCats = selectedCategorySlugs.length > 0
+    ? categories.filter((c) => selectedCategorySlugs.includes(c.slug))
+    : [];
+  // massage-urisen では出張/レズ/ニューハーフを AND、それ以外は OR
+  const orCats = isMassage
+    ? matchedCats.filter((c) => !MASSAGE_AND_SLUGS.has(c.slug))
+    : matchedCats;
+  const andCats = isMassage
+    ? matchedCats.filter((c) => MASSAGE_AND_SLUGS.has(c.slug))
+    : [];
+  const categoryIdsInclude = orCats.length > 0 ? orCats.map((c) => c.id) : null;
+  const categoryIdsAndAll = andCats.length > 0 ? andCats.map((c) => c.id) : null;
+  const excludeIds = isMassage && excludeNhActive
+    ? [newhalfCat?.id, lesCat?.id].filter((x): x is string => !!x)
+    : [];
+  const categoryIdsExclude = excludeIds.length > 0 ? excludeIds : null;
+
+  const countOpts = { categoryIdsInclude, categoryIdsAndAll, categoryIdsExclude };
+
+  const [prefCountMap, svcJsonRows, wardCountRawMap] = await Promise.all([
+    genreMeta.hasPrefecture
+      ? getPrefectureCounts(genreRow.id, countOpts)
+      : Promise.resolve({} as Record<string, number>),
+    genreMeta.hasServiceAreas
+      ? getServiceAreasJson(genreRow.id, countOpts)
+      : Promise.resolve<string[]>([]),
+    genreMeta.hasPrefecture &&
+    (prefectureParam === "tokyo" || prefectureParam === "osaka")
+      ? getWardCounts(genreRow.id, prefectureParam, countOpts)
+      : Promise.resolve({} as Record<string, number>),
+  ]);
 
   const areaCountMap: Record<string, number> = {};
   let serviceListingCount = 0;
@@ -126,49 +162,16 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     }
   }
 
+  const outsideSlug =
+    prefectureParam === "osaka" ? OSAKA_OUTSIDE_SLUG : TOKYO_OUTSIDE_SLUG;
   const wardCountMap: Record<string, number> = {};
   for (const [k, v] of Object.entries(wardCountRawMap)) {
-    wardCountMap[k === "__null" ? TOKYO_OUTSIDE_SLUG : k] = v;
+    wardCountMap[k === "__null" ? outsideSlug : k] = v;
   }
 
   const selectedRegion = regionParam
     ? PREFECTURE_REGIONS.find((r) => r.slug === regionParam)
     : null;
-
-  const selectedCategorySlugs = (categoryParam ?? "")
-    .split(",")
-    .filter(Boolean);
-
-  const isMassage = slug === "massage-urisen";
-  const newhalfCat = isMassage
-    ? categories.find((c) => c.slug === "newhalf")
-    : null;
-  const excludeNhActive = excludeNhParam === "1";
-
-  let excludeNewhalfIds = new Set<string>();
-  if (isMassage && newhalfCat && excludeNhActive) {
-    excludeNewhalfIds = new Set(
-      await getListingIdsByCategories([newhalfCat.id])
-    );
-  }
-
-  let listingIds: string[] | null = null;
-  if (selectedCategorySlugs.length > 0) {
-    const matchedCats = categories.filter((c) =>
-      selectedCategorySlugs.includes(c.slug)
-    );
-    if (matchedCats.length > 0) {
-      let ids = await getListingIdsByCategories(matchedCats.map((c) => c.id));
-      if (excludeNewhalfIds.size > 0) {
-        ids = ids.filter((id) => !excludeNewhalfIds.has(id));
-      }
-      listingIds = ids.length > 0 ? ids : ["__none__"];
-    }
-  } else if (isMassage && excludeNhActive && excludeNewhalfIds.size > 0) {
-    const allIds = await getAllPublishedListingIds(genreRow.id);
-    const ids = allIds.filter((id) => !excludeNewhalfIds.has(id));
-    listingIds = ids.length > 0 ? ids : ["__none__"];
-  }
 
   const prefectureFilter = prefectureParam ?? "";
   const regionPrefectureSlugs = selectedRegion
@@ -186,11 +189,12 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     .filter(Boolean);
 
   const selectedWardsRaw = (wardParam ?? "").split(",").filter(Boolean);
-  const wardFilterActive =
-    prefectureFilter === "tokyo" && selectedWardsRaw.length > 0;
-  const wardIncludesOutside = selectedWardsRaw.includes(TOKYO_OUTSIDE_SLUG);
+  const wardSupportedPref =
+    prefectureFilter === "tokyo" || prefectureFilter === "osaka";
+  const wardFilterActive = wardSupportedPref && selectedWardsRaw.length > 0;
+  const wardIncludesOutside = selectedWardsRaw.includes(outsideSlug);
   const wardSpecificSlugs = selectedWardsRaw.filter(
-    (w) => w !== TOKYO_OUTSIDE_SLUG
+    (w) => w !== outsideSlug,
   );
 
   const from = (currentPage - 1) * PER_PAGE;
@@ -199,7 +203,9 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     sort: currentSort as DbSortKey,
     limit: PER_PAGE,
     offset: from,
-    listingIds,
+    categoryIdsInclude,
+    categoryIdsAndAll,
+    categoryIdsExclude,
     prefectures,
     serviceAreas: selectedServiceAreas.length > 0 ? selectedServiceAreas : null,
     providerAges: selectedProviderAges.length > 0 ? selectedProviderAges : null,
@@ -262,6 +268,9 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
           />
           {prefectureFilter === "tokyo" && (
             <TokyoWardFilter wardCountMap={wardCountMap} />
+          )}
+          {prefectureFilter === "osaka" && (
+            <OsakaAreaFilter wardCountMap={wardCountMap} />
           )}
         </>
       )}

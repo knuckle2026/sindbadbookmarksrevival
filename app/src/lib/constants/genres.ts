@@ -18,7 +18,7 @@ export const GENRES: GenreMeta[] = [
   { slug: "media-sns",          name: "メディア・SNS",             sortOrder: 5 },
   { slug: "org-consult",        name: "団体・相談先",              sortOrder: 6 },
   { slug: "matching",           name: "出会い",                    sortOrder: 7 },
-  { slug: "fashion-beauty",     name: "ファッション・美容",        sortOrder: 8, hasPrefecture: true },
+  { slug: "fashion-beauty",     name: "ファッション・美容",        sortOrder: 8 },
   { slug: "mania",              name: "マニア系",                  sortOrder: 9 },
   { slug: "other",              name: "その他",                    sortOrder: 10 },
 ];

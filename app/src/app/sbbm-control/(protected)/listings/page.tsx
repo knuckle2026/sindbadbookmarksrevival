@@ -7,6 +7,7 @@ import {
 } from "@/lib/db/queries/listings";
 import { listGenres } from "@/lib/db/queries/genres";
 import { getReportsByListingIds } from "@/lib/db/queries/reports";
+import { getUserEmailsByIds } from "@/lib/supabase/admin";
 import ListingActions from "./ListingActions";
 import ReportCount from "./ReportCount";
 
@@ -93,9 +94,13 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
   }
 
   const listingIds = listings.map((l) => l.id);
-  const [categoriesByListing, reportsByListing] = await Promise.all([
+  const userIds = [
+    ...new Set(listings.map((l) => l.user_id).filter((u): u is string => !!u)),
+  ];
+  const [categoriesByListing, reportsByListing, emailMap] = await Promise.all([
     getCategoriesForListings(listingIds),
     getReportsByListingIds(listingIds),
+    getUserEmailsByIds(userIds),
   ]);
 
   const buildBaseParams = () => {
@@ -114,6 +119,20 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
     if (page > 1) params.set("page", String(page));
     const qs = params.toString();
     return `/sbbm-control/listings${qs ? `?${qs}` : ""}`;
+  };
+
+  // 編集ページから戻ってくるときに同じ画面状態を再現するため、現在の URL を from として渡す
+  const currentListUrl = (() => {
+    const params = buildBaseParams();
+    if (currentPage > 1) params.set("page", String(currentPage));
+    const qs = params.toString();
+    return `/sbbm-control/listings${qs ? `?${qs}` : ""}`;
+  })();
+
+  const buildEditUrl = (listingId: string) => {
+    const params = new URLSearchParams();
+    params.set("from", currentListUrl);
+    return `/sbbm-control/listings/${listingId}/edit?${params.toString()}`;
   };
 
   const buildSortUrl = (col: AdminSortColumn | "genre") => {
@@ -191,6 +210,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
                   </Link>
                 </th>
               ))}
+              <th className="px-4 py-2 text-left font-medium text-zinc-500">登録者</th>
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Categories</th>
               <th className="px-4 py-2 text-right font-medium text-zinc-500">Actions</th>
               <th className="px-4 py-2 text-center font-medium text-zinc-500">通報</th>
@@ -199,7 +219,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
           <tbody>
             {listings.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-zinc-400">
+                <td colSpan={9} className="px-4 py-6 text-center text-zinc-400">
                   No listings found
                 </td>
               </tr>
@@ -242,12 +262,20 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
                     <td className="px-4 py-2 text-xs text-zinc-500 whitespace-nowrap">
                       {new Date(listing.created_at).toLocaleDateString("ja-JP")}
                     </td>
+                    <td
+                      className="max-w-[180px] truncate px-4 py-2 text-xs text-zinc-500"
+                      title={listing.user_id ?? ""}
+                    >
+                      {listing.user_id
+                        ? emailMap[listing.user_id] ?? "(不明)"
+                        : "-"}
+                    </td>
                     <td className="max-w-[150px] truncate px-4 py-2 text-xs text-zinc-500">
                       {catNames || "-"}
                     </td>
                     <td className="px-4 py-2 text-right whitespace-nowrap">
                       <Link
-                        href={`/sbbm-control/listings/${listing.id}/edit`}
+                        href={buildEditUrl(listing.id)}
                         className="mr-2 rounded bg-zinc-100 px-3 py-1 text-xs text-zinc-700 hover:bg-zinc-200"
                       >
                         Edit

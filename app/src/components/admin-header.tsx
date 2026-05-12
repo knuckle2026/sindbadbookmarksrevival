@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/sbbm-control", label: "Dashboard" },
   { href: "/sbbm-control/categories", label: "Categories" },
   { href: "/sbbm-control/listings", label: "Listings" },
+  { href: "/sbbm-control/accounts", label: "Accounts" },
   { href: "/sbbm-control/announcements", label: "お知らせ" },
   { href: "/sbbm-control/faqs", label: "FAQ" },
   { href: "/sbbm-control/feedback", label: "ご意見" },

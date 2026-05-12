@@ -11,12 +11,26 @@ import ListingForm from "@/app/listings/new/ListingForm";
 
 export const dynamic = "force-dynamic";
 
+function safeListingsReturnPath(from: string | undefined): string {
+  if (!from) return "/sbbm-control/listings";
+  // /sbbm-control/listings そのもの、または ?クエリ付きのみを許可（オープンリダイレクト防止）
+  if (!from.startsWith("/sbbm-control/listings")) return "/sbbm-control/listings";
+  // 続くのは ? か空のみ。/edit/ など別パスは弾く
+  const after = from.slice("/sbbm-control/listings".length);
+  if (after !== "" && !after.startsWith("?")) return "/sbbm-control/listings";
+  return from;
+}
+
 export default async function AdminEditListingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { id } = await params;
+  const { from } = await searchParams;
+  const redirectTo = safeListingsReturnPath(from);
 
   const [listing, selectedCategoryIds, allCategories, genres] = await Promise.all([
     getListingById(id),
@@ -61,7 +75,7 @@ export default async function AdminEditListingPage({
             : [],
           address: listing.address ?? "",
         }}
-        redirectTo="/sbbm-control/listings"
+        redirectTo={redirectTo}
       />
     </div>
   );

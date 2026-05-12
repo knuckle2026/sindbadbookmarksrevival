@@ -86,3 +86,10 @@ export interface FeedbackRow {
   body: string;
   created_at: string;
 }
+
+export interface BlockedEmailRow {
+  email: string;
+  blocked_by: string | null;
+  reason: string | null;
+  created_at: string;
+}

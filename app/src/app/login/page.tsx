@@ -17,10 +17,14 @@ export default function LoginPage() {
 function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const searchParams = useSearchParams();
+  const initialError =
+    searchParams.get("error") === "blocked"
+      ? "このメールアドレスでのログインはできません。"
+      : "";
+  const [error, setError] = useState(initialError);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const nextPath = safeRedirectPath(searchParams.get("next"));

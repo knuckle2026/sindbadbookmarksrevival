@@ -36,6 +36,24 @@ function SignUpForm() {
       return;
     }
 
+    try {
+      const checkRes = await fetch("/api/auth/check-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (checkRes.ok) {
+        const { blocked } = (await checkRes.json()) as { blocked?: boolean };
+        if (blocked) {
+          setError("このメールアドレスは登録できません。");
+          setLoading(false);
+          return;
+        }
+      }
+    } catch {
+      /* ネットワーク失敗時は signup を続行（callback 側で再防御） */
+    }
+
     const { error } = await supabase.auth.signUp({
       email,
       password,

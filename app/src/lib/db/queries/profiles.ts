@@ -20,6 +20,51 @@ export async function upsertProfileOnSignIn(
     .run();
 }
 
+export async function listAllProfiles(opts: {
+  search?: string | null;
+  limit: number;
+  offset: number;
+}): Promise<{ rows: ProfileRow[]; total: number }> {
+  const db = await getDB();
+  const where: string[] = [];
+  const binds: unknown[] = [];
+  if (opts.search) {
+    where.push("display_name LIKE ?");
+    binds.push(`%${opts.search}%`);
+  }
+  const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
+  const countRow = await db
+    .prepare(`SELECT COUNT(*) AS c FROM profiles ${whereSql}`)
+    .bind(...binds)
+    .first<{ c: number }>();
+  const total = countRow?.c ?? 0;
+  const { results } = await db
+    .prepare(
+      `SELECT id, display_name, role, is_suspended, created_at, updated_at
+       FROM profiles
+       ${whereSql}
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`,
+    )
+    .bind(...binds, opts.limit, opts.offset)
+    .all<ProfileRow>();
+  return { rows: results, total };
+}
+
+export async function deleteProfile(id: string): Promise<void> {
+  const db = await getDB();
+  await db.prepare("DELETE FROM profiles WHERE id = ?").bind(id).run();
+}
+
+export async function countListingsByUser(userId: string): Promise<number> {
+  const db = await getDB();
+  const row = await db
+    .prepare("SELECT COUNT(*) AS c FROM listings WHERE user_id = ?")
+    .bind(userId)
+    .first<{ c: number }>();
+  return row?.c ?? 0;
+}
+
 export async function getSuspendedFlag(id: string): Promise<boolean> {
   const db = await getDB();
   const row = await db

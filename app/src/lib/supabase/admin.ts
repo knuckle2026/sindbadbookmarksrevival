@@ -31,6 +31,45 @@ export async function deleteAuthUser(userId: string): Promise<{
   return { ok: true, status: res.status };
 }
 
+export interface AuthUserSummary {
+  id: string;
+  email: string | null;
+  created_at: string | null;
+  last_sign_in_at: string | null;
+}
+
+export async function listAuthUsers(opts: {
+  perPage?: number;
+  page?: number;
+}): Promise<AuthUserSummary[]> {
+  const cfg = await getAuthAdminConfig();
+  if (!cfg) return [];
+  const params = new URLSearchParams();
+  params.set("per_page", String(opts.perPage ?? 200));
+  params.set("page", String(opts.page ?? 1));
+  const res = await fetch(`${cfg.url}/auth/v1/admin/users?${params}`, {
+    headers: {
+      apikey: cfg.serviceRoleKey,
+      Authorization: `Bearer ${cfg.serviceRoleKey}`,
+    },
+  });
+  if (!res.ok) return [];
+  const json = (await res.json()) as {
+    users?: Array<{
+      id: string;
+      email?: string | null;
+      created_at?: string | null;
+      last_sign_in_at?: string | null;
+    }>;
+  };
+  return (json.users ?? []).map((u) => ({
+    id: u.id,
+    email: u.email ?? null,
+    created_at: u.created_at ?? null,
+    last_sign_in_at: u.last_sign_in_at ?? null,
+  }));
+}
+
 export async function getUserEmailsByIds(
   userIds: string[]
 ): Promise<Record<string, string>> {

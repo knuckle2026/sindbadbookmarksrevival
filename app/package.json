@@ -13,8 +13,8 @@
     "cf:dev": "opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "seed:scrape": "node scripts/scrape-gclick.mjs",
-    "seed:build": "node scripts/build-seed-sql.mjs",
-    "seed:apply:remote": "wrangler d1 execute sindbadbookmarks --remote --file=./scripts/data/listings-seed.sql"
+    "seed:scrape:gpress": "node scripts/scrape-gpress.mjs",
+    "seed:build": "node scripts/build-seed-sql.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

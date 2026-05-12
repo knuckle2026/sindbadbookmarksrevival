@@ -22,27 +22,88 @@ const OUTPUT_PATH = path.join(__dirname, "data", "gclick-raw.json");
 
 const UA = "G-Ankers-test-seeding/1.0 (private dev)";
 const BASE = "https://www.gclick.jp";
-const TARGET_COUNT = 50;
+// 0 で無制限。gclick の全ページをクロールする。
+const TARGET_COUNT = 0;
+// 0 で無制限。各ページの全店舗を採用する。
+const PER_PAGE_CAP_OVERRIDE = 0;
 
-// 取得対象 (ジャンル, パス). ジャンル偏りを避けるため複数都市を回す。
-const TARGETS = [
+// gclick のホームページ <a> リンクから取得対象都市/ジャンルを自動列挙する。
+// 失敗時のフォールバックとして、最低限のリストも保持。
+async function discoverTargets() {
+  try {
+    const res = await fetch(BASE + "/", {
+      headers: { "User-Agent": UA, "Accept-Language": "ja,en;q=0.5" },
+    });
+    if (!res.ok) return null;
+    const dom = new JSDOM(await res.text());
+    const anchors = [...dom.window.document.querySelectorAll("a[href]")];
+    const re = /^\/(gaybar|hatten|urisen|massage)\/([^.]+)\.php$/;
+    const seen = new Set();
+    const out = [];
+    for (const a of anchors) {
+      const href = a.getAttribute("href") || "";
+      const m = href.match(re);
+      if (!m) continue;
+      if (seen.has(href)) continue;
+      seen.add(href);
+      out.push([m[1], href]);
+    }
+    return out.length > 0 ? out : null;
+  } catch {
+    return null;
+  }
+}
+
+// 取得対象 (ジャンル, パス). discoverTargets の失敗時のフォールバック。
+const TARGETS_FALLBACK = [
   // gaybar
   ["gaybar",  "/gaybar/shinjuku2choume.php"],
   ["gaybar",  "/gaybar/shinbashi.php"],
   ["gaybar",  "/gaybar/ueno.php"],
-  ["gaybar",  "/gaybar/osaka-minami.php"],
+  ["gaybar",  "/gaybar/shibuya.php"],
+  ["gaybar",  "/gaybar/ikebukuro.php"],
+  ["gaybar",  "/gaybar/yokohama.php"],
   ["gaybar",  "/gaybar/sapporo.php"],
+  ["gaybar",  "/gaybar/sendai.php"],
   ["gaybar",  "/gaybar/nagoya.php"],
+  ["gaybar",  "/gaybar/kyoto.php"],
+  ["gaybar",  "/gaybar/osaka-minami.php"],
+  ["gaybar",  "/gaybar/osaka-doyama.php"],
+  ["gaybar",  "/gaybar/hiroshima.php"],
+  ["gaybar",  "/gaybar/hakata.php"],
+  ["gaybar",  "/gaybar/naha.php"],
   // hatten
   ["hatten",  "/hatten/ueno.php"],
   ["hatten",  "/hatten/shinbashi.php"],
   ["hatten",  "/hatten/shinjuku2choume.php"],
+  ["hatten",  "/hatten/ikebukuro.php"],
+  ["hatten",  "/hatten/shibuya.php"],
+  ["hatten",  "/hatten/yokohama.php"],
+  ["hatten",  "/hatten/sapporo.php"],
+  ["hatten",  "/hatten/nagoya.php"],
+  ["hatten",  "/hatten/osaka-minami.php"],
+  ["hatten",  "/hatten/osaka-doyama.php"],
+  ["hatten",  "/hatten/hakata.php"],
   // massage
   ["massage", "/massage/ueno.php"],
   ["massage", "/massage/nishishinjuku.php"],
+  ["massage", "/massage/shinbashi.php"],
+  ["massage", "/massage/shibuya.php"],
+  ["massage", "/massage/ikebukuro.php"],
+  ["massage", "/massage/yokohama.php"],
+  ["massage", "/massage/sapporo.php"],
   ["massage", "/massage/nagoya.php"],
+  ["massage", "/massage/kyoto.php"],
+  ["massage", "/massage/osaka-minami.php"],
+  ["massage", "/massage/osaka-doyama.php"],
+  ["massage", "/massage/hakata.php"],
   // urisen
   ["urisen",  "/urisen/yokohama.php"],
+  ["urisen",  "/urisen/ueno.php"],
+  ["urisen",  "/urisen/shinjuku2choume.php"],
+  ["urisen",  "/urisen/osaka-minami.php"],
+  ["urisen",  "/urisen/sapporo.php"],
+  ["urisen",  "/urisen/nagoya.php"],
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -102,9 +163,26 @@ function parseListItem(rawText) {
 const TW_BLOCK = new Set(["share", "intent", "hashtag", "search", "home", "i", "_"]);
 const IG_BLOCK = new Set(["p", "reel", "accounts", "explore", "share", "hashtag", "embed", "stories"]);
 
-function pickSocialUrl(html) {
-  const dom = new JSDOM(html);
-  const anchors = [...dom.window.document.querySelectorAll("a[href]")];
+// gclick の <dt>サイト</dt><dd>...</dd> から店舗の公式ホームページ URL を取り出す。
+// 「ホームページはありません」の場合は null。
+function pickHomepageUrl(doc) {
+  const dts = [...doc.querySelectorAll("dt")];
+  for (const dt of dts) {
+    if ((dt.textContent || "").trim() !== "サイト") continue;
+    const dd = dt.nextElementSibling;
+    if (!dd || dd.tagName !== "DD") continue;
+    const a = dd.querySelector("a[href]");
+    if (!a) return null; // "ホームページはありません" の場合
+    const href = a.getAttribute("href");
+    if (!href) return null;
+    if (!/^https?:\/\//i.test(href)) return null;
+    return href;
+  }
+  return null;
+}
+
+function pickSocialUrl(doc) {
+  const anchors = [...doc.querySelectorAll("a[href]")];
   const hrefs = anchors.map((a) => a.getAttribute("href") || "");
 
   let tw = null;
@@ -126,19 +204,24 @@ function pickSocialUrl(html) {
     }
     if (tw && ig) break;
   }
-  return tw || ig || null; // X 優先、なければ IG、両方なければ null
+  return tw || ig || null; // X 優先、なければ IG
 }
 
-async function fetchDetailSocial(detailUrl) {
+async function fetchDetailUrls(detailUrl) {
   try {
     const res = await fetch(detailUrl, {
       headers: { "User-Agent": UA, "Accept-Language": "ja,en;q=0.5" },
     });
-    if (!res.ok) return null;
-    return pickSocialUrl(await res.text());
+    if (!res.ok) return { homepage: null, social: null };
+    const dom = new JSDOM(await res.text());
+    const doc = dom.window.document;
+    return {
+      homepage: pickHomepageUrl(doc),
+      social: pickSocialUrl(doc),
+    };
   } catch (e) {
     console.warn(`  detail fetch failed for ${detailUrl}: ${e.message}`);
-    return null;
+    return { homepage: null, social: null };
   }
 }
 
@@ -188,38 +271,49 @@ async function fetchListingPage(genre, path_) {
   return records;
 }
 
-// 1 ページあたりの最大採用件数。ジャンル/エリアの偏りを抑えるため。
-const PER_PAGE_CAP = 5;
+// 1 ページあたりの最大採用件数 (PER_PAGE_CAP_OVERRIDE が 0 なら無制限)。
+const DEFAULT_PER_PAGE_CAP = 15;
 
 async function main() {
+  const discovered = await discoverTargets();
+  const targets = discovered ?? TARGETS_FALLBACK;
+  console.log(`Targets: ${targets.length} pages (${discovered ? "discovered" : "fallback"})`);
+
   const all = [];
-  for (const [genre, p] of TARGETS) {
-    if (all.length >= TARGET_COUNT) break;
+  const cap =
+    PER_PAGE_CAP_OVERRIDE > 0 ? PER_PAGE_CAP_OVERRIDE : Infinity;
+  const targetCount = TARGET_COUNT > 0 ? TARGET_COUNT : Infinity;
+
+  for (const [genre, p] of targets) {
+    if (all.length >= targetCount) break;
     try {
       const recs = await fetchListingPage(genre, p);
-      const taken = recs.slice(0, PER_PAGE_CAP);
+      const taken = cap === Infinity ? recs : recs.slice(0, cap);
       all.push(...taken);
       console.log(`  -> ${taken.length}/${recs.length} from ${p}, total ${all.length}`);
     } catch (e) {
       console.warn(`  failed: ${e.message}`);
     }
-    await sleep(1500); // rate limit 配慮
+    await sleep(800); // rate limit 配慮
   }
 
-  // 50 件で打ち切り
-  const trimmed = all.slice(0, TARGET_COUNT);
+  const trimmed = targetCount === Infinity ? all : all.slice(0, targetCount);
 
-  // 各詳細ページから X / Instagram アカウントを取得
-  console.log(`Fetching ${trimmed.length} detail pages for X/IG URLs...`);
-  let tally = { social: 0, none: 0 };
+  // 各詳細ページから 公式サイト + X/Instagram を取得
+  console.log(`Fetching ${trimmed.length} detail pages for homepage / X / IG URLs...`);
+  const tally = { homepage: 0, social: 0, none: 0 };
   for (const r of trimmed) {
-    const social = await fetchDetailSocial(r.detail_url);
+    const { homepage, social } = await fetchDetailUrls(r.detail_url);
+    r.homepage_url = homepage;
     r.social_url = social;
-    if (social) tally.social++;
+    if (homepage) tally.homepage++;
+    else if (social) tally.social++;
     else tally.none++;
-    await sleep(1500);
+    await sleep(500);
   }
-  console.log(`  with X/IG: ${tally.social}, without: ${tally.none}`);
+  console.log(
+    `  with homepage: ${tally.homepage}, with X/IG only: ${tally.social}, neither: ${tally.none}`,
+  );
 
   await mkdir(path.dirname(OUTPUT_PATH), { recursive: true });
   await writeFile(OUTPUT_PATH, JSON.stringify(trimmed, null, 2), "utf8");

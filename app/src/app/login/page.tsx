@@ -68,6 +68,13 @@ function LoginForm() {
           </p>
         </div>
 
+        <div className="space-y-2 rounded-lg bg-zinc-50 p-3 text-xs text-zinc-700">
+          <p>情報の登録には無料アカウント（Google登録推奨）が必要です。</p>
+          <p>
+            登録情報の変更やアカウント自体の削除は「マイリスティング」から行えます。なお、登録情報は運営事務局が定期的に精査いたします。
+          </p>
+        </div>
+
         {error && (
           <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
             {error}

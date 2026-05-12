@@ -117,10 +117,31 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     ? categories.filter((c) => selectedCategorySlugs.includes(c.slug))
     : [];
   const matchedIds = matchedCats.map((c) => c.id);
-  // AND モードはカテゴリが 2 つ以上のときのみ意味がある (1 つなら結果は同じ)
-  const useAnd = catOp === "and" && matchedIds.length > 1;
-  const categoryIdsInclude = !useAnd && matchedIds.length > 0 ? matchedIds : null;
-  const categoryIdsAndAll = useAnd ? matchedIds : null;
+
+  // OR モードでも特定カテゴリは強制的に AND として扱う (修飾子的カテゴリ)
+  const FORCED_AND_BY_GENRE: Record<string, string[]> = {
+    "massage-urisen": ["delivery"],
+  };
+  const forcedAndSlugs = FORCED_AND_BY_GENRE[genreRow.slug] ?? [];
+  const forcedAndIds = matchedCats
+    .filter((c) => forcedAndSlugs.includes(c.slug))
+    .map((c) => c.id);
+  const otherIds = matchedCats
+    .filter((c) => !forcedAndSlugs.includes(c.slug))
+    .map((c) => c.id);
+
+  let categoryIdsInclude: string[] | null = null;
+  let categoryIdsAndAll: string[] | null = null;
+  if (catOp === "and" && matchedIds.length > 1) {
+    categoryIdsAndAll = matchedIds;
+  } else if (forcedAndIds.length > 0 && otherIds.length > 0) {
+    categoryIdsAndAll = forcedAndIds;
+    categoryIdsInclude = otherIds;
+  } else if (forcedAndIds.length > 0) {
+    categoryIdsAndAll = forcedAndIds;
+  } else if (matchedIds.length > 0) {
+    categoryIdsInclude = matchedIds;
+  }
   const excludeIds = excludeNhActive
     ? [newhalfCat?.id, lesCat?.id].filter((x): x is string => !!x)
     : [];

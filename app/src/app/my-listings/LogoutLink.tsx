@@ -23,7 +23,7 @@ export default function LogoutLink() {
       disabled={loading}
       className="text-xs font-light text-zinc-400 underline hover:text-zinc-700 disabled:opacity-50"
     >
-      {loading ? "ログアウト中..." : "ログアウトする"}
+      {loading ? "ログアウト中..." : "ログアウト"}
     </button>
   );
 }

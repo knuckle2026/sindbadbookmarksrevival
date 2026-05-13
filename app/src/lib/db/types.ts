@@ -93,3 +93,16 @@ export interface BlockedEmailRow {
   reason: string | null;
   created_at: string;
 }
+
+export interface BannerRow {
+  id: string;
+  storage_key: string;
+  image_url: string;
+  link_url: string;
+  placement: string;
+  alt: string | null;
+  sort_order: number;
+  enabled: 0 | 1;
+  created_at: string;
+  updated_at: string;
+}

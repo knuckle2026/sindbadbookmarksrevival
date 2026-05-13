@@ -3,15 +3,28 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
+function keyFromPathname(pathname: string): string | null {
+  if (pathname === "/") return "top";
+  const m = pathname.match(/^\/genres\/([^/?]+)/);
+  if (m) return `genres:${m[1]}`;
+  return null;
+}
+
 export function AccessCounter() {
   const [count, setCount] = useState<number | null>(null);
   const pathname = usePathname();
+  const key = keyFromPathname(pathname);
 
   useEffect(() => {
+    setCount(null);
+    if (!key) return;
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch("/api/counter/visit", { method: "POST" });
+        const r = await fetch(
+          `/api/counter/visit?key=${encodeURIComponent(key)}`,
+          { method: "POST" },
+        );
         if (!r.ok) return;
         const text = await r.text();
         if (!text) return;
@@ -24,9 +37,9 @@ export function AccessCounter() {
     return () => {
       cancelled = true;
     };
-  }, [pathname]);
+  }, [key]);
 
-  if (count === null) return null;
+  if (!key || count === null) return null;
   let display: string;
   try {
     display = count.toLocaleString();

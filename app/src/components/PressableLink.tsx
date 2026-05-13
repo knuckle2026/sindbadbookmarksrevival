@@ -31,8 +31,12 @@ export function PressableLink({
     e.preventDefault();
     if (pending) return;
     setPending(true);
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      navigator.vibrate(10);
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+      try {
+        navigator.vibrate(10);
+      } catch {
+        /* silent */
+      }
     }
     router.push(href);
   };

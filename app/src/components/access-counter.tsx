@@ -9,25 +9,33 @@ export function AccessCounter() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/counter/visit", { method: "POST" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { count?: number } | null) => {
-        if (!cancelled && d && typeof d.count === "number") {
-          setCount(d.count);
-        }
-      })
-      .catch(() => {
+    (async () => {
+      try {
+        const r = await fetch("/api/counter/visit", { method: "POST" });
+        if (!r.ok) return;
+        const text = await r.text();
+        if (!text) return;
+        const d = JSON.parse(text) as { count?: number };
+        if (!cancelled && typeof d.count === "number") setCount(d.count);
+      } catch {
         /* silent */
-      });
+      }
+    })();
     return () => {
       cancelled = true;
     };
   }, [pathname]);
 
   if (count === null) return null;
+  let display: string;
+  try {
+    display = count.toLocaleString();
+  } catch {
+    display = String(count);
+  }
   return (
     <span className="text-[10px] font-light text-white/50 tabular-nums">
-      {count.toLocaleString()}
+      {display}
     </span>
   );
 }

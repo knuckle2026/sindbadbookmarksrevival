@@ -48,7 +48,7 @@ export function AccessCounter() {
   }
   return (
     <span className="text-[10px] font-light text-white/50 tabular-nums">
-      {display}
+      PV {display}
     </span>
   );
 }

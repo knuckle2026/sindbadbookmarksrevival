@@ -38,7 +38,7 @@ export function Header({ onHamburgerClick, onCloseSidebar, genreName, genreSlug,
 
   return (
     <header
-      className="flex h-36 shrink-0 items-center justify-between px-4 text-white shadow-md"
+      className="flex h-24 shrink-0 items-center justify-between px-4 text-white shadow-md"
       style={{ backgroundColor: "#005766" }}
     >
       {/* 左: ハンバーガー + ロゴ/ジャンル名 */}
@@ -68,7 +68,7 @@ export function Header({ onHamburgerClick, onCloseSidebar, genreName, genreSlug,
                   alt="G-Ankers"
                   width={300}
                   height={300}
-                  className="object-contain h-[7.5rem] w-auto max-w-[10.5rem] sm:max-w-none"
+                  className="object-contain h-20 w-auto max-w-28 sm:max-w-none"
                   priority
                 />
               </Link>

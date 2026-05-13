@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 interface Banner {
@@ -87,12 +87,15 @@ export default function BannerManager({ initialItems, genres }: Props) {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedFileName, setSelectedFileName] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const resetForm = () => {
     setForm(emptyForm);
     setEditingId(null);
     setShowAdd(false);
     setError("");
+    setSelectedFileName("");
   };
 
   const startEdit = (b: Banner) => {
@@ -113,6 +116,7 @@ export default function BannerManager({ initialItems, genres }: Props) {
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setSelectedFileName(file.name);
     setUploading(true);
     setError("");
     try {
@@ -254,15 +258,40 @@ export default function BannerManager({ initialItems, genres }: Props) {
               バナー画像 (推奨 1000×200 px, 5:1, 最大 2MB)
             </label>
             <input
+              ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/png,image/webp,image/gif"
               onChange={handleFile}
               disabled={uploading || loading}
-              className="text-sm"
+              className="sr-only"
             />
-            {uploading && (
-              <p className="mt-1 text-xs text-zinc-500">アップロード中...</p>
-            )}
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading || loading}
+                className="inline-flex items-center gap-2 rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="h-4 w-4"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a3 3 0 0 0-3 3v3a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-3a3 3 0 0 0-3-3h-.5V5.5A4.5 4.5 0 0 0 10 1Zm3 8V5.5a3 3 0 1 0-6 0V9h6Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {form.imageUrl ? "画像を選び直す" : "画像ファイルを選択"}
+              </button>
+              <span className="text-xs text-zinc-500">
+                {uploading
+                  ? "アップロード中..."
+                  : selectedFileName || "未選択"}
+              </span>
+            </div>
             {form.imageUrl && (
               <div className="mt-2 aspect-[5/1] w-full overflow-hidden rounded border border-zinc-200 bg-zinc-50">
                 {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: "/sbbm-control/announcements", label: "お知らせ" },
   { href: "/sbbm-control/faqs", label: "FAQ" },
   { href: "/sbbm-control/feedback", label: "ご意見" },
+  { href: "/sbbm-control/banners", label: "バナー" },
 ];
 
 export function AdminHeader() {

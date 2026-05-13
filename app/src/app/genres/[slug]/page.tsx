@@ -370,11 +370,18 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
         extraParams={extraParams}
       />
 
+        {keyword && (
+          <p className="mb-3 text-sm text-zinc-700">
+            キーワード:「<span className="font-medium">{keyword}</span>」の検索結果 {totalCount} 件
+          </p>
+        )}
         {listings.length > 0 ? (
           <>
-            <p className="mb-3 text-sm text-zinc-500">
-              {totalCount}件の登録情報
-            </p>
+            {!keyword && (
+              <p className="mb-3 text-sm text-zinc-500">
+                {totalCount}件の登録情報
+              </p>
+            )}
             <ul className="space-y-3">
               {listings.map((l) => (
                 <li
@@ -417,7 +424,9 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
           </>
         ) : (
           <p className="rounded-lg border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-500">
-            登録情報はまだありません
+            {keyword
+              ? `「${keyword}」に該当する登録情報はありませんでした`
+              : "登録情報はまだありません"}
           </p>
         )}
       </div>

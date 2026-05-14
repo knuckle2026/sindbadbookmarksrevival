@@ -6,6 +6,7 @@ import {
   type AdminSortColumn,
 } from "@/lib/db/queries/listings";
 import { listGenres } from "@/lib/db/queries/genres";
+import { listAllCategoriesWithGenre } from "@/lib/db/queries/categories";
 import { getReportsByListingIds } from "@/lib/db/queries/reports";
 import { getUserEmailsByIds } from "@/lib/supabase/admin";
 import ListingActions from "./ListingActions";
@@ -28,6 +29,7 @@ const SORT_COLUMNS: { key: AdminSortColumn | "genre"; label: string }[] = [
 interface PageProps {
   searchParams: Promise<{
     genre?: string;
+    category?: string;
     page?: string;
     q?: string;
     sort?: string;
@@ -38,6 +40,7 @@ interface PageProps {
 export default async function AdminListingsPage({ searchParams }: PageProps) {
   const {
     genre: genreFilter,
+    category: categoryFilter,
     page: pageParam,
     q: searchQuery,
     sort: sortParam,
@@ -53,16 +56,38 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
 
   const currentPage = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
 
-  const genres = await listGenres();
+  const [genres, allCategories] = await Promise.all([
+    listGenres(),
+    listAllCategoriesWithGenre(),
+  ]);
   const genreMap = Object.fromEntries(genres.map((g) => [g.id, g]));
   const filterGenre = genreFilter
     ? genres.find((g) => g.slug === genreFilter)
     : null;
   const filterGenreId = filterGenre?.id ?? null;
 
+  // category フィルタは UUID で受ける (slug は genre 間で重複しうるため)
+  const filterCategory =
+    categoryFilter && allCategories.find((c) => c.id === categoryFilter)
+      ? allCategories.find((c) => c.id === categoryFilter)!
+      : null;
+  // genre フィルタと矛盾する category は無視する
+  const filterCategoryId =
+    filterCategory &&
+    (!filterGenreId || filterCategory.genre_id === filterGenreId)
+      ? filterCategory.id
+      : null;
+
+  // 表示するカテゴリ選択肢: genre フィルタが効いていればそのジャンル内のみ、
+  // 効いてなければ全カテゴリ (ジャンル名でグルーピング表示)
+  const visibleCategories = filterGenreId
+    ? allCategories.filter((c) => c.genre_id === filterGenreId)
+    : allCategories;
+
   const totalCount = await adminCountListings({
     q: searchQuery ?? null,
     genreId: filterGenreId,
+    categoryId: filterCategoryId,
   });
   const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
@@ -77,6 +102,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
   let listings = await adminSearchListings({
     q: searchQuery ?? null,
     genreId: filterGenreId,
+    categoryId: filterCategoryId,
     sortColumn: dbSortColumn,
     sortOrder: dbSortOrder,
     limit: PER_PAGE,
@@ -106,6 +132,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
   const buildBaseParams = () => {
     const params = new URLSearchParams();
     if (genreFilter) params.set("genre", genreFilter);
+    if (filterCategoryId) params.set("category", filterCategoryId);
     if (searchQuery) params.set("q", searchQuery);
     if (sortColumn !== "created_at" || sortOrder !== "desc") {
       params.set("sort", sortColumn);
@@ -138,6 +165,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
   const buildSortUrl = (col: AdminSortColumn | "genre") => {
     const params = new URLSearchParams();
     if (genreFilter) params.set("genre", genreFilter);
+    if (filterCategoryId) params.set("category", filterCategoryId);
     if (searchQuery) params.set("q", searchQuery);
     const newOrder = col === sortColumn && sortOrder === "asc" ? "desc" : "asc";
     params.set("sort", col);
@@ -178,6 +206,22 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
             {genres.map((g) => (
               <option key={g.slug} value={g.slug}>
                 {g.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-zinc-500">Category</label>
+          <select
+            name="category"
+            defaultValue={filterCategoryId ?? ""}
+            className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
+          >
+            <option value="">All categories</option>
+            {visibleCategories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {filterGenreId ? c.name : `${c.genre_name} / ${c.name}`}
               </option>
             ))}
           </select>

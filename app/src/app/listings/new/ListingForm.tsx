@@ -387,7 +387,10 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
       {/* 出張エリア (hasServiceAreas=true ジャンルのみ) */}
       {showServiceAreas && (
         <div>
-          <label className={labelClass}>出張エリア（複数選択可）</label>
+          <label className={labelClass}>出張可能エリア（複数選択可）</label>
+          <p className="mb-2 text-xs text-zinc-500">
+            出張可能な場合はカテゴリで出張も選択してください。
+          </p>
           <div className="space-y-4">
             {SERVICE_AREA_GROUPS.map((group) => (
               <div key={group.label}>

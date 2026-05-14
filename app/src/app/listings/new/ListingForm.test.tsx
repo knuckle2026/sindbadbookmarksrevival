@@ -155,12 +155,12 @@ describe("ListingForm", () => {
     render(
       <ListingForm genres={GENRES_FIXTURE} categories={CATEGORIES_FIXTURE} />,
     );
-    expect(screen.queryByText("出張エリア（複数選択可）")).toBeNull();
+    expect(screen.queryByText("出張可能エリア（複数選択可）")).toBeNull();
     fireEvent.change(screen.getAllByRole("combobox")[0], {
       target: { value: "g-massage" },
     });
     expect(
-      screen.getByText("出張エリア（複数選択可）"),
+      screen.getByText("出張可能エリア（複数選択可）"),
     ).toBeInTheDocument();
   });
 

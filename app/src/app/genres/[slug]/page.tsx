@@ -311,10 +311,10 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
 
   return (
     <>
+      <AdBannerSlider placement={`genres:${slug}`} />
       <Suspense>
         <SearchBar />
       </Suspense>
-      <AdBannerSlider placement={`genres:${slug}`} />
 
       <div className="mx-auto max-w-5xl px-6 py-8">
         <Suspense>

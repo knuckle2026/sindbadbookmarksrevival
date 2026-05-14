@@ -1,0 +1,444 @@
+# G-Ankers Architecture
+
+**Status:** 現状反映版 (Single source of truth)
+**Last reviewed:** 2026-05-14
+**Predecessors:** [legacy/](../legacy/) に旧 `sindbadbookmarks_requirements.md` / `reqest.md` / `implementation.md` を保存
+
+> このドキュメントは「**今動いているもの**」を記述する。設計意図の履歴は
+> `legacy/` を参照。本ファイルは実装と乖離した時点で修正し、常に現状と一致
+> させる。
+
+---
+
+## 1. スタック / デプロイ構成
+
+| レイヤー | 採用技術 |
+|---|---|
+| フロントエンド + サーバ | Next.js 15 (App Router) |
+| ホスティング | Cloudflare Workers (OpenNext 経由) |
+| DB | Cloudflare D1 (SQLite) — binding `env.DB` |
+| 認証 | Supabase Auth (Email/Password + Google OAuth) |
+| 画像ストレージ | Supabase Storage — bucket `banners` (Public) |
+| ビルド | `@opennextjs/cloudflare`、Tailwind v4、Lightning CSS フォールバック有 |
+| CSS 互換 | PostCSS で `@layer` フラット化 + `oklch` / `color-mix` の RGB フォールバック (古い iOS WebView 対応) |
+
+**プロジェクト識別子:**
+- Cloudflare Worker: `g-ankers` (`app/wrangler.jsonc:3`)
+- Cloudflare Account: `5f4f4c90fa8774f0dd479e597923ba84`
+- D1 database: `sindbadbookmarks` (id `a37191b1-4993-4938-b2ee-4578b2ec9f86`)
+- Supabase project ref: `kawiaabwfdjwvlxcbwul`
+- 本番 URL: <https://g-ankers.yourportal.workers.dev>
+
+**Vercel は使用しない**: 旧 Vercel プロジェクト (`sindbadbookmarksrevival.vercel.app`)
+は 2026-04 移管時に廃止。Deploy 経路は `npm run cf:deploy`
+(= `opennextjs-cloudflare build && opennextjs-cloudflare deploy`) のみ。
+
+**Secrets** (`wrangler secret put` 済み、コードにハードコードしない):
+- `SUPABASE_SERVICE_ROLE_KEY` — admin 系 API と Supabase Storage 操作で使用
+- `SUPABASE_JWT_SECRET`
+
+**Public env** (`wrangler.jsonc:vars`):
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` (公開してよいキー、RLS で保護されるべき値だが
+  本プロジェクトでは Supabase の DB は使わず Auth のみ利用)
+
+---
+
+## 2. ロールと認可モデル
+
+### 2.1 ロール定義
+
+| ロール | 認証 | 権限 |
+|---|---|---|
+| **visitor** | 不要 | 情報の検索・閲覧。リスティング通報の送信 |
+| **contributor** | 必須 | visitor 権限 + 情報新規登録 + 自分の登録情報の編集・削除 |
+| **admin** | 必須 | 全権限。`/sbbm-control/*` 経由で精査・非表示化・アカウント停止 |
+
+`is_suspended=1` の contributor は登録 / 編集権限を失う (`requireUser` 経由で
+チェック)。
+
+### 2.2 認可方式
+
+**Supabase の RLS は使っていない** (DB が D1 SQLite で Supabase Postgres ではない
+ため、RLS という機構がそもそも存在しない)。
+
+代わりに **API ルート内で明示的にガード関数を呼ぶ**:
+
+- [`requireUser(loginPath)`](../app/src/lib/auth/guards.ts) — 未ログインなら redirect
+- `requireAdmin()` — 未ログイン or `role !== 'admin'` なら notFound
+- `checkAdminApi()` — 同上を 401/403 で返す版 (API ルート用)
+- `requireOwnerOrAdmin(listingId)` — 自分の listing or admin のみ通す
+
+**全ての** `/api/admin/*` ルートで `checkAdminApi()` を呼んでいる
+(banners / announcements / faqs / categories / listings / accounts / feedback)。
+
+### 2.3 認証フロー
+
+- Supabase Auth クッキー (`HttpOnly`, `SameSite=Lax`) でセッション管理
+- `/auth/callback` で OAuth コールバックを受ける
+- `src/middleware.ts` の `updateSession` で各リクエストごとに Supabase セッションを
+  リフレッシュし、`is_suspended` 検知時は `/login` へ強制リダイレクト
+
+### 2.4 年齢ゲート
+
+`/age-gate` で 18+ 確認後、`age_verified=1` cookie (max-age 24h, SameSite=Lax)
+を発行。middleware の `AGE_GATE_BYPASS = ["/age-gate", "/auth", "/api", "/_next",
+"/favicon", "/icon", "/apple-icon", "/sbbm-control"]` 以外は cookie 未設定なら
+`/age-gate` へ 307。
+
+### 2.5 admin 認証
+
+admin は `/sbbm-control/login` から個別にログイン。一般ユーザの `/login` とは
+分離。`(protected)` ルートグループで `requireAdmin()` を呼んで保護。
+
+---
+
+## 3. DB スキーマ (D1)
+
+リモート D1 から `sqlite_master` で取得した実スキーマ。
+
+### 3.1 `profiles`
+
+```sql
+CREATE TABLE profiles (
+  id           TEXT PRIMARY KEY,                         -- Supabase auth UID と一致
+  display_name TEXT NOT NULL,
+  role         TEXT NOT NULL DEFAULT 'contributor'
+               CHECK (role IN ('visitor', 'contributor', 'admin')),
+  is_suspended INTEGER NOT NULL DEFAULT 0
+               CHECK (is_suspended IN (0, 1)),
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+)
+```
+
+### 3.2 `genres`
+
+```sql
+CREATE TABLE genres (
+  id         TEXT PRIMARY KEY,
+  slug       TEXT NOT NULL UNIQUE,
+  name       TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+)
+```
+
+### 3.3 `categories`
+
+```sql
+CREATE TABLE categories (
+  id         TEXT PRIMARY KEY,
+  genre_id   TEXT NOT NULL REFERENCES genres(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  slug       TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (genre_id, slug)
+)
+```
+
+### 3.4 `listings`
+
+```sql
+CREATE TABLE listings (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT REFERENCES profiles(id) ON DELETE SET NULL,
+  genre_id      TEXT REFERENCES genres(id) ON DELETE RESTRICT,
+  title         TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 20),
+  description   TEXT NOT NULL CHECK (length(description) BETWEEN 1 AND 100),
+  address       TEXT,
+  website_url   TEXT NOT NULL
+                CHECK (website_url LIKE 'http://%' OR website_url LIKE 'https://%'),
+  prefecture    TEXT,
+  ward          TEXT,
+  service_areas TEXT,                                    -- JSON 配列文字列
+  provider_ages TEXT,                                    -- JSON 配列文字列
+  status        TEXT NOT NULL DEFAULT 'published'
+                CHECK (status IN ('published', 'hidden')),
+  click_count   INTEGER NOT NULL DEFAULT 0,
+  created_by    TEXT REFERENCES profiles(id) ON DELETE SET NULL,
+  updated_by    TEXT REFERENCES profiles(id) ON DELETE SET NULL,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+)
+```
+
+注意点:
+- `friendliness`, `listing_type`, `latitude/longitude` 列は **存在しない** (旧仕様にあったが採用しなかった)
+- 地域モデル: `listing_locations` テーブルは無く `prefecture` / `ward` を listings に直接持つ
+- ステータスは `published` / `hidden` の 2 値 (`flagged` は不採用、別途 `reports` テーブルで通報管理)
+- title は 20 字、description は 100 字の上限
+
+### 3.5 `listing_categories` (多対多)
+
+```sql
+CREATE TABLE listing_categories (
+  listing_id  TEXT NOT NULL REFERENCES listings(id)   ON DELETE CASCADE,
+  category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  PRIMARY KEY (listing_id, category_id)
+)
+```
+
+### 3.6 `reports`
+
+```sql
+CREATE TABLE reports (
+  id               TEXT PRIMARY KEY,
+  listing_id       TEXT NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
+  reporter_user_id TEXT REFERENCES profiles(id) ON DELETE SET NULL,
+  reason           TEXT NOT NULL CHECK (length(reason) BETWEEN 1 AND 50),
+  status           TEXT NOT NULL DEFAULT 'pending'
+                   CHECK (status IN ('pending', 'reviewed')),
+  created_at       TEXT NOT NULL DEFAULT (datetime('now'))
+)
+```
+
+### 3.7 `announcements`
+
+```sql
+CREATE TABLE announcements (
+  id         TEXT PRIMARY KEY,
+  title      TEXT NOT NULL CHECK (length(title) BETWEEN 1 AND 100),
+  body       TEXT NOT NULL CHECK (length(body)  BETWEEN 1 AND 200),
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+)
+```
+
+### 3.8 `faqs`
+
+```sql
+CREATE TABLE faqs (
+  id         TEXT PRIMARY KEY,
+  question   TEXT NOT NULL CHECK (length(question) BETWEEN 1 AND 100),
+  answer     TEXT NOT NULL CHECK (length(answer)   BETWEEN 1 AND 200),
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+)
+```
+
+### 3.9 `feedback`
+
+```sql
+CREATE TABLE feedback (
+  id         TEXT PRIMARY KEY,
+  user_id    TEXT REFERENCES profiles(id) ON DELETE SET NULL,
+  body       TEXT NOT NULL CHECK (length(body) BETWEEN 1 AND 200),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+)
+```
+
+### 3.10 `blocked_emails`
+
+```sql
+CREATE TABLE blocked_emails (
+  email      TEXT PRIMARY KEY COLLATE NOCASE,
+  blocked_by TEXT REFERENCES profiles(id) ON DELETE SET NULL,
+  reason     TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+)
+```
+
+### 3.11 `ad_banners`
+
+```sql
+CREATE TABLE ad_banners (
+  id           TEXT PRIMARY KEY,
+  storage_key  TEXT NOT NULL,           -- Supabase Storage 内の path
+  image_url    TEXT NOT NULL,           -- 公開 URL
+  link_url     TEXT NOT NULL,           -- HTTPS 必須
+  placement    TEXT NOT NULL,           -- 'top' | 'genres:<slug>'
+  alt          TEXT,
+  sort_order   INTEGER NOT NULL DEFAULT 0,
+  enabled      INTEGER NOT NULL DEFAULT 1,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+)
+CREATE INDEX idx_ad_banners_placement_enabled
+  ON ad_banners(placement, enabled, sort_order);
+```
+
+### 3.12 `access_counter`
+
+```sql
+CREATE TABLE access_counter (
+  id         TEXT PRIMARY KEY,          -- 'top' or 'genres:<slug>'
+  count      INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+)
+```
+
+---
+
+## 4. URL ルーティング
+
+### 4.1 公開ページ
+
+| パス | 認証 | 内容 |
+|---|---|---|
+| `/` | 不要 (年齢ゲート必須) | ダッシュボード (ジャンル別カテゴリ件数カード) |
+| `/age-gate` | 不要 | 18+ 確認 |
+| `/genres/[slug]` | 不要 | ジャンル一覧 (フィルタ + listing) |
+| `/listings/[id]` | 不要 | listing 詳細 |
+| `/search` | 不要 | キーワード検索結果 |
+| `/operator` | 不要 | 運営事務局 (お知らせ / FAQ / 意見) |
+| `/login` | — | ログイン |
+| `/signup` | — | サインアップ |
+| `/reset-password` | — | パスワードリセット |
+
+### 4.2 認証必須ページ
+
+| パス | 認証 | 内容 |
+|---|---|---|
+| `/listings/new` | contributor 以上 | 情報新規登録 |
+| `/listings/[id]/edit` | 所有者 or admin | 情報編集 |
+| `/my-listings` | 自分自身 | 自分の登録一覧 |
+| `/profile` | 自分自身 | プロフィール設定 |
+
+### 4.3 管理画面 (`/sbbm-control/*`)
+
+ロール=admin のみアクセス可。`/sbbm-control/login` で別途ログイン。
+通常ヘッダーとは別の `AdminHeader` を表示。
+
+| パス | 内容 |
+|---|---|
+| `/sbbm-control` | ダッシュボード |
+| `/sbbm-control/listings` | 全 listing 管理 (フィルタ + 編集) |
+| `/sbbm-control/listings/[id]/edit` | 個別編集 |
+| `/sbbm-control/categories` | カテゴリ管理 (per genre, 並び替え) |
+| `/sbbm-control/accounts` | ユーザ管理 (停止 / 強制削除 / ブロック解除) |
+| `/sbbm-control/announcements` | お知らせ CRUD |
+| `/sbbm-control/faqs` | FAQ CRUD |
+| `/sbbm-control/feedback` | ユーザ意見一覧 |
+| `/sbbm-control/banners` | 広告バナー CRUD (Supabase Storage 連携) |
+
+### 4.4 API ルート
+
+公開:
+- `GET  /api/banners?placement=top|genres:<slug>` — 広告バナー一覧 (enabled のみ)
+- `POST /api/counter/visit?key=top|genres:<slug>` — アクセスカウンタ +1
+- `POST /api/listings/[id]/click` — リスティングクリック数 +1
+- `POST /api/reports` — 通報送信 (未ログインでも可)
+- `POST /api/feedback` — 意見送信
+- `POST /api/client-error` — クライアント例外を Worker ログへ送信
+- `GET  /api/auth/check-email` — サインアップ前のメール重複/ブロック判定
+- `GET  /api/listings` / `/api/listings/[id]` — リスティング read API
+- `GET  /api/dev/d1-check` — D1 接続診断 (dev only 想定)
+
+認証必須:
+- `DELETE /api/account/delete` — ユーザ本人のアカウント削除
+
+admin 専用 (`checkAdminApi()` ガード):
+- `POST   /api/admin/banners`
+- `PATCH  /api/admin/banners/[id]`
+- `DELETE /api/admin/banners/[id]`
+- `POST   /api/admin/banners/upload` (multipart, Supabase Storage に保存)
+- `POST   /api/admin/announcements`、`PATCH/DELETE /api/admin/announcements/[id]`
+- `POST   /api/admin/faqs`、`PATCH/DELETE /api/admin/faqs/[id]`
+- `POST   /api/admin/categories`、`PATCH/DELETE /api/admin/categories/[id]`
+- `PATCH/DELETE /api/admin/listings/[id]`
+- `DELETE /api/admin/feedback/[id]`
+- `DELETE /api/admin/accounts/[userId]/force-delete`
+- `DELETE /api/admin/accounts/blocked/[email]`
+
+### 4.5 認証コールバック
+
+- `/auth/callback` — Supabase OAuth コールバック (Google 用)
+
+---
+
+## 5. ジャンル・カテゴリ体系
+
+### 5.1 設計方針
+
+- ジャンルは **コード固定** (`app/src/lib/constants/genres.ts`)。DB の `genres`
+  テーブルは ID マスタとして存在するが slug は code 側で whitelist される
+- カテゴリは **ジャンルごとに独立**。`categories.genre_id` で親ジャンル決定。
+  CRUD は管理画面 `/sbbm-control/categories` から
+- 旧仕様にあった「軸 (purpose/industry/friendliness)」「フレンドリー度」は
+  **採用しなかった**
+
+### 5.2 ジャンル一覧 (sort_order 順)
+
+| sort | slug | 表示名 | hasPrefecture | hasServiceAreas | hasProviderAges |
+|---:|---|---|:-:|:-:|:-:|
+| 1 | `bar-restaurant` | バー・クラブ・飲食店 | ✓ | – | – |
+| 2 | `hattenba` | ハッテンバ | ✓ | – | – |
+| 3 | `massage-urisen` | マッサージ・売り専 | ✓ | ✓ | ✓ |
+| 4 | `video-gallery` | 動画・ギャラリー | – | – | – |
+| 5 | `media-sns` | メディア・SNS | – | – | – |
+| 6 | `org-consult` | 団体・相談先 | – | – | – |
+| 7 | `matching` | 出会い | – | – | – |
+| 8 | `fashion-beauty` | ファッション・美容 | – | – | – |
+| 9 | `mania` | マニア系 | – | – | – |
+| 10 | `other` | その他 | – | – | – |
+
+フラグの意味:
+- **hasPrefecture**: 都道府県フィルタを表示。未指定アクセス時は `prefecture=tokyo` に強制リダイレクト
+- **hasServiceAreas**: 「出張可能エリア」フィルタを表示。listings の `service_areas` JSON に格納
+- **hasProviderAges**: 「提供者年齢」フィルタを表示
+
+### 5.3 カテゴリ検索の特殊ルール (massage-urisen ジャンル)
+
+OR 検索モード選択中でも `delivery` (出張) カテゴリは **強制 AND** で結合される
+(`app/src/app/genres/[slug]/page.tsx` の `FORCED_AND_BY_GENRE` で定義)。
+
+→ 例: OR モードで `[出張, マッサージ, オイル]` を選ぶと、実クエリは
+  `出張 AND (マッサージ OR オイル)` になる。
+
+### 5.4 「レズ・ニューハーフ以外」フィルタ
+
+`exclude_nh=1` で `newhalf` / `les` カテゴリを **NOT IN** で除外。OR/AND モードの
+影響を受けず常に AND 適用。
+
+---
+
+## 6. 主要な実装規約
+
+- **DB アクセスはすべて prepared statement + `.bind()`** (`app/src/lib/db/queries/*.ts`)。
+  user 入力を SQL 文字列補間しない
+- **動的 ORDER BY** は `Record<SortKey, string>` 形式の whitelist マップ経由のみ
+- **admin 系 API** は必ず `checkAdminApi()` を冒頭で呼ぶ
+- **外部リンク (バナー / リスティング website_url)** には `target="_blank"
+  rel="noopener noreferrer"` を付与
+- **画像最適化**: Supabase Storage の公開 URL は `<img>` 直貼り (next/image の
+  `remotePatterns` 未設定)
+- **共通エラーハンドリング**: `app/src/app/global-error.tsx` でクライアント例外を
+  表示 + `/api/client-error` に送信し Worker ログから後追い可能
+
+---
+
+## 7. 環境変数 / シークレット
+
+| 変数 | 種別 | 設定場所 |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | public | `wrangler.jsonc:vars` + `.env.local` (dev) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | 同上 |
+| `SUPABASE_SERVICE_ROLE_KEY` | secret | `wrangler secret put` (prod) + `app/.dev.vars` (dev) |
+| `SUPABASE_JWT_SECRET` | secret | 同上 |
+
+`.dev.vars` / `.env.local` は git 管理対象外 (`app/.gitignore`)。リポジトリには
+シークレットを一切コミットしない。
+
+---
+
+## 8. ロードマップ (現状ステータス)
+
+| Phase | 状態 |
+|---|---|
+| Phase 1: 基盤 + 認証 + ダッシュボード | ✅ 完了 (Cloudflare 移管 v4.0.0) |
+| Phase 2: 情報登録 + 検索 + 一覧 | ✅ 完了 |
+| Phase 3: 管理者パネル | ✅ 完了 (sbbm-control 配下) |
+| Phase 4: 広告バナー + アクセスカウンタ | ✅ 完了 (本ドキュメント時点) |
+| Phase 5: 多言語 / レビュー / イベント | 未着手 |
+
+---
+
+## 9. 関連ドキュメント
+
+- [app/AGENTS.md](../app/AGENTS.md) — エージェント / AI 向け実装上の注意
+- [app/CLAUDE.md](../app/CLAUDE.md) — `@AGENTS.md` 再エクスポート
+- [legacy/](../legacy/) — 旧設計書・要件書 (history 用)

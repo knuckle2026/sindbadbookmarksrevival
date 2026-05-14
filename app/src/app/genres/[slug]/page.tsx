@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { GENRES } from "@/lib/constants/genres";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import { TOKYO_OUTSIDE_SLUG } from "@/lib/constants/tokyo-wards";
@@ -82,21 +82,6 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
 
   const genreMeta = GENRES.find((g) => g.slug === slug);
   if (!genreMeta) notFound();
-
-  if (genreMeta.hasPrefecture && !regionParam && !prefectureParam) {
-    const p = new URLSearchParams();
-    p.set("prefecture", "tokyo");
-    if (categoryParam) p.set("category", categoryParam);
-    if (catOp === "and") p.set("cat_op", "and");
-    if (serviceAreaParam) p.set("service_area", serviceAreaParam);
-    if (sortParam) p.set("sort", sortParam);
-    if (excludeNhParam) p.set("exclude_nh", excludeNhParam);
-    if (providerAgeParam) p.set("provider_age", providerAgeParam);
-    if (wardParam) p.set("ward", wardParam);
-    if (pageParam) p.set("page", pageParam);
-    if (keyword) p.set("q", keyword);
-    redirect(`/genres/${slug}?${p.toString()}`);
-  }
 
   const genreRow = await getGenreBySlug(slug);
   if (!genreRow) notFound();

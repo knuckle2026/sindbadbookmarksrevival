@@ -507,6 +507,7 @@ export type AdminSortColumn = "title" | "url" | "description" | "created_at";
 export interface AdminSearchOpts {
   q?: string | null;
   genreId?: string | null;
+  categoryId?: string | null;
   sortColumn: AdminSortColumn;
   sortOrder: "asc" | "desc";
   limit: number;
@@ -528,12 +529,19 @@ const ADMIN_SORT_SQL: Record<AdminSortColumn, string> = {
 function buildAdminFilter(opts: {
   q?: string | null;
   genreId?: string | null;
+  categoryId?: string | null;
 }): { sql: string; binds: unknown[] } {
   const parts: string[] = [];
   const binds: unknown[] = [];
   if (opts.genreId) {
     parts.push("genre_id = ?");
     binds.push(opts.genreId);
+  }
+  if (opts.categoryId) {
+    parts.push(
+      "id IN (SELECT listing_id FROM listing_categories WHERE category_id = ?)",
+    );
+    binds.push(opts.categoryId);
   }
   if (opts.q) {
     parts.push("(title LIKE ? OR website_url LIKE ?)");
@@ -549,6 +557,7 @@ function buildAdminFilter(opts: {
 export async function adminCountListings(opts: {
   q?: string | null;
   genreId?: string | null;
+  categoryId?: string | null;
 }): Promise<number> {
   const db = await getDB();
   const { sql: where, binds } = buildAdminFilter(opts);

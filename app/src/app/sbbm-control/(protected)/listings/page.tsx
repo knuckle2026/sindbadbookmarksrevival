@@ -191,7 +191,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
             name="q"
             defaultValue={searchQuery ?? ""}
             placeholder="Title / URL..."
-            className="w-48 rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
+            className="w-48 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 placeholder:text-zinc-400"
           />
         </div>
 
@@ -200,7 +200,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
           <select
             name="genre"
             defaultValue={genreFilter ?? ""}
-            className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
+            className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900"
           >
             <option value="">All genres</option>
             {genres.map((g) => (
@@ -216,7 +216,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
           <select
             name="category"
             defaultValue={filterCategoryId ?? ""}
-            className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm"
+            className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900"
           >
             <option value="">All categories</option>
             {visibleCategories.map((c) => (

@@ -9,7 +9,6 @@ import SortSelect, { type SortKey } from "@/components/listings/SortSelect";
 import ClickableTitle from "@/components/listings/ClickableTitle";
 import ReportButton from "@/components/listings/ReportButton";
 import SearchBar from "@/components/listings/SearchBar";
-import { AdBannerSlider } from "@/components/AdBannerSlider";
 import { getGenreBySlug } from "@/lib/db/queries/genres";
 import { listCategoriesByGenre } from "@/lib/db/queries/categories";
 import {
@@ -311,7 +310,6 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
 
   return (
     <>
-      <AdBannerSlider placement={`genres:${slug}`} />
       <Suspense>
         <SearchBar />
       </Suspense>

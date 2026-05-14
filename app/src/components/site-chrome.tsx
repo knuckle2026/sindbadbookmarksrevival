@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Header } from "@/components/header";
 import { Sidebar } from "@/components/sidebar";
 import { Footer } from "@/components/footer";
+import { AdBannerSlider } from "@/components/AdBannerSlider";
 import { GENRE_MAP } from "@/lib/constants/genres";
 
 // Paths where the header + sidebar chrome should NOT appear
@@ -37,6 +38,13 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const hideRegisterButton = isNewListing || isEditListing;
   const showLogo = pathname === "/";
 
+  const bannerPlacement: string | null =
+    pathname === "/"
+      ? "top"
+      : genreSlug
+        ? `genres:${genreSlug}`
+        : null;
+
   if (isBare) {
     return <>{children}</>;
   }
@@ -51,6 +59,11 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         hideRegisterButton={hideRegisterButton}
         showLogo={showLogo}
       />
+      {bannerPlacement && (
+        <div className="shrink-0">
+          <AdBannerSlider placement={bannerPlacement} />
+        </div>
+      )}
       <div className="flex flex-1 overflow-hidden">
         {sidebarOpen && <Sidebar onCloseSidebar={() => setSidebarOpen(false)} />}
         <main className="flex-1 overflow-y-auto bg-zinc-50">

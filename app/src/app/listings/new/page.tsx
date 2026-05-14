@@ -9,18 +9,20 @@ export const dynamic = "force-dynamic";
 export default async function NewListingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ genre?: string }>;
+  searchParams: Promise<{ genre?: string; from?: string }>;
 }) {
-  const { genre: genreSlug } = await searchParams;
+  const { genre: genreSlug, from: fromParam } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    const newPath = genreSlug
-      ? `/listings/new?genre=${genreSlug}`
-      : "/listings/new";
+    const params = new URLSearchParams();
+    if (genreSlug) params.set("genre", genreSlug);
+    if (fromParam) params.set("from", fromParam);
+    const qs = params.toString();
+    const newPath = qs ? `/listings/new?${qs}` : "/listings/new";
     redirect(`/login?next=${encodeURIComponent(newPath)}`);
   }
 
@@ -49,6 +51,7 @@ export default async function NewListingPage({
         genres={genres.map((g) => ({ id: g.id, slug: g.slug, name: g.name }))}
         categories={categories}
         defaultGenreId={defaultGenreId}
+        cancelHref={fromParam}
       />
     </div>
   );

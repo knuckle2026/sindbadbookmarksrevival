@@ -7,6 +7,7 @@ import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import { TOKYO_WARDS } from "@/lib/constants/tokyo-wards";
 import { SERVICE_AREA_GROUPS } from "@/lib/constants/service-areas";
 import { PROVIDER_AGES } from "@/lib/constants/provider-ages";
+import { safeRedirectPath } from "@/lib/utils/safe-redirect";
 
 export interface GenreOption {
   id: string;
@@ -43,13 +44,15 @@ interface Props {
   initialValues?: InitialValues;
   redirectTo?: string;
   defaultGenreId?: string;
+  /** Cancel button target. Falls back to router.back() when not provided. */
+  cancelHref?: string;
 }
 
 const TITLE_MAX = 20;
 const DESCRIPTION_MAX = 100;
 const URL_RE = /^https?:\/\/.+/;
 
-export default function ListingForm({ genres, categories, mode = "new", initialValues, redirectTo, defaultGenreId }: Props) {
+export default function ListingForm({ genres, categories, mode = "new", initialValues, redirectTo, defaultGenreId, cancelHref }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -428,7 +431,13 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
       <div className="flex gap-3 pt-2">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => {
+            if (cancelHref) {
+              router.push(safeRedirectPath(cancelHref, "/"));
+            } else {
+              router.back();
+            }
+          }}
           className="flex-1 rounded-lg border border-zinc-300 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-50"
         >
           キャンセル

@@ -25,9 +25,17 @@ export function Header({ onHamburgerClick, onCloseSidebar, genreName, genreSlug,
       data: { user },
     } = await supabase.auth.getUser();
 
-    const newPath = genreSlug
-      ? `/listings/new?genre=${genreSlug}`
-      : "/listings/new";
+    const fromPath =
+      typeof window !== "undefined"
+        ? window.location.pathname + window.location.search
+        : "/";
+    const params = new URLSearchParams();
+    if (genreSlug) params.set("genre", genreSlug);
+    if (fromPath && fromPath !== "/listings/new") {
+      params.set("from", fromPath);
+    }
+    const qs = params.toString();
+    const newPath = qs ? `/listings/new?${qs}` : "/listings/new";
 
     if (user) {
       router.push(newPath);

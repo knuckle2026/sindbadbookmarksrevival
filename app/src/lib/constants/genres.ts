@@ -16,7 +16,7 @@ export const GENRES: GenreMeta[] = [
   { slug: "massage-urisen",     name: "マッサージ・売り専",        sortOrder: 3, hasServiceAreas: true, hasProviderAges: true, hasPrefecture: true },
   { slug: "video-gallery",      name: "動画・ギャラリー",  sortOrder: 4 },
   { slug: "media-sns",          name: "メディア・SNS",             sortOrder: 5 },
-  { slug: "org-consult",        name: "団体・相談先",              sortOrder: 6 },
+  { slug: "org-consult",        name: "団体・相談先",              sortOrder: 6, hasPrefecture: true },
   { slug: "matching",           name: "出会い",                    sortOrder: 7 },
   { slug: "fashion-beauty",     name: "ファッション・美容",        sortOrder: 8 },
   { slug: "mania",              name: "マニア系",                  sortOrder: 9 },

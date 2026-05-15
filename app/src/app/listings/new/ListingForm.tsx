@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { GENRES } from "@/lib/constants/genres";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import { TOKYO_WARDS } from "@/lib/constants/tokyo-wards";
+import { OSAKA_AREAS } from "@/lib/constants/osaka-areas";
 import { SERVICE_AREA_GROUPS } from "@/lib/constants/service-areas";
 import { PROVIDER_AGES } from "@/lib/constants/provider-ages";
 import { safeRedirectPath } from "@/lib/utils/safe-redirect";
@@ -129,7 +130,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
     setError("");
     setLoading(true);
 
-    const showWard = prefecture === "tokyo";
+    const showWard = prefecture === "tokyo" || prefecture === "osaka";
     const showServiceAreas = !!genreMeta?.hasServiceAreas;
     const showProviderAges = !!genreMeta?.hasProviderAges;
 
@@ -196,7 +197,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
   const labelClass =
     "mb-1 block text-sm font-medium text-zinc-800";
 
-  const showWard = prefecture === "tokyo";
+  const showWard = prefecture === "tokyo" || prefecture === "osaka";
   const showServiceAreas = !!genreMeta?.hasServiceAreas;
 
   return (
@@ -357,18 +358,22 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
 
             {showWard && (
               <div className="w-1/2">
-                <label className={labelClass}>区（任意）</label>
+                <label className={labelClass}>
+                  {prefecture === "osaka" ? "エリア" : "区"}（任意）
+                </label>
                 <select
                   value={ward}
                   onChange={(e) => setWard(e.target.value)}
                   className={inputClass}
                 >
                   <option value="">未選択</option>
-                  {TOKYO_WARDS.map((w) => (
-                    <option key={w.slug} value={w.slug}>
-                      {w.name}
-                    </option>
-                  ))}
+                  {(prefecture === "osaka" ? OSAKA_AREAS : TOKYO_WARDS).map(
+                    (w) => (
+                      <option key={w.slug} value={w.slug}>
+                        {w.name}
+                      </option>
+                    ),
+                  )}
                 </select>
               </div>
             )}

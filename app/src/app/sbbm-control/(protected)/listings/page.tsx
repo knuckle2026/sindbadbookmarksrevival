@@ -258,12 +258,13 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Categories</th>
               <th className="px-4 py-2 text-right font-medium text-zinc-500">Actions</th>
               <th className="px-4 py-2 text-center font-medium text-zinc-500">通報</th>
+              <th className="px-4 py-2 text-left font-medium text-zinc-500">最新通報日</th>
             </tr>
           </thead>
           <tbody>
             {listings.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-6 text-center text-zinc-400">
+                <td colSpan={10} className="px-4 py-6 text-center text-zinc-400">
                   No listings found
                 </td>
               </tr>
@@ -328,6 +329,17 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
                     </td>
                     <td className="px-4 py-2 text-center">
                       <ReportCount reports={reports} />
+                    </td>
+                    <td className="px-4 py-2 text-xs text-zinc-500 whitespace-nowrap">
+                      {reports.length > 0
+                        ? new Date(
+                            reports.reduce(
+                              (latest, r) =>
+                                r.created_at > latest ? r.created_at : latest,
+                              reports[0].created_at,
+                            ),
+                          ).toLocaleDateString("ja-JP")
+                        : "-"}
                     </td>
                   </tr>
                 );

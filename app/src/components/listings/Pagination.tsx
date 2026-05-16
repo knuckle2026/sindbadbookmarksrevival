@@ -42,7 +42,6 @@ export default function Pagination({
         <PressableLink
           href={buildHref(currentPage - 1)}
           className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100"
-          pendingClassName="rounded-lg border border-red-600 bg-red-600 px-3 py-2 text-sm text-white"
           aria-label="前のページ"
         >
           &lt;
@@ -71,7 +70,6 @@ export default function Pagination({
                 ? "bg-red-600 text-white"
                 : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100"
             }`}
-            pendingClassName="rounded-lg border border-red-600 bg-red-600 px-3 py-2 text-sm font-medium text-white"
             aria-current={p === currentPage ? "page" : undefined}
           >
             {p}
@@ -84,7 +82,6 @@ export default function Pagination({
         <PressableLink
           href={buildHref(currentPage + 1)}
           className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100"
-          pendingClassName="rounded-lg border border-red-600 bg-red-600 px-3 py-2 text-sm text-white"
           aria-label="次のページ"
         >
           &gt;

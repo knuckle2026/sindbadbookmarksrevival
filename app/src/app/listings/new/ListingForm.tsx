@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GENRES } from "@/lib/constants/genres";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
-import { TOKYO_WARDS } from "@/lib/constants/tokyo-wards";
+import { TOKYO_WARD_FILTER_OPTIONS } from "@/lib/constants/tokyo-wards";
 import { OSAKA_AREAS } from "@/lib/constants/osaka-areas";
 import { SERVICE_AREA_GROUPS } from "@/lib/constants/service-areas";
 import { PROVIDER_AGES } from "@/lib/constants/provider-ages";
@@ -367,13 +367,14 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
                   className={inputClass}
                 >
                   <option value="">未選択</option>
-                  {(prefecture === "osaka" ? OSAKA_AREAS : TOKYO_WARDS).map(
-                    (w) => (
-                      <option key={w.slug} value={w.slug}>
-                        {w.name}
-                      </option>
-                    ),
-                  )}
+                  {(prefecture === "osaka"
+                    ? OSAKA_AREAS
+                    : TOKYO_WARD_FILTER_OPTIONS
+                  ).map((w) => (
+                    <option key={w.slug} value={w.slug}>
+                      {w.name}
+                    </option>
+                  ))}
                 </select>
               </div>
             )}

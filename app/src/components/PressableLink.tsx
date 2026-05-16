@@ -12,6 +12,11 @@ interface PressableLinkProps {
   children: React.ReactNode;
   "aria-label"?: string;
   "aria-current"?: React.AriaAttributes["aria-current"];
+  /**
+   * Whether to scroll to top on navigation. Defaults to true (Next.js default).
+   * Pass false to preserve scroll position (e.g. pagination within a list).
+   */
+  scroll?: boolean;
 }
 
 export function PressableLink({
@@ -23,6 +28,7 @@ export function PressableLink({
   children,
   "aria-label": ariaLabel,
   "aria-current": ariaCurrent,
+  scroll = true,
 }: PressableLinkProps) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -41,7 +47,7 @@ export function PressableLink({
       }
     }
     startTransition(() => {
-      router.push(href);
+      router.push(href, { scroll });
     });
   };
 

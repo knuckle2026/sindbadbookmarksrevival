@@ -31,7 +31,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
     : isEditListing
       ? "登録情報の編集"
       : isMyListings
-        ? "マイリスティング"
+        ? "登録した情報"
         : isOperator
           ? "運営事務局"
           : genreName;

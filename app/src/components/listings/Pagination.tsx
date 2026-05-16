@@ -43,6 +43,7 @@ export default function Pagination({
           href={buildHref(currentPage - 1)}
           className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100"
           aria-label="前のページ"
+          scroll={false}
         >
           &lt;
         </PressableLink>
@@ -71,6 +72,7 @@ export default function Pagination({
                 : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100"
             }`}
             aria-current={p === currentPage ? "page" : undefined}
+            scroll={false}
           >
             {p}
           </PressableLink>
@@ -83,6 +85,7 @@ export default function Pagination({
           href={buildHref(currentPage + 1)}
           className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100"
           aria-label="次のページ"
+          scroll={false}
         >
           &gt;
         </PressableLink>

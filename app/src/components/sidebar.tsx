@@ -65,7 +65,7 @@ export function Sidebar({ onCloseSidebar }: SidebarProps) {
           onClick={() => handleNav("/my-listings")}
           className={`mt-2 block w-full border-y border-white/20 px-3 py-2.5 text-left text-sm cursor-pointer font-semibold ${pendingHref === "/my-listings" ? "bg-white/30" : "bg-white/10 hover:bg-white/20 active:bg-white/20"}`}
         >
-          マイリスティング
+          登録した情報
         </button>
       </nav>
     </aside>

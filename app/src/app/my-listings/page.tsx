@@ -26,7 +26,7 @@ export default async function MyListingsPage({ searchParams }: PageProps) {
     return (
       <div className="mx-auto max-w-xl px-4 py-16 text-center">
         <p className="mb-8 text-sm text-zinc-600">
-          マイリスティングを表示するにはログインが必要です。
+          登録した情報を表示するにはログインが必要です。
         </p>
         <div className="flex justify-center gap-3">
           <Link

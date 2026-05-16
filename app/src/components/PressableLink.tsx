@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 interface PressableLinkProps {
@@ -24,29 +24,33 @@ export function PressableLink({
   "aria-label": ariaLabel,
   "aria-current": ariaCurrent,
 }: PressableLinkProps) {
-  const [pending, setPending] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    if (pending) return;
-    setPending(true);
-    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+    if (isPending) return;
+    if (
+      typeof navigator !== "undefined" &&
+      typeof navigator.vibrate === "function"
+    ) {
       try {
         navigator.vibrate(10);
       } catch {
         /* silent */
       }
     }
-    router.push(href);
+    startTransition(() => {
+      router.push(href);
+    });
   };
 
   return (
     <a
       href={href}
       onClick={handleClick}
-      className={pending ? (pendingClassName ?? className) : className}
-      style={pending ? (pendingStyle ?? style) : style}
+      className={isPending ? (pendingClassName ?? className) : className}
+      style={isPending ? (pendingStyle ?? style) : style}
       aria-label={ariaLabel}
       aria-current={ariaCurrent}
     >

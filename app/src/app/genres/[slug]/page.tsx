@@ -155,7 +155,10 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     prefectureParam === "osaka" ? OSAKA_OUTSIDE_SLUG : TOKYO_OUTSIDE_SLUG;
   const wardCountMap: Record<string, number> = {};
   for (const [k, v] of Object.entries(wardCountRawMap)) {
-    wardCountMap[k === "__null" ? outsideSlug : k] = v;
+    // __null (= ward IS NULL) は「未指定」扱いで件数表示に含めない。
+    // outsideSlug literal だけが「23区外」のカウントになる
+    if (k === "__null") continue;
+    wardCountMap[k] = v;
   }
 
   const selectedRegion = regionParam
@@ -182,9 +185,9 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     prefectureFilter === "tokyo" || prefectureFilter === "osaka";
   const wardFilterActive = wardSupportedPref && selectedWardsRaw.length > 0;
   const wardIncludesOutside = selectedWardsRaw.includes(outsideSlug);
-  const wardSpecificSlugs = selectedWardsRaw.filter(
-    (w) => w !== outsideSlug,
-  );
+  // 「23区外」(outside) は ward IS NULL と ward='outside' の両表現を扱う
+  // ため、wardSpecificSlugs から除外せず literal も SQL の IN に含める
+  const wardSpecificSlugs = selectedWardsRaw;
 
   const from = (currentPage - 1) * PER_PAGE;
   const { rows: listings, total: totalCount } = await searchGenreListings({
@@ -201,7 +204,9 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     wardSpecific: wardFilterActive && wardSpecificSlugs.length > 0
       ? wardSpecificSlugs
       : null,
-    wardIncludesNull: wardFilterActive ? wardIncludesOutside : false,
+    // 23区外 = ward='outside' literal のみ。ward IS NULL は「未指定」扱いで
+    // どのワードフィルタにもマッチさせない
+    wardIncludesNull: false,
     keyword: keyword || null,
   });
 
@@ -220,7 +225,9 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     wardSpecific: wardFilterActive && wardSpecificSlugs.length > 0
       ? wardSpecificSlugs
       : null,
-    wardIncludesNull: wardFilterActive ? wardIncludesOutside : false,
+    // 23区外 = ward='outside' literal のみ。ward IS NULL は「未指定」扱いで
+    // どのワードフィルタにもマッチさせない
+    wardIncludesNull: false,
     keyword: keyword || null,
   };
   const newhalfCatId = categories.find((c) => c.slug === "newhalf")?.id ?? null;

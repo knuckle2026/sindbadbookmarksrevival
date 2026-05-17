@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "G-Ankers アガるポータル For LGBTQ+",
-  description: "G-Ankers アガるポータル For LGBTQ+",
+  title: "G-Ankers 胸熱ポータル For LGBTQ+",
+  description: "G-Ankers 胸熱ポータル For LGBTQ+",
 };
 
 export default function RootLayout({

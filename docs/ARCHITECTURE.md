@@ -441,4 +441,6 @@ OR 検索モード選択中でも `delivery` (出張) カテゴリは **強制 A
 
 - [app/AGENTS.md](../app/AGENTS.md) — エージェント / AI 向け実装上の注意
 - [app/CLAUDE.md](../app/CLAUDE.md) — `@AGENTS.md` 再エクスポート
+- [docs/RESTORE.md](RESTORE.md) — データバックアップ取得 / 復元手順 (Time Travel / 全面 / 部分)
 - [legacy/](../legacy/) — 旧設計書・要件書 (history 用)
+- [backups/](../backups/) — 過去の D1 export (`.sql`) 群

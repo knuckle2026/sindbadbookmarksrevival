@@ -7,9 +7,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUT = path.join(__dirname, "data", "gclick-mixed-bars.json");
 const BASE = "https://www.gclick.jp";
-const LIST_URL = `${BASE}/search_list.php?genre=20`;
+// CLI: node scrape-gclick-mixed-bars.mjs [listUrl] [outFile]
+const LIST_URL =
+  process.argv[2] || `${BASE}/search_list.php?genre=20`;
+const OUT_NAME =
+  process.argv[3] || "gclick-mixed-bars.json";
+const OUT = path.join(__dirname, "data", OUT_NAME);
 const UA = "G-Ankers-test-seeding/1.0 (private dev)";
 const WANT = 10;
 const MAX_FETCH = 60;

@@ -103,15 +103,29 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     : [];
   const matchedIds = matchedCats.map((c) => c.id);
 
-  // 特定ジャンルは OR/AND トグルに関わらず常に AND 結合 (UI は OR 押下可)
-  const ALWAYS_AND_GENRES = new Set(["massage-urisen"]);
-  const forceAllAnd = ALWAYS_AND_GENRES.has(genreRow.slug);
-  const useAnd = (forceAllAnd || catOp === "and") && matchedIds.length > 1;
+  // OR モードでも特定カテゴリは強制的に AND として扱う (修飾子的カテゴリ)
+  // 例: massage-urisen の "delivery" (出張) は他カテゴリと OR で結合すると
+  //     検索意図がずれるため、選択時は他カテゴリと AND で結合する
+  const FORCED_AND_BY_GENRE: Record<string, string[]> = {
+    "massage-urisen": ["delivery"],
+  };
+  const forcedAndSlugs = FORCED_AND_BY_GENRE[genreRow.slug] ?? [];
+  const forcedAndIds = matchedCats
+    .filter((c) => forcedAndSlugs.includes(c.slug))
+    .map((c) => c.id);
+  const otherIds = matchedCats
+    .filter((c) => !forcedAndSlugs.includes(c.slug))
+    .map((c) => c.id);
 
   let categoryIdsInclude: string[] | null = null;
   let categoryIdsAndAll: string[] | null = null;
-  if (useAnd) {
+  if (catOp === "and" && matchedIds.length > 1) {
     categoryIdsAndAll = matchedIds;
+  } else if (forcedAndIds.length > 0 && otherIds.length > 0) {
+    categoryIdsAndAll = forcedAndIds;
+    categoryIdsInclude = otherIds;
+  } else if (forcedAndIds.length > 0) {
+    categoryIdsAndAll = forcedAndIds;
   } else if (matchedIds.length > 0) {
     categoryIdsInclude = matchedIds;
   }

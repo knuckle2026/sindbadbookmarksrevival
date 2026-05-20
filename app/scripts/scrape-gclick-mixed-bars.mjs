@@ -101,6 +101,27 @@ async function main() {
         console.log(`  skip ${c.name}: no homepage`);
         continue;
       }
+      // 公式サイトが実際に到達可能かを確認 (GET, 10s timeout)
+      let reachable = false;
+      try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 10000);
+        const hr = await fetch(homepage, {
+          method: "GET",
+          headers: { "User-Agent": UA, "Accept-Language": "ja,en;q=0.5" },
+          redirect: "follow",
+          signal: ctrl.signal,
+        });
+        clearTimeout(tid);
+        reachable = hr.ok || (hr.status >= 200 && hr.status < 400);
+        if (!reachable) {
+          console.log(`  skip ${c.name}: homepage HTTP ${hr.status} (${homepage})`);
+          continue;
+        }
+      } catch (e) {
+        console.log(`  skip ${c.name}: homepage unreachable (${e.message}) (${homepage})`);
+        continue;
+      }
       const desc = pickDescription(d);
       const loc = pickArea(d);
       console.log(`  ✓ ${c.name} -> ${homepage}`);

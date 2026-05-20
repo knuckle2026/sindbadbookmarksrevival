@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition, useEffect, useRef } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 interface PressableLinkProps {
@@ -17,6 +17,8 @@ interface PressableLinkProps {
    * Pass false to preserve scroll position (e.g. pagination within a list).
    */
   scroll?: boolean;
+  /** クリック直後 (router.push 前) に呼ばれるフック。楽観的 UI 更新用。 */
+  onNavigationStart?: () => void;
 }
 
 export function PressableLink({
@@ -29,25 +31,10 @@ export function PressableLink({
   "aria-label": ariaLabel,
   "aria-current": ariaCurrent,
   scroll = true,
+  onNavigationStart,
 }: PressableLinkProps) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
-  // 直前のクリックで遷移を要求した hash (#xxx) を覚えておき、
-  // ナビ完了 (isPending: true→false) でその要素にスクロールする。
-  // Next.js の router.push は hash 付き URL のスクロールが安定しないため明示。
-  const pendingHashRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (isPending) return;
-    const hash = pendingHashRef.current;
-    if (!hash) return;
-    pendingHashRef.current = null;
-    // RSC が DOM を差し替えた直後に対象要素が現れるよう次フレームで実行
-    requestAnimationFrame(() => {
-      const el = document.getElementById(hash);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }, [isPending]);
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
@@ -62,8 +49,7 @@ export function PressableLink({
         /* silent */
       }
     }
-    const hashIdx = href.indexOf("#");
-    pendingHashRef.current = hashIdx >= 0 ? href.slice(hashIdx + 1) : null;
+    onNavigationStart?.();
     startTransition(() => {
       router.push(href, { scroll });
     });

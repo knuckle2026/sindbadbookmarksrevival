@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { PressableLink } from "@/components/PressableLink";
 
 interface PaginationProps {
@@ -20,20 +23,26 @@ export default function Pagination({
   basePath,
   extraParams = {},
 }: PaginationProps) {
+  // ナビ完了前にハイライトを切り替えるための楽観的 state。
+  // サーバから新しい currentPage が来たら同期し直す。
+  const [selectedPage, setSelectedPage] = useState(currentPage);
+  useEffect(() => {
+    setSelectedPage(currentPage);
+  }, [currentPage]);
+
   if (totalPages <= 1) return null;
+
+  const displayPage = selectedPage;
 
   const buildHref = (page: number) => {
     const params = new URLSearchParams(extraParams);
     if (page > 1) params.set("page", String(page));
     const qs = params.toString();
-    // 一覧の先頭にスクロールさせるためのアンカー。ヘッダーを残しつつ
-    // 新しいページのリストが視界に入るようにする (scroll-mt-28 でずれ調整)。
-    const hash = "#listings-top";
-    return qs ? `${basePath}?${qs}${hash}` : `${basePath}${hash}`;
+    return qs ? `${basePath}?${qs}` : basePath;
   };
 
   // Build page numbers with ellipsis
-  const pages = buildPageNumbers(currentPage, totalPages);
+  const pages = buildPageNumbers(displayPage, totalPages);
 
   return (
     <nav
@@ -41,12 +50,14 @@ export default function Pagination({
       aria-label="ページネーション"
     >
       {/* 前へ */}
-      {currentPage > 1 ? (
+      {displayPage > 1 ? (
         <PressableLink
-          href={buildHref(currentPage - 1)}
+          href={buildHref(displayPage - 1)}
           className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100"
           pendingClassName="rounded-lg border border-zinc-300 bg-zinc-200 px-3 py-2 text-sm text-zinc-500"
           aria-label="前のページ"
+          scroll={false}
+          onNavigationStart={() => setSelectedPage(displayPage - 1)}
         >
           &lt;
         </PressableLink>
@@ -70,12 +81,14 @@ export default function Pagination({
             key={p}
             href={buildHref(p as number)}
             className={`rounded-lg px-3 py-2 text-sm font-medium ${
-              p === currentPage
+              p === displayPage
                 ? "bg-red-600 text-white"
                 : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100"
             }`}
             pendingClassName="rounded-lg px-3 py-2 text-sm font-medium bg-zinc-200 text-zinc-500"
-            aria-current={p === currentPage ? "page" : undefined}
+            aria-current={p === displayPage ? "page" : undefined}
+            scroll={false}
+            onNavigationStart={() => setSelectedPage(p as number)}
           >
             {p}
           </PressableLink>
@@ -83,12 +96,14 @@ export default function Pagination({
       )}
 
       {/* 次へ */}
-      {currentPage < totalPages ? (
+      {displayPage < totalPages ? (
         <PressableLink
-          href={buildHref(currentPage + 1)}
+          href={buildHref(displayPage + 1)}
           className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100"
           pendingClassName="rounded-lg border border-zinc-300 bg-zinc-200 px-3 py-2 text-sm text-zinc-500"
           aria-label="次のページ"
+          scroll={false}
+          onNavigationStart={() => setSelectedPage(displayPage + 1)}
         >
           &gt;
         </PressableLink>

@@ -376,7 +376,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
                 {totalCount}件の登録情報
               </p>
             )}
-            <ul id="listings-top" className="space-y-3 scroll-mt-28">
+            <ul className="space-y-3">
               {listings.map((l) => (
                 <li
                   key={l.id}

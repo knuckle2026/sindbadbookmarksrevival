@@ -26,7 +26,10 @@ export default function Pagination({
     const params = new URLSearchParams(extraParams);
     if (page > 1) params.set("page", String(page));
     const qs = params.toString();
-    return qs ? `${basePath}?${qs}` : basePath;
+    // 一覧の先頭にスクロールさせるためのアンカー。ヘッダーを残しつつ
+    // 新しいページのリストが視界に入るようにする (scroll-mt-28 でずれ調整)。
+    const hash = "#listings-top";
+    return qs ? `${basePath}?${qs}${hash}` : `${basePath}${hash}`;
   };
 
   // Build page numbers with ellipsis
@@ -42,8 +45,8 @@ export default function Pagination({
         <PressableLink
           href={buildHref(currentPage - 1)}
           className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100"
+          pendingClassName="rounded-lg border border-zinc-300 bg-zinc-200 px-3 py-2 text-sm text-zinc-500"
           aria-label="前のページ"
-          scroll={false}
         >
           &lt;
         </PressableLink>
@@ -71,8 +74,8 @@ export default function Pagination({
                 ? "bg-red-600 text-white"
                 : "border border-zinc-300 text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100"
             }`}
+            pendingClassName="rounded-lg px-3 py-2 text-sm font-medium bg-zinc-200 text-zinc-500"
             aria-current={p === currentPage ? "page" : undefined}
-            scroll={false}
           >
             {p}
           </PressableLink>
@@ -84,8 +87,8 @@ export default function Pagination({
         <PressableLink
           href={buildHref(currentPage + 1)}
           className="rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100"
+          pendingClassName="rounded-lg border border-zinc-300 bg-zinc-200 px-3 py-2 text-sm text-zinc-500"
           aria-label="次のページ"
-          scroll={false}
         >
           &gt;
         </PressableLink>

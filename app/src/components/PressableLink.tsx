@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 interface PressableLinkProps {
@@ -32,6 +32,22 @@ export function PressableLink({
 }: PressableLinkProps) {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  // 直前のクリックで遷移を要求した hash (#xxx) を覚えておき、
+  // ナビ完了 (isPending: true→false) でその要素にスクロールする。
+  // Next.js の router.push は hash 付き URL のスクロールが安定しないため明示。
+  const pendingHashRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (isPending) return;
+    const hash = pendingHashRef.current;
+    if (!hash) return;
+    pendingHashRef.current = null;
+    // RSC が DOM を差し替えた直後に対象要素が現れるよう次フレームで実行
+    requestAnimationFrame(() => {
+      const el = document.getElementById(hash);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [isPending]);
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
@@ -46,6 +62,8 @@ export function PressableLink({
         /* silent */
       }
     }
+    const hashIdx = href.indexOf("#");
+    pendingHashRef.current = hashIdx >= 0 ? href.slice(hashIdx + 1) : null;
     startTransition(() => {
       router.push(href, { scroll });
     });

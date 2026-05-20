@@ -15,7 +15,7 @@ const OUT_NAME =
   process.argv[3] || "gclick-mixed-bars.json";
 const OUT = path.join(__dirname, "data", OUT_NAME);
 const UA = "G-Ankers-test-seeding/1.0 (private dev)";
-const WANT = 10;
+const WANT = Number(process.argv[4]) || 10;
 const MAX_FETCH = 60;
 
 function pickHomepageUrl(doc) {

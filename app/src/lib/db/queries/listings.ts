@@ -55,11 +55,17 @@ export interface CountFilterOpts {
   categoryIdsAndAll?: string[] | null;
   /** カテゴリ ID のいずれかに紐づく listing を除外 */
   categoryIdsExclude?: string[] | null;
+  /** "YYYY-MM-DD HH:MM:SS" 形式。これ以降に作られた listing のみ集計 (新着フィルタ用) */
+  createdSince?: string | null;
 }
 
 function buildCountFilter(opts?: CountFilterOpts): { sql: string; binds: unknown[] } {
   const parts: string[] = [];
   const binds: unknown[] = [];
+  if (opts?.createdSince) {
+    parts.push("created_at >= ?");
+    binds.push(opts.createdSince);
+  }
   if (opts?.categoryIdsInclude && opts.categoryIdsInclude.length > 0) {
     const ph = opts.categoryIdsInclude.map(() => "?").join(",");
     parts.push(
@@ -208,6 +214,8 @@ export interface SearchGenreOpts {
   wardSpecific?: string[] | null;
   wardIncludesNull?: boolean;
   keyword?: string | null;
+  /** "YYYY-MM-DD HH:MM:SS" 形式。これ以降に作られた listing のみ通過 (新着フィルタ) */
+  createdSince?: string | null;
 }
 
 export type GenreListingRow = Pick<
@@ -291,6 +299,10 @@ function buildGenreFilter(opts: SearchGenreOpts): {
     parts.push("(title LIKE ? OR description LIKE ?)");
     const pat = `%${opts.keyword}%`;
     binds.push(pat, pat);
+  }
+  if (opts.createdSince) {
+    parts.push("created_at >= ?");
+    binds.push(opts.createdSince);
   }
 
   return { sql: parts.join(" AND "), binds };

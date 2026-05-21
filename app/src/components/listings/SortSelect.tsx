@@ -25,32 +25,45 @@ interface SortSelectProps {
   currentSort: SortKey;
   basePath: string;
   extraParams?: Record<string, string>;
+  /** 新着 (3ヶ月以内) フィルタが ON か */
+  freshOn?: boolean;
 }
 
 export default function SortSelect({
   currentSort,
   basePath,
   extraParams = {},
+  freshOn = false,
 }: SortSelectProps) {
   const router = useRouter();
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value as SortKey;
+  const buildHref = (next: { sort?: SortKey; fresh?: boolean }) => {
     const params = new URLSearchParams(extraParams);
-    if (value !== "created_desc") params.set("sort", value);
+    const sortVal = next.sort ?? currentSort;
+    if (sortVal !== "created_desc") params.set("sort", sortVal);
     else params.delete("sort");
-    // Reset to page 1 on sort change
+    const freshVal = next.fresh ?? freshOn;
+    if (freshVal) params.set("fresh", "1");
+    else params.delete("fresh");
+    // ソートやフィルタ変更時はページを 1 にリセット
     params.delete("page");
     const qs = params.toString();
-    const href = `${basePath}${qs ? `?${qs}` : ""}`;
-    router.push(href);
+    return `${basePath}${qs ? `?${qs}` : ""}`;
+  };
+
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    router.push(buildHref({ sort: e.target.value as SortKey }));
+  };
+
+  const handleFreshToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+    router.push(buildHref({ fresh: e.target.checked }));
   };
 
   return (
-    <div className="mb-4">
+    <div className="mb-4 flex flex-wrap items-center gap-3">
       <select
         value={currentSort}
-        onChange={handleChange}
+        onChange={handleSortChange}
         className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-700 shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
       >
         {SORT_OPTIONS.map((opt) => (
@@ -59,6 +72,15 @@ export default function SortSelect({
           </option>
         ))}
       </select>
+      <label className="inline-flex items-center gap-1.5 text-sm text-zinc-700 select-none cursor-pointer">
+        <input
+          type="checkbox"
+          checked={freshOn}
+          onChange={handleFreshToggle}
+          className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
+        />
+        新着(3ヶ月以内)
+      </label>
     </div>
   );
 }

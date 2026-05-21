@@ -45,6 +45,7 @@ interface PageProps {
     ward?: string;
     page?: string;
     q?: string;
+    fresh?: string;
   }>;
 }
 
@@ -62,10 +63,20 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     ward: wardParam,
     page: pageParam,
     q: qParam,
+    fresh: freshParam,
   } = await searchParams;
   const catOp: "and" | "or" = catOpParam === "and" ? "and" : "or";
   const keyword = (qParam ?? "").trim();
   const currentPage = Math.max(1, parseInt(pageParam ?? "1", 10) || 1);
+  const freshOn = freshParam === "1";
+  // 「新着 (3ヶ月以内)」: 90 日前以降に作成された listing のみ。
+  // D1 の created_at は "YYYY-MM-DD HH:MM:SS" 形式に揃える。
+  const createdSince = freshOn
+    ? new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .replace("T", " ")
+        .slice(0, 19)
+    : null;
 
   const validSorts: SortKey[] = [
     "created_desc",
@@ -134,7 +145,12 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     : [];
   const categoryIdsExclude = excludeIds.length > 0 ? excludeIds : null;
 
-  const countOpts = { categoryIdsInclude, categoryIdsAndAll, categoryIdsExclude };
+  const countOpts = {
+    categoryIdsInclude,
+    categoryIdsAndAll,
+    categoryIdsExclude,
+    createdSince,
+  };
 
   const [prefCountMap, svcJsonRows, wardCountRawMap] = await Promise.all([
     genreMeta.hasPrefecture
@@ -222,6 +238,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     // どのワードフィルタにもマッチさせない
     wardIncludesNull: false,
     keyword: keyword || null,
+    createdSince,
   });
 
   const catMap = await getCategoriesForListings(listings.map((l) => l.id));
@@ -243,6 +260,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     // どのワードフィルタにもマッチさせない
     wardIncludesNull: false,
     keyword: keyword || null,
+    createdSince,
   };
   const newhalfCatId = categories.find((c) => c.slug === "newhalf")?.id ?? null;
   const lesCatId = lesCat?.id ?? null;
@@ -301,6 +319,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   if (providerAgeParam) extraParams.provider_age = providerAgeParam;
   if (wardParam) extraParams.ward = wardParam;
   if (keyword) extraParams.q = keyword;
+  if (freshOn) extraParams.fresh = "1";
 
   return (
     <>
@@ -362,6 +381,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
         currentSort={currentSort}
         basePath={`/genres/${slug}`}
         extraParams={extraParams}
+        freshOn={freshOn}
       />
 
         {keyword && (

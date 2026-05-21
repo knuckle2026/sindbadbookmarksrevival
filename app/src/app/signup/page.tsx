@@ -30,8 +30,14 @@ function SignUpForm() {
     setError("");
     setLoading(true);
 
-    if (password.length < 6) {
-      setError("パスワードは6文字以上で入力してください。");
+    // パスワード要件: 10 文字以上 + 英字 + 数字 (総当たり耐性向上)
+    if (password.length < 10) {
+      setError("パスワードは10文字以上で入力してください。");
+      setLoading(false);
+      return;
+    }
+    if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      setError("パスワードは英字と数字を両方含めてください。");
       setLoading(false);
       return;
     }

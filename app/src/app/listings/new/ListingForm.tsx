@@ -163,6 +163,14 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
       router.push("/login?next=/listings/new");
       return;
     }
+    if (res.status === 403) {
+      const body = await res.json().catch(() => ({} as { error?: string }));
+      if (body.error === "email_not_confirmed") {
+        setError("メールアドレス確認が完了していません。確認メールのリンクをクリックしてから再度お試しください。");
+        setLoading(false);
+        return;
+      }
+    }
     if (res.status === 429) {
       const body = await res.json().catch(() => ({} as { limit?: string; max?: number }));
       const max = body.max ?? "?";

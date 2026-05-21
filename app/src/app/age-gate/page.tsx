@@ -11,8 +11,14 @@ function AgeGate() {
   const nextPath = safeRedirectPath(rawNext, "/");
   const target = nextPath.startsWith("/age-gate") ? "/" : nextPath;
 
-  function handleEnter() {
-    document.cookie = "age_verified=1; path=/; max-age=86400; SameSite=Lax";
+  async function handleEnter() {
+    // HttpOnly Cookie をサーバ側で発行する。クライアントの document.cookie で
+    // 偽造できないよう /api/age-gate/enter を経由させる。
+    try {
+      await fetch("/api/age-gate/enter", { method: "POST" });
+    } catch {
+      /* ネットワーク失敗時はそのまま遷移して再度ゲートにあたる */
+    }
     window.location.href = target;
   }
 

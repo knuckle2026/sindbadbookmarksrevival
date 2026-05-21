@@ -64,6 +64,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  // メール認証必須 (admin はバイパス)。Supabase は email_confirmed_at がセット
+  // されたユーザのみ confirmed 扱い。OAuth ユーザは Provider 側で確認済み。
+  if (
+    current.profile.role !== "admin" &&
+    !current.authUser.email_confirmed_at
+  ) {
+    return NextResponse.json(
+      { error: "email_not_confirmed" },
+      { status: 403 },
+    );
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = parseBody(body);
   if (!parsed) {

@@ -30,9 +30,13 @@ export async function DELETE() {
     }
   );
   if (!authRes.ok && authRes.status !== 404) {
-    const text = await authRes.text();
+    // Supabase の内部エラーメッセージはレスポンスに含めない (情報漏洩防止)。
+    // 詳細は Cloudflare Workers のログで確認する。
+    console.error(
+      `account delete: Supabase auth admin DELETE failed status=${authRes.status}`,
+    );
     return NextResponse.json(
-      { error: "auth_delete_failed", detail: text },
+      { error: "auth_delete_failed" },
       { status: 500 }
     );
   }

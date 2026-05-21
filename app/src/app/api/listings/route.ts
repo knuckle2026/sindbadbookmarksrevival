@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/guards";
 import {
   createListing,
   type ListingWrite,
 } from "@/lib/db/queries/listings";
+import { countListingsByUserSince } from "@/lib/db/queries/profiles";
+
+// ロボットによる大量登録防止のためのユーザごとクォータ。
+// admin はバイパス。
+const SUBMIT_LIMIT_24H = 10;
+const SUBMIT_LIMIT_30D = 50;
+
+/** D1 の created_at と直接比較できる "YYYY-MM-DD HH:MM:SS" を返す。 */
+function d1Timestamp(date: Date): string {
+  return date.toISOString().replace("T", " ").slice(0, 19);
+}
 
 function parseBody(b: unknown): {
   payload: ListingWrite;
@@ -48,11 +59,8 @@ function parseBody(b: unknown): {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+  const current = await getCurrentUser();
+  if (!current) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -62,6 +70,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
-  const id = await createListing(parsed.payload, user.id, parsed.categoryIds);
+  // admin 以外はウィンドウクォータでロボット連投を防止
+  if (current.profile.role !== "admin") {
+    const now = Date.now();
+    const since24h = d1Timestamp(new Date(now - 24 * 60 * 60 * 1000));
+    const since30d = d1Timestamp(new Date(now - 30 * 24 * 60 * 60 * 1000));
+    const [count24h, count30d] = await Promise.all([
+      countListingsByUserSince(current.authUser.id, since24h),
+      countListingsByUserSince(current.authUser.id, since30d),
+    ]);
+    if (count24h >= SUBMIT_LIMIT_24H) {
+      return NextResponse.json(
+        {
+          error: "submit_limit_exceeded",
+          limit: "daily",
+          count: count24h,
+          max: SUBMIT_LIMIT_24H,
+        },
+        { status: 429 },
+      );
+    }
+    if (count30d >= SUBMIT_LIMIT_30D) {
+      return NextResponse.json(
+        {
+          error: "submit_limit_exceeded",
+          limit: "monthly",
+          count: count30d,
+          max: SUBMIT_LIMIT_30D,
+        },
+        { status: 429 },
+      );
+    }
+  }
+
+  const id = await createListing(parsed.payload, current.authUser.id, parsed.categoryIds);
   return NextResponse.json({ id });
 }

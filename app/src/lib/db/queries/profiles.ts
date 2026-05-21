@@ -65,6 +65,24 @@ export async function countListingsByUser(userId: string): Promise<number> {
   return row?.c ?? 0;
 }
 
+/**
+ * 指定ユーザの listings 件数を since 以降に作成されたものに限ってカウント。
+ * since は D1 の created_at と比較できる "YYYY-MM-DD HH:MM:SS" 形式。
+ */
+export async function countListingsByUserSince(
+  userId: string,
+  since: string,
+): Promise<number> {
+  const db = await getDB();
+  const row = await db
+    .prepare(
+      "SELECT COUNT(*) AS c FROM listings WHERE user_id = ? AND created_at >= ?",
+    )
+    .bind(userId, since)
+    .first<{ c: number }>();
+  return row?.c ?? 0;
+}
+
 export async function getSuspendedFlag(id: string): Promise<boolean> {
   const db = await getDB();
   const row = await db

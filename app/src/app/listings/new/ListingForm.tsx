@@ -163,6 +163,17 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
       router.push("/login?next=/listings/new");
       return;
     }
+    if (res.status === 429) {
+      const body = await res.json().catch(() => ({} as { limit?: string; max?: number }));
+      const max = body.max ?? "?";
+      if (body.limit === "daily") {
+        setError(`24時間に登録できる件数 (${max}件) を超えました。少し時間をおいて再度お試しください。`);
+      } else {
+        setError(`30日間に登録できる件数 (${max}件) を超えました。`);
+      }
+      setLoading(false);
+      return;
+    }
     if (!res.ok) {
       const body = await res.json().catch(() => ({ error: "unknown" }));
       setError(body.error ?? (isEdit ? "更新に失敗しました" : "登録に失敗しました"));

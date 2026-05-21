@@ -56,7 +56,8 @@ export default function SortSelect({
   };
 
   const handleFreshToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
-    router.push(buildHref({ fresh: e.target.checked }));
+    // 新着フィルタの ON/OFF は表示位置を保つ (画面トップへスクロールしない)
+    router.push(buildHref({ fresh: e.target.checked }), { scroll: false });
   };
 
   return (

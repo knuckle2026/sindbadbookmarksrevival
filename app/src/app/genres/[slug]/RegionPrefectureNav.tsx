@@ -66,17 +66,27 @@ export default function RegionPrefectureNav({
           {CITY_SHORTCUTS.map((c) => {
             const isActive = selectedPrefecture === c.prefecture;
             const count = prefCountMap[c.prefecture] ?? 0;
-            return (
-              <Link
-                key={c.prefecture}
-                href={buildHref(
+            // 選択中の都市をもう一度押したら解除 (region/prefecture とも未指定)
+            const href = isActive
+              ? buildHref(
+                  slug,
+                  categoryParam,
+                  catOpParam,
+                  serviceAreaParam,
+                )
+              : buildHref(
                   slug,
                   categoryParam,
                   catOpParam,
                   serviceAreaParam,
                   undefined,
                   c.prefecture,
-                )}
+                );
+            return (
+              <Link
+                key={c.prefecture}
+                href={href}
+                aria-pressed={isActive}
                 className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
                   isActive
                     ? "border-red-500 bg-red-50 font-medium text-red-700"
@@ -118,17 +128,28 @@ export default function RegionPrefectureNav({
           <div className="flex flex-wrap gap-2">
             {regionObj.prefectures.map((p) => {
               const isActive = selectedPrefecture === p.slug;
-              return (
-                <Link
-                  key={p.slug}
-                  href={buildHref(
+              // 選択中の都道府県をもう一度押したら解除 (region は残す)
+              const href = isActive
+                ? buildHref(
+                    slug,
+                    categoryParam,
+                    catOpParam,
+                    serviceAreaParam,
+                    selectedRegion!,
+                  )
+                : buildHref(
                     slug,
                     categoryParam,
                     catOpParam,
                     serviceAreaParam,
                     selectedRegion!,
                     p.slug,
-                  )}
+                  );
+              return (
+                <Link
+                  key={p.slug}
+                  href={href}
+                  aria-pressed={isActive}
                   className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                     isActive
                       ? "border-red-500 bg-red-50 font-medium text-red-700"

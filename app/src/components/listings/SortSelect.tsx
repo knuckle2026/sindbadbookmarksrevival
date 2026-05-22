@@ -52,7 +52,10 @@ export default function SortSelect({
   };
 
   const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    router.push(buildHref({ sort: e.target.value as SortKey }));
+    // 並び順変更時も表示位置を保つ (画面トップへスクロールしない)
+    router.push(buildHref({ sort: e.target.value as SortKey }), {
+      scroll: false,
+    });
   };
 
   const handleFreshToggle = (e: React.ChangeEvent<HTMLInputElement>) => {

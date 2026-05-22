@@ -66,7 +66,10 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       )}
       <div className="flex flex-1 overflow-hidden">
         {sidebarOpen && <Sidebar onCloseSidebar={() => setSidebarOpen(false)} />}
-        <main className="flex-1 overflow-y-auto bg-zinc-50">
+        <main
+          className="flex-1 overflow-y-auto bg-zinc-50"
+          onClick={sidebarOpen ? () => setSidebarOpen(false) : undefined}
+        >
           {children}
           <Footer />
         </main>

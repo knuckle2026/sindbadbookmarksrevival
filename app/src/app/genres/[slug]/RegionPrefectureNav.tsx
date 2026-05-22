@@ -86,6 +86,7 @@ export default function RegionPrefectureNav({
               <Link
                 key={c.prefecture}
                 href={href}
+                scroll={false}
                 aria-pressed={isActive}
                 className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
                   isActive
@@ -110,6 +111,7 @@ export default function RegionPrefectureNav({
             <Link
               key={r.slug}
               href={buildHref(slug, categoryParam, catOpParam, serviceAreaParam, r.slug)}
+              scroll={false}
               className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-700 transition-colors hover:border-red-400 hover:bg-red-50"
             >
               {r.name}{" "}
@@ -149,6 +151,7 @@ export default function RegionPrefectureNav({
                 <Link
                   key={p.slug}
                   href={href}
+                  scroll={false}
                   aria-pressed={isActive}
                   className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                     isActive

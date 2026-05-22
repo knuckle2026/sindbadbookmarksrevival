@@ -50,7 +50,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen h-dvh flex-col">
+    <div className="flex h-screen h-svh flex-col">
       <Header
         onHamburgerClick={() => setSidebarOpen((v) => !v)}
         onCloseSidebar={() => setSidebarOpen(false)}
@@ -67,7 +67,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 overflow-hidden">
         {sidebarOpen && <Sidebar onCloseSidebar={() => setSidebarOpen(false)} />}
         <main
-          className="flex-1 overflow-y-auto bg-zinc-50"
+          className="flex-1 overflow-y-auto overscroll-contain bg-zinc-50"
           onClick={sidebarOpen ? () => setSidebarOpen(false) : undefined}
         >
           {children}

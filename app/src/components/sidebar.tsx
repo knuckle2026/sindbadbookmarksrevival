@@ -42,7 +42,7 @@ export function Sidebar({ onCloseSidebar }: SidebarProps) {
       className="w-44 shrink-0 overflow-y-auto text-white"
       style={{ backgroundColor: "#005766" }}
     >
-      <nav className="py-3">
+      <nav className="pt-3 pb-24">
         <button
           onClick={() => handleNav("/")}
           className={`${linkBase} font-semibold ${pendingHref === "/" ? "bg-white/25" : "hover:bg-white/10 active:bg-white/10"}`}

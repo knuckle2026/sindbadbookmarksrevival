@@ -17,7 +17,6 @@ export default function SignUpPage() {
 function SignUpForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -64,7 +63,6 @@ function SignUpForm() {
       email,
       password,
       options: {
-        data: { full_name: displayName },
         emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
       },
     });
@@ -148,20 +146,6 @@ function SignUpForm() {
         </div>
 
         <form onSubmit={handleSignUp} className="space-y-4">
-          <div>
-            <label htmlFor="displayName" className="block text-sm font-medium text-zinc-700">
-              表示名 <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="displayName"
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              required
-              className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-zinc-700">
               メールアドレス <span className="text-red-500">*</span>

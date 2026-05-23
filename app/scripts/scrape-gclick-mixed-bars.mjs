@@ -32,6 +32,23 @@ function pickHomepageUrl(doc) {
   return null;
 }
 
+// 詳細ページから店舗の X (旧Twitter) アカウント URL を抽出する。
+// 共有ボタンやハッシュタグページ等は除外し、ユーザ単体ページ URL のみ返す。
+const X_BLOCK = new Set(["share", "intent", "hashtag", "search", "home", "i", "_"]);
+function pickXUrl(doc) {
+  const anchors = [...doc.querySelectorAll("a[href]")];
+  for (const a of anchors) {
+    const raw = a.getAttribute("href") || "";
+    if (!raw) continue;
+    const noQuery = raw.split("?")[0].split("#")[0].replace(/\/$/, "");
+    const m = noQuery.match(/^https?:\/\/(?:www\.)?(?:twitter|x)\.com\/([A-Za-z0-9_]{1,15})$/);
+    if (m && !X_BLOCK.has(m[1].toLowerCase())) {
+      return `https://x.com/${m[1]}`;
+    }
+  }
+  return null;
+}
+
 function pickDescription(doc) {
   // Try common spots: meta description fallback to first <p> in main content
   const meta = doc.querySelector('meta[name="description"]');
@@ -96,12 +113,20 @@ async function main() {
         continue;
       }
       const d = new JSDOM(await r.text()).window.document;
-      const homepage = pickHomepageUrl(d);
+      let homepage = pickHomepageUrl(d);
+      let homepageSource = "site";
       if (!homepage) {
-        console.log(`  skip ${c.name}: no homepage`);
-        continue;
+        // 公式サイトがない場合は X (Twitter) アカウントをフォールバックとして許容
+        const x = pickXUrl(d);
+        if (x) {
+          homepage = x;
+          homepageSource = "x";
+        } else {
+          console.log(`  skip ${c.name}: no homepage / no X`);
+          continue;
+        }
       }
-      // 公式サイトが実際に到達可能かを確認 (GET, 10s timeout)
+      // URL が実際に到達可能かを確認 (GET, 10s timeout)
       let reachable = false;
       try {
         const ctrl = new AbortController();
@@ -115,20 +140,21 @@ async function main() {
         clearTimeout(tid);
         reachable = hr.ok || (hr.status >= 200 && hr.status < 400);
         if (!reachable) {
-          console.log(`  skip ${c.name}: homepage HTTP ${hr.status} (${homepage})`);
+          console.log(`  skip ${c.name}: ${homepageSource} HTTP ${hr.status} (${homepage})`);
           continue;
         }
       } catch (e) {
-        console.log(`  skip ${c.name}: homepage unreachable (${e.message}) (${homepage})`);
+        console.log(`  skip ${c.name}: ${homepageSource} unreachable (${e.message}) (${homepage})`);
         continue;
       }
       const desc = pickDescription(d);
       const loc = pickArea(d);
-      console.log(`  ✓ ${c.name} -> ${homepage}`);
+      console.log(`  ✓ ${c.name} -> ${homepage} (${homepageSource})`);
       accepted.push({
         name: c.name,
         detail_url: c.detail_url,
         homepage,
+        homepage_source: homepageSource,
         description: desc,
         prefecture_jp: loc.prefecture,
         area_jp: loc.area,

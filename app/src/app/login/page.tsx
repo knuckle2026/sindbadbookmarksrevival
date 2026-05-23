@@ -68,11 +68,10 @@ function LoginForm() {
           </p>
         </div>
 
-        <div className="space-y-2 rounded-lg bg-zinc-50 p-3 text-xs text-zinc-700">
-          <p>情報の登録には無料アカウント（Google登録推奨）が必要です。</p>
-          <p>
-            登録情報の変更やアカウント自体の削除は「登録した情報」から行えます。なお、登録情報は運営事務局が定期的に精査いたします。
-          </p>
+        <div className="space-y-3 rounded-lg bg-zinc-50 p-4 text-base leading-relaxed text-zinc-800">
+          <p>情報の登録にはログインが必要です。初めての方は、左下のリンクから無料アカウントを作成してください。</p>
+          <p>Googleアカウントをご利用いただくと、新たなパスワードの管理が不要になり、安全かつスムーズにログインできます。</p>
+          <p>なお、アカウントの削除はいつでも可能です。</p>
         </div>
 
         {error && (

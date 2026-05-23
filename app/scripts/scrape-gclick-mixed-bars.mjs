@@ -113,38 +113,44 @@ async function main() {
         continue;
       }
       const d = new JSDOM(await r.text()).window.document;
-      let homepage = pickHomepageUrl(d);
-      let homepageSource = "site";
-      if (!homepage) {
-        // 公式サイトがない場合は X (Twitter) アカウントをフォールバックとして許容
-        const x = pickXUrl(d);
-        if (x) {
-          homepage = x;
-          homepageSource = "x";
-        } else {
-          console.log(`  skip ${c.name}: no homepage / no X`);
-          continue;
+      const site = pickHomepageUrl(d);
+      const x = pickXUrl(d);
+
+      async function reach(url) {
+        try {
+          const ctrl = new AbortController();
+          const tid = setTimeout(() => ctrl.abort(), 10000);
+          const hr = await fetch(url, {
+            method: "GET",
+            headers: { "User-Agent": UA, "Accept-Language": "ja,en;q=0.5" },
+            redirect: "follow",
+            signal: ctrl.signal,
+          });
+          clearTimeout(tid);
+          return hr.ok || (hr.status >= 200 && hr.status < 400);
+        } catch {
+          return false;
         }
       }
-      // URL が実際に到達可能かを確認 (GET, 10s timeout)
-      let reachable = false;
-      try {
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 10000);
-        const hr = await fetch(homepage, {
-          method: "GET",
-          headers: { "User-Agent": UA, "Accept-Language": "ja,en;q=0.5" },
-          redirect: "follow",
-          signal: ctrl.signal,
-        });
-        clearTimeout(tid);
-        reachable = hr.ok || (hr.status >= 200 && hr.status < 400);
-        if (!reachable) {
-          console.log(`  skip ${c.name}: ${homepageSource} HTTP ${hr.status} (${homepage})`);
-          continue;
-        }
-      } catch (e) {
-        console.log(`  skip ${c.name}: ${homepageSource} unreachable (${e.message}) (${homepage})`);
+
+      // 1) 公式サイトが取得でき、かつ到達可能ならそれを採用
+      // 2) 公式サイトが無い or 到達不可なら X を試す
+      // 3) どちらもダメならスキップ
+      let homepage = null;
+      let homepageSource = null;
+      if (site && (await reach(site))) {
+        homepage = site;
+        homepageSource = "site";
+      } else if (x && (await reach(x))) {
+        homepage = x;
+        homepageSource = "x";
+        if (site) console.log(`  fallback ${c.name}: site unreachable, using X (${site} → ${x})`);
+      } else {
+        const reason = !site && !x ? "no homepage / no X"
+          : !site ? "X unreachable"
+          : !x ? "site unreachable, no X"
+          : "site & X both unreachable";
+        console.log(`  skip ${c.name}: ${reason}`);
         continue;
       }
       const desc = pickDescription(d);

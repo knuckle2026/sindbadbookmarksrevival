@@ -163,27 +163,35 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
       router.push("/login?next=/listings/new");
       return;
     }
-    if (res.status === 403) {
-      const body = await res.json().catch(() => ({} as { error?: string }));
-      if (body.error === "email_not_confirmed") {
-        setError("メールアドレス確認が完了していません。確認メールのリンクをクリックしてから再度お試しください。");
+    if (!res.ok) {
+      // レスポンス本文を一度だけ読み出して各種エラー分岐に使う
+      // (二重読み出しは "Response body already used" で落ちるので注意)
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        limit?: string;
+        max?: number;
+      };
+      if (res.status === 403) {
+        if (body.error === "email_not_confirmed") {
+          setError("メールアドレス確認が完了していません。確認メールのリンクをクリックしてから再度お試しください。");
+        } else if (body.error === "age_gate_required") {
+          setError("年齢確認が必要です。トップページから年齢確認を行ってから再度お試しください。");
+        } else {
+          setError(body.error ?? "権限エラー");
+        }
         setLoading(false);
         return;
       }
-    }
-    if (res.status === 429) {
-      const body = await res.json().catch(() => ({} as { limit?: string; max?: number }));
-      const max = body.max ?? "?";
-      if (body.limit === "daily") {
-        setError(`24時間に登録できる件数 (${max}件) を超えました。少し時間をおいて再度お試しください。`);
-      } else {
-        setError(`30日間に登録できる件数 (${max}件) を超えました。`);
+      if (res.status === 429) {
+        const max = body.max ?? "?";
+        if (body.limit === "daily") {
+          setError(`24時間に登録できる件数 (${max}件) を超えました。少し時間をおいて再度お試しください。`);
+        } else {
+          setError(`30日間に登録できる件数 (${max}件) を超えました。`);
+        }
+        setLoading(false);
+        return;
       }
-      setLoading(false);
-      return;
-    }
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({ error: "unknown" }));
       setError(body.error ?? (isEdit ? "更新に失敗しました" : "登録に失敗しました"));
       setLoading(false);
       return;

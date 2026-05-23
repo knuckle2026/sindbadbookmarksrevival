@@ -32,10 +32,15 @@ const SUSPENDED_BYPASS = [
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // === Age gate check ===
+  const { response, isSuspended, isAuthenticated } = await updateSession(request);
+
+  // === Age gate check (認証済みユーザはスキップ) ===
+  // Supabase Auth でサインアップしたユーザは利用規約に同意したアダルト
+  // ポータルの利用者である前提なので、age-gate の冗長確認は不要。
+  // 匿名アクセスには引き続き age-gate を要求 (H3 セキュリティ修正の意図を維持)。
   const isBypassed = AGE_GATE_BYPASS.some((p) => pathname.startsWith(p));
 
-  if (!isBypassed) {
+  if (!isBypassed && !isAuthenticated) {
     const ageVerified = request.cookies.get("age_verified");
     // 値検証: 偽造防止のため固定値 "1" 以外は無効。サーバ側 Set-Cookie のみで発行。
     if (!ageVerified || ageVerified.value !== "1") {
@@ -57,8 +62,6 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
   }
-
-  const { response, isSuspended } = await updateSession(request);
 
   if (isSuspended && !SUSPENDED_BYPASS.some((p) => pathname.startsWith(p))) {
     const url = request.nextUrl.clone();

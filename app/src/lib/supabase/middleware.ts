@@ -56,5 +56,5 @@ export async function updateSession(request: NextRequest) {
     isSuspended = await getSuspendedFlag(user.id);
   }
 
-  return { response: supabaseResponse, isSuspended };
+  return { response: supabaseResponse, isSuspended, isAuthenticated: !!user };
 }

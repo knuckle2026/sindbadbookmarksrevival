@@ -6,6 +6,7 @@ import {
 } from "@/lib/db/queries/listings";
 import { countListingsByUserSince } from "@/lib/db/queries/profiles";
 import { verifyTurnstile, isTurnstileEnabled } from "@/lib/turnstile";
+import { isInAppBrowser } from "@/lib/in-app-browser";
 
 // ロボットによる大量登録防止のためのユーザごとクォータ。
 // admin はバイパス。
@@ -85,8 +86,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ id: "discarded", status: "pending" });
     }
 
-    // Cloudflare Turnstile: secret key 設定済みのときだけ検証する
-    if (isTurnstileEnabled()) {
+    // Cloudflare Turnstile: secret key 設定済み + UA がアプリ内ブラウザでないときだけ検証。
+    // アプリ内ブラウザ (LINE/Instagram/FB/X 等) は Turnstile iframe が動かないので
+    // UX 緩和のためバイパス。UA は偽装可能だが、honeypot + admin 承認で抑制する想定。
+    const ua = request.headers.get("user-agent");
+    const skipTurnstileForInApp = isInAppBrowser(ua);
+    if (isTurnstileEnabled() && !skipTurnstileForInApp) {
       const token = body?.turnstile_token;
       if (typeof token !== "string" || !token) {
         return NextResponse.json(

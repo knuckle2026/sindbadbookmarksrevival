@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GENRES } from "@/lib/constants/genres";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
@@ -10,6 +10,7 @@ import { SERVICE_AREA_GROUPS } from "@/lib/constants/service-areas";
 import { PROVIDER_AGES } from "@/lib/constants/provider-ages";
 import { safeRedirectPath } from "@/lib/utils/safe-redirect";
 import { TurnstileWidget } from "@/components/TurnstileWidget";
+import { isInAppBrowser } from "@/lib/in-app-browser";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
@@ -65,6 +66,13 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
   const [submitted, setSubmitted] = useState<"pending" | "published" | null>(null);
   const [turnstileToken, setTurnstileToken] = useState("");
   const [honeypot, setHoneypot] = useState("");
+  // SSR と client 描画で UA 検出結果が異なるとレイアウト崩れの原因になるため、
+  // 初期値は false、mount 後に useEffect で更新する。
+  const [inAppBrowser, setInAppBrowser] = useState(false);
+  useEffect(() => {
+    setInAppBrowser(isInAppBrowser(navigator.userAgent));
+  }, []);
+  const turnstileEnabled = !!TURNSTILE_SITE_KEY && !inAppBrowser;
 
   const [title, setTitle] = useState(initialValues?.title ?? "");
   const [description, setDescription] = useState(initialValues?.description ?? "");
@@ -123,8 +131,8 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
     if (!URL_RE.test(websiteUrl.trim()))
       return "サイトURLまたはSNSは http(s):// から始まる必要があります";
     if (!genreId) return "ジャンルを選択してください";
-    // Turnstile が configured かつ token 未取得なら阻止
-    if (TURNSTILE_SITE_KEY && !turnstileToken)
+    // Turnstile が表示されている場合は token 取得を必須にする
+    if (turnstileEnabled && !turnstileToken)
       return "認証チェックを完了してから送信してください";
     return null;
   };
@@ -531,8 +539,8 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
         </div>
       )}
 
-      {/* Cloudflare Turnstile (site key 未設定なら非表示) */}
-      {TURNSTILE_SITE_KEY && (
+      {/* Cloudflare Turnstile (site key 未設定 or in-app browser なら非表示) */}
+      {turnstileEnabled && (
         <div>
           <TurnstileWidget
             siteKey={TURNSTILE_SITE_KEY}

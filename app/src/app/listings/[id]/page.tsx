@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import { TOKYO_WARDS } from "@/lib/constants/tokyo-wards";
 import { SERVICE_AREA_MAP } from "@/lib/constants/service-areas";
@@ -57,12 +56,6 @@ export default async function ListingDetailPage({
   const catMap = await getCategoriesForListings([id]);
   const categoryNames = (catMap[id] ?? []).map((c) => c.name);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const isOwner = user?.id === listing.user_id;
-
   const pref = prefectureName(listing.prefecture);
   const w = wardName(listing.ward);
   const serviceAreaNames = parseJsonArray(listing.service_areas).map(
@@ -84,17 +77,7 @@ export default async function ListingDetailPage({
       </div>
 
       <div className="bg-white border rounded-xl p-6 space-y-5">
-        <div className="flex items-start justify-between gap-4">
-          <h1 className="text-2xl font-bold text-gray-900">{listing.title}</h1>
-          {isOwner && (
-            <Link
-              href={`/listings/${listing.id}/edit`}
-              className="shrink-0 text-sm border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              登録情報の編集
-            </Link>
-          )}
-        </div>
+        <h1 className="text-2xl font-bold text-gray-900">{listing.title}</h1>
 
         {genre && (
           <div className="flex flex-wrap gap-2">

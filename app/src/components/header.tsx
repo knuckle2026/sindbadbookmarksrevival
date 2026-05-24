@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { AccessCounter } from "@/components/access-counter";
 
 interface HeaderProps {
@@ -18,13 +17,8 @@ interface HeaderProps {
 export function Header({ onHamburgerClick, onCloseSidebar, genreName, genreSlug, hideRegisterButton, showLogo }: HeaderProps) {
   const router = useRouter();
 
-  const handleRegister = async () => {
+  const handleRegister = () => {
     onCloseSidebar?.();
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
     const fromPath =
       typeof window !== "undefined"
         ? window.location.pathname + window.location.search
@@ -36,12 +30,7 @@ export function Header({ onHamburgerClick, onCloseSidebar, genreName, genreSlug,
     }
     const qs = params.toString();
     const newPath = qs ? `/listings/new?${qs}` : "/listings/new";
-
-    if (user) {
-      router.push(newPath);
-    } else {
-      router.push(`/login?next=${encodeURIComponent(newPath)}`);
-    }
+    router.push(newPath);
   };
 
   return (

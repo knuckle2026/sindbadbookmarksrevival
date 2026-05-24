@@ -21,21 +21,15 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const genreSlug = genreMatch ? genreMatch[1] : undefined;
   const genreName = genreSlug ? GENRE_MAP[genreSlug]?.name : undefined;
 
-  // 登録・編集画面のヘッダー表示
+  // 登録画面のヘッダー表示 (公開側に編集画面/マイページは無い)
   const isNewListing = pathname === "/listings/new";
-  const isEditListing = /^\/listings\/[^/]+\/edit$/.test(pathname);
-  const isMyListings = pathname === "/my-listings";
   const isOperator = pathname === "/operator";
   const headerTitle = isNewListing
     ? "情報を登録"
-    : isEditListing
-      ? "登録情報の編集"
-      : isMyListings
-        ? "登録した情報"
-        : isOperator
-          ? "運営事務局"
-          : genreName;
-  const hideRegisterButton = isNewListing || isEditListing;
+    : isOperator
+      ? "運営事務局"
+      : genreName;
+  const hideRegisterButton = isNewListing;
   const showLogo = pathname === "/";
 
   const bannerPlacement: string | null =

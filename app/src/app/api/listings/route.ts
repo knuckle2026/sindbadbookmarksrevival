@@ -59,14 +59,13 @@ function parseBody(b: unknown): {
 }
 
 export async function POST(request: Request) {
+  // 公開側にログイン UI は無い。匿名で投稿要請を受け、管理者承認後に公開。
+  // ログイン状態は admin (管理画面経由) のときだけありえる。
   const current = await getCurrentUser();
-  if (!current) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
 
-  // メール認証必須 (admin はバイパス)。Supabase は email_confirmed_at がセット
-  // されたユーザのみ confirmed 扱い。OAuth ユーザは Provider 側で確認済み。
+  // ログイン済みかつ admin 以外なら email 認証は必須 (旧 user の名残ガード)
   if (
+    current &&
     current.profile.role !== "admin" &&
     !current.authUser.email_confirmed_at
   ) {
@@ -82,8 +81,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
-  // admin 以外はウィンドウクォータでロボット連投を防止
-  if (current.profile.role !== "admin") {
+  // logged-in non-admin のみウィンドウクォータでロボット連投を防止
+  if (current && current.profile.role !== "admin") {
     const now = Date.now();
     const since24h = d1Timestamp(new Date(now - 24 * 60 * 60 * 1000));
     const since30d = d1Timestamp(new Date(now - 30 * 24 * 60 * 60 * 1000));
@@ -115,6 +114,11 @@ export async function POST(request: Request) {
     }
   }
 
-  const id = await createListing(parsed.payload, current.authUser.id, parsed.categoryIds);
-  return NextResponse.json({ id });
+  // 匿名 → status='pending' / admin → 即時 'published'
+  const isAdmin = current?.profile.role === "admin";
+  const userId = current?.authUser.id ?? null;
+  const status = isAdmin ? "published" : "pending";
+
+  const id = await createListing(parsed.payload, userId, parsed.categoryIds, status);
+  return NextResponse.json({ id, status });
 }

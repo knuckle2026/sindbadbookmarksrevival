@@ -59,6 +59,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
   const [error, setError] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [submitted, setSubmitted] = useState<"pending" | "published" | null>(null);
 
   const [title, setTitle] = useState(initialValues?.title ?? "");
   const [description, setDescription] = useState(initialValues?.description ?? "");
@@ -160,7 +161,8 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
     });
 
     if (res.status === 401) {
-      router.push("/login?next=/listings/new");
+      setError("セッションエラーが発生しました。ページを再読み込みして再度お試しください。");
+      setLoading(false);
       return;
     }
     if (!res.ok) {
@@ -197,7 +199,16 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
       return;
     }
 
-    router.push(redirectTo ?? "/my-listings");
+    if (isEdit) {
+      // edit は admin (sbbm-control) からの呼び出しのみ。redirectTo に従う。
+      router.push(redirectTo ?? "/");
+      return;
+    }
+
+    // 新規投稿: API レスポンスの status を見て完了画面を出し分け
+    const body = (await res.json().catch(() => ({}))) as { status?: string };
+    setSubmitted(body.status === "published" ? "published" : "pending");
+    setLoading(false);
   };
 
   const handleDelete = async () => {
@@ -216,7 +227,7 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
       return;
     }
 
-    router.push(redirectTo ?? "/my-listings");
+    router.push(redirectTo ?? "/");
   };
 
   const inputClass =
@@ -226,6 +237,29 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
 
   const showWard = prefecture === "tokyo" || prefecture === "osaka";
   const showServiceAreas = !!genreMeta?.hasServiceAreas;
+
+  if (submitted) {
+    return (
+      <div className="space-y-4 rounded-lg bg-zinc-50 p-6 text-center text-zinc-800">
+        <div className="text-4xl">📝</div>
+        <h2 className="text-lg font-bold text-zinc-900">
+          {submitted === "published" ? "登録しました" : "投稿いただきました"}
+        </h2>
+        <p className="text-sm leading-relaxed">
+          {submitted === "published"
+            ? "情報を公開しました。"
+            : "管理者の承認後にサイトに公開されます。お時間をいただく場合がありますので、しばらくお待ちください。"}
+        </p>
+        <button
+          type="button"
+          onClick={() => router.push("/")}
+          className="inline-block rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-light"
+        >
+          トップへ戻る
+        </button>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>

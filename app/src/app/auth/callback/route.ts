@@ -28,12 +28,12 @@ export async function GET(request: Request) {
         if (blocked) {
           await deleteAuthUser(user.id);
           await supabase.auth.signOut();
-          return NextResponse.redirect(`${origin}/login?error=blocked`);
+          return NextResponse.redirect(`${origin}/sbbm-control/login?error=blocked`);
         }
       }
       return NextResponse.redirect(`${origin}${next}`);
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth_failed`);
+  return NextResponse.redirect(`${origin}/sbbm-control/login?error=auth_failed`);
 }

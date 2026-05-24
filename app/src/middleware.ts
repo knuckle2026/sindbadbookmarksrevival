@@ -16,13 +16,11 @@ const AGE_GATE_BYPASS = [
   "/api/age-gate",
 ];
 
-// 停止ユーザでもアクセス可 (ログアウト・サポートのため)
+// 停止ユーザ (admin 想定) でもアクセス可 (ログアウト・サポートのため)
 const SUSPENDED_BYPASS = [
   "/age-gate",
   "/auth",
-  "/login",
-  "/signup",
-  "/reset-password",
+  "/sbbm-control/login",
   "/_next",
   "/favicon",
   "/icon",
@@ -65,7 +63,7 @@ export async function middleware(request: NextRequest) {
 
   if (isSuspended && !SUSPENDED_BYPASS.some((p) => pathname.startsWith(p))) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/sbbm-control/login";
     url.search = "";
     return NextResponse.redirect(url);
   }

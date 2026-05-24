@@ -9,8 +9,18 @@ import { listGenres } from "@/lib/db/queries/genres";
 import { listAllCategoriesWithGenre } from "@/lib/db/queries/categories";
 import { getReportsByListingIds } from "@/lib/db/queries/reports";
 import { getUserEmailsByIds } from "@/lib/supabase/admin";
+import type { ListingStatus } from "@/lib/db/types";
 import ListingActions from "./ListingActions";
 import ReportCount from "./ReportCount";
+import StatusActions from "./StatusActions";
+
+const STATUS_VALUES: ListingStatus[] = ["pending", "published", "hidden", "rejected"];
+const STATUS_LABEL: Record<ListingStatus, string> = {
+  pending: "承認待ち",
+  published: "公開中",
+  hidden: "非表示",
+  rejected: "却下",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +40,7 @@ interface PageProps {
   searchParams: Promise<{
     genre?: string;
     category?: string;
+    status?: string;
     page?: string;
     q?: string;
     sort?: string;
@@ -41,11 +52,17 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
   const {
     genre: genreFilter,
     category: categoryFilter,
+    status: statusParam,
     page: pageParam,
     q: searchQuery,
     sort: sortParam,
     order: orderParam,
   } = await searchParams;
+
+  const statusFilter: ListingStatus | null =
+    statusParam && STATUS_VALUES.includes(statusParam as ListingStatus)
+      ? (statusParam as ListingStatus)
+      : null;
 
   const sortColumn: AdminSortColumn | "genre" = SORT_COLUMNS.some(
     (c) => c.key === sortParam
@@ -88,6 +105,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
     q: searchQuery ?? null,
     genreId: filterGenreId,
     categoryId: filterCategoryId,
+    status: statusFilter,
   });
   const totalPages = Math.max(1, Math.ceil(totalCount / PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
@@ -103,6 +121,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
     q: searchQuery ?? null,
     genreId: filterGenreId,
     categoryId: filterCategoryId,
+    status: statusFilter,
     sortColumn: dbSortColumn,
     sortOrder: dbSortOrder,
     limit: PER_PAGE,
@@ -133,6 +152,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
     const params = new URLSearchParams();
     if (genreFilter) params.set("genre", genreFilter);
     if (filterCategoryId) params.set("category", filterCategoryId);
+    if (statusFilter) params.set("status", statusFilter);
     if (searchQuery) params.set("q", searchQuery);
     if (sortColumn !== "created_at" || sortOrder !== "desc") {
       params.set("sort", sortColumn);
@@ -166,6 +186,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
     const params = new URLSearchParams();
     if (genreFilter) params.set("genre", genreFilter);
     if (filterCategoryId) params.set("category", filterCategoryId);
+    if (statusFilter) params.set("status", statusFilter);
     if (searchQuery) params.set("q", searchQuery);
     const newOrder = col === sortColumn && sortOrder === "asc" ? "desc" : "asc";
     params.set("sort", col);
@@ -227,6 +248,22 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
           </select>
         </div>
 
+        <div>
+          <label className="mb-1 block text-xs font-medium text-zinc-500">Status</label>
+          <select
+            name="status"
+            defaultValue={statusFilter ?? ""}
+            className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900"
+          >
+            <option value="">All statuses</option>
+            {STATUS_VALUES.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABEL[s]}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <button
           type="submit"
           className="rounded-md bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
@@ -254,6 +291,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
                   </Link>
                 </th>
               ))}
+              <th className="px-4 py-2 text-left font-medium text-zinc-500">Status</th>
               <th className="px-4 py-2 text-left font-medium text-zinc-500">登録者</th>
               <th className="px-4 py-2 text-left font-medium text-zinc-500">Categories</th>
               <th className="px-4 py-2 text-right font-medium text-zinc-500">Actions</th>
@@ -264,7 +302,7 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
           <tbody>
             {listings.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-4 py-6 text-center text-zinc-400">
+                <td colSpan={11} className="px-4 py-6 text-center text-zinc-400">
                   No listings found
                 </td>
               </tr>
@@ -307,13 +345,19 @@ export default async function AdminListingsPage({ searchParams }: PageProps) {
                     <td className="px-4 py-2 text-xs text-zinc-500 whitespace-nowrap">
                       {new Date(listing.created_at).toLocaleDateString("ja-JP")}
                     </td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      <StatusActions
+                        listingId={listing.id}
+                        currentStatus={listing.status}
+                      />
+                    </td>
                     <td
                       className="max-w-[180px] truncate px-4 py-2 text-xs text-zinc-500"
                       title={listing.user_id ?? ""}
                     >
                       {listing.user_id
                         ? emailMap[listing.user_id] ?? "(不明)"
-                        : "-"}
+                        : "(匿名)"}
                     </td>
                     <td className="max-w-[150px] truncate px-4 py-2 text-xs text-zinc-500">
                       {catNames || "-"}

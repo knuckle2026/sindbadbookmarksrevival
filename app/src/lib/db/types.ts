@@ -1,4 +1,4 @@
-export type ListingStatus = "published" | "hidden";
+export type ListingStatus = "pending" | "published" | "hidden" | "rejected";
 export type UserRole = "visitor" | "contributor" | "admin";
 export type ReportStatus = "pending" | "reviewed";
 

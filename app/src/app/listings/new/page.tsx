@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { listGenres } from "@/lib/db/queries/genres";
 import { listAllCategoriesWithGenreSlug } from "@/lib/db/queries/categories";
 import ListingForm from "./ListingForm";
@@ -12,19 +10,6 @@ export default async function NewListingPage({
   searchParams: Promise<{ genre?: string; from?: string }>;
 }) {
   const { genre: genreSlug, from: fromParam } = await searchParams;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    const params = new URLSearchParams();
-    if (genreSlug) params.set("genre", genreSlug);
-    if (fromParam) params.set("from", fromParam);
-    const qs = params.toString();
-    const newPath = qs ? `/listings/new?${qs}` : "/listings/new";
-    redirect(`/login?next=${encodeURIComponent(newPath)}`);
-  }
 
   const [genres, rawCategories] = await Promise.all([
     listGenres(),

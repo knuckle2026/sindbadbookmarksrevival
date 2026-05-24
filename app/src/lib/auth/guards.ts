@@ -26,7 +26,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   return { authUser: user, profile };
 }
 
-export async function requireUser(loginPath = "/login"): Promise<CurrentUser> {
+export async function requireUser(loginPath = "/sbbm-control/login"): Promise<CurrentUser> {
   const current = await getCurrentUser();
   if (!current) redirect(loginPath);
   return current;

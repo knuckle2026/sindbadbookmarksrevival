@@ -1,5 +1,5 @@
 import { getDB } from "../client";
-import type { ListingRow } from "../types";
+import type { ListingRow, ListingStatus } from "../types";
 
 export async function incrementClickCount(id: string): Promise<void> {
   const db = await getDB();
@@ -424,8 +424,9 @@ export interface ListingWrite {
 
 export async function createListing(
   input: ListingWrite,
-  userId: string,
-  categoryIds: string[]
+  userId: string | null,
+  categoryIds: string[],
+  status: ListingStatus = "published"
 ): Promise<string> {
   const db = await getDB();
   const id = crypto.randomUUID();
@@ -434,8 +435,8 @@ export async function createListing(
       `INSERT INTO listings (
          id, user_id, genre_id, title, description, website_url,
          prefecture, ward, service_areas, provider_ages, address,
-         created_by, updated_by
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         status, created_by, updated_by
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       id,
@@ -449,6 +450,7 @@ export async function createListing(
       input.service_areas ? JSON.stringify(input.service_areas) : null,
       input.provider_ages ? JSON.stringify(input.provider_ages) : null,
       input.address,
+      status,
       userId,
       userId
     )
@@ -520,6 +522,7 @@ export interface AdminSearchOpts {
   q?: string | null;
   genreId?: string | null;
   categoryId?: string | null;
+  status?: ListingStatus | null;
   sortColumn: AdminSortColumn;
   sortOrder: "asc" | "desc";
   limit: number;
@@ -528,7 +531,7 @@ export interface AdminSearchOpts {
 
 export type AdminListingRow = Pick<
   ListingRow,
-  "id" | "title" | "genre_id" | "website_url" | "description" | "created_at" | "user_id"
+  "id" | "title" | "genre_id" | "website_url" | "description" | "created_at" | "user_id" | "status"
 >;
 
 const ADMIN_SORT_SQL: Record<AdminSortColumn, string> = {
@@ -542,6 +545,7 @@ function buildAdminFilter(opts: {
   q?: string | null;
   genreId?: string | null;
   categoryId?: string | null;
+  status?: ListingStatus | null;
 }): { sql: string; binds: unknown[] } {
   const parts: string[] = [];
   const binds: unknown[] = [];
@@ -560,6 +564,10 @@ function buildAdminFilter(opts: {
     const pat = `%${opts.q}%`;
     binds.push(pat, pat);
   }
+  if (opts.status) {
+    parts.push("status = ?");
+    binds.push(opts.status);
+  }
   return {
     sql: parts.length > 0 ? parts.join(" AND ") : "1 = 1",
     binds,
@@ -570,6 +578,7 @@ export async function adminCountListings(opts: {
   q?: string | null;
   genreId?: string | null;
   categoryId?: string | null;
+  status?: ListingStatus | null;
 }): Promise<number> {
   const db = await getDB();
   const { sql: where, binds } = buildAdminFilter(opts);
@@ -589,7 +598,7 @@ export async function adminSearchListings(
   const dir = opts.sortOrder === "asc" ? "ASC" : "DESC";
   const { results } = await db
     .prepare(
-      `SELECT id, title, genre_id, website_url, description, created_at, user_id
+      `SELECT id, title, genre_id, website_url, description, created_at, user_id, status
        FROM listings
        WHERE ${where}
        ORDER BY ${sortSql} ${dir}

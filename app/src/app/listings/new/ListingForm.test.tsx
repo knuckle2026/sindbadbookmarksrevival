@@ -164,7 +164,14 @@ describe("ListingForm", () => {
     ).toBeInTheDocument();
   });
 
-  it("正常ケース: listings と listing_categories に insert され /my-listings に遷移", async () => {
+  it("正常ケース: /api/listings へ POST され『投稿いただきました』完了画面に遷移", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: "listing-1", status: "pending" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
     render(
       <ListingForm genres={GENRES_FIXTURE} categories={CATEGORIES_FIXTURE} />,
     );
@@ -185,22 +192,26 @@ describe("ListingForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "登録する" }));
 
     await waitFor(() => {
-      expect(insertListingMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
     });
-    const payload = insertListingMock.mock.calls[0][0];
-    expect(payload).toMatchObject({
-      user_id: "user-1",
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/listings");
+    expect((init as { method: string }).method).toBe("POST");
+    const body = JSON.parse((init as { body: string }).body);
+    expect(body).toMatchObject({
       genre_id: "g-bar",
       title: "テストバー",
       description: "説明テキスト",
       website_url: "https://example.com",
+      category_ids: ["c-bar"],
     });
-    expect(payload).not.toHaveProperty("friendliness");
-    expect(insertCategoryMock).toHaveBeenCalledWith([
-      { listing_id: "listing-1", category_id: "c-bar" },
-    ]);
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith("/my-listings");
-    });
+
+    // 完了画面が表示される (pending = 承認待ち)
+    expect(await screen.findByText("投稿いただきました")).toBeInTheDocument();
+    expect(
+      screen.getByText(/管理者の承認後にサイトに公開されます/),
+    ).toBeInTheDocument();
+
+    vi.unstubAllGlobals();
   });
 });

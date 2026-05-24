@@ -74,12 +74,30 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
   }, []);
   const turnstileEnabled = !!TURNSTILE_SITE_KEY && !inAppBrowser;
 
-  // 完了画面に切り替わったらページ最上部へスクロール。
+  // 完了画面に切り替わったらページ最上部へスクロール + iOS Safari の auto-zoom を解除。
   // SiteChrome (<main> overflow-y-auto) と window の両方を念のため scrollTo。
+  // viewport meta を一瞬 maximum-scale=1 に固定 → 元に戻すことで iOS Safari が
+  // input focus 時に自動ズームしたまま残っている状態をリセットする。
   useEffect(() => {
     if (!submitted) return;
     window.scrollTo({ top: 0, behavior: "auto" });
     document.querySelector("main")?.scrollTo({ top: 0, behavior: "auto" });
+
+    const meta = document.querySelector<HTMLMetaElement>(
+      'meta[name="viewport"]',
+    );
+    if (meta) {
+      const original =
+        meta.getAttribute("content") ?? "width=device-width, initial-scale=1";
+      meta.setAttribute(
+        "content",
+        "width=device-width, initial-scale=1, maximum-scale=1",
+      );
+      // 次フレームで元に戻して pinch-zoom を再度可能にする
+      setTimeout(() => {
+        meta.setAttribute("content", original);
+      }, 300);
+    }
   }, [submitted]);
 
   const [title, setTitle] = useState(initialValues?.title ?? "");

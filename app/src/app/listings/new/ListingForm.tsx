@@ -74,6 +74,14 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
   }, []);
   const turnstileEnabled = !!TURNSTILE_SITE_KEY && !inAppBrowser;
 
+  // 完了画面に切り替わったらページ最上部へスクロール。
+  // SiteChrome (<main> overflow-y-auto) と window の両方を念のため scrollTo。
+  useEffect(() => {
+    if (!submitted) return;
+    window.scrollTo({ top: 0, behavior: "auto" });
+    document.querySelector("main")?.scrollTo({ top: 0, behavior: "auto" });
+  }, [submitted]);
+
   const [title, setTitle] = useState(initialValues?.title ?? "");
   const [description, setDescription] = useState(initialValues?.description ?? "");
   const [websiteUrl, setWebsiteUrl] = useState(initialValues?.websiteUrl ?? "");

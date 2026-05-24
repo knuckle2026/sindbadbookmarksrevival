@@ -207,9 +207,11 @@ describe("ListingForm", () => {
     });
 
     // 完了画面が表示される (pending = 承認待ち)
-    expect(await screen.findByText("投稿いただきました")).toBeInTheDocument();
     expect(
-      screen.getByText(/管理者の承認後にサイトに公開されます/),
+      await screen.findByText("情報登録を受け付けました。"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/運営事務局の承認後に公開されます/),
     ).toBeInTheDocument();
 
     vi.unstubAllGlobals();

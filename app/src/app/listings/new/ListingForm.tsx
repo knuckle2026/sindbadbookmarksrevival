@@ -267,14 +267,19 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
   if (submitted) {
     return (
       <div className="space-y-4 rounded-lg bg-zinc-50 p-6 text-center text-zinc-800">
-        <div className="text-4xl">📝</div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/icon.jpg"
+          alt="G-Ankers"
+          className="mx-auto h-16 w-16 rounded-lg object-cover"
+        />
         <h2 className="text-lg font-bold text-zinc-900">
-          {submitted === "published" ? "登録しました" : "投稿いただきました"}
+          {submitted === "published" ? "登録しました" : "情報登録を受け付けました。"}
         </h2>
         <p className="text-sm leading-relaxed">
           {submitted === "published"
             ? "情報を公開しました。"
-            : "管理者の承認後にサイトに公開されます。お時間をいただく場合がありますので、しばらくお待ちください。"}
+            : "運営事務局の承認後に公開されます。お時間をいただく場合がありますので、しばらくお待ちください。"}
         </p>
         <button
           type="button"

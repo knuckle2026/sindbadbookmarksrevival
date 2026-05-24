@@ -114,9 +114,9 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
     if (!description.trim()) return "説明は必須です";
     if (description.trim().length > DESCRIPTION_MAX)
       return `説明は${DESCRIPTION_MAX}文字以内です`;
-    if (!websiteUrl.trim()) return "ウェブサイトURLは必須です";
+    if (!websiteUrl.trim()) return "サイトURLまたはSNSは必須です";
     if (!URL_RE.test(websiteUrl.trim()))
-      return "ウェブサイトURLは http(s):// から始まる必要があります";
+      return "サイトURLまたはSNSは http(s):// から始まる必要があります";
     if (!genreId) return "ジャンルを選択してください";
     return null;
   };
@@ -305,10 +305,10 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
         />
       </div>
 
-      {/* 3. ウェブサイトURL */}
+      {/* 3. サイトURL / SNS */}
       <div>
         <label className={labelClass}>
-          ウェブサイトURL <span className="text-red-500">*</span>
+          サイトURLまたはSNS（X/insta） <span className="text-red-500">*</span>
         </label>
         <input
           type="url"
@@ -443,7 +443,12 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
 
           {/* 住所詳細 */}
           <div>
-            <label className={labelClass}>住所詳細（任意）</label>
+            <label className={labelClass}>
+              住所詳細（任意）
+              <span className="ml-2 text-xs font-normal text-zinc-500">
+                以下は画面表示されません
+              </span>
+            </label>
             <input
               type="text"
               value={address}

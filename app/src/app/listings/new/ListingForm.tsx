@@ -9,6 +9,9 @@ import { OSAKA_AREAS } from "@/lib/constants/osaka-areas";
 import { SERVICE_AREA_GROUPS } from "@/lib/constants/service-areas";
 import { PROVIDER_AGES } from "@/lib/constants/provider-ages";
 import { safeRedirectPath } from "@/lib/utils/safe-redirect";
+import { TurnstileWidget } from "@/components/TurnstileWidget";
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
 export interface GenreOption {
   id: string;
@@ -60,6 +63,8 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [submitted, setSubmitted] = useState<"pending" | "published" | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [honeypot, setHoneypot] = useState("");
 
   const [title, setTitle] = useState(initialValues?.title ?? "");
   const [description, setDescription] = useState(initialValues?.description ?? "");
@@ -118,6 +123,9 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
     if (!URL_RE.test(websiteUrl.trim()))
       return "サイトURLまたはSNSは http(s):// から始まる必要があります";
     if (!genreId) return "ジャンルを選択してください";
+    // Turnstile が configured かつ token 未取得なら阻止
+    if (TURNSTILE_SITE_KEY && !turnstileToken)
+      return "認証チェックを完了してから送信してください";
     return null;
   };
 
@@ -148,6 +156,8 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
         showProviderAges && providerAges.length > 0 ? providerAges : null,
       address: address.trim() || null,
       category_ids: selectedCategories,
+      turnstile_token: turnstileToken,
+      hp_url: honeypot,
     };
 
     const isEdit = mode === "edit" && !!initialValues?.id;
@@ -178,9 +188,17 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
           setError("メールアドレス確認が完了していません。確認メールのリンクをクリックしてから再度お試しください。");
         } else if (body.error === "age_gate_required") {
           setError("年齢確認が必要です。トップページから年齢確認を行ってから再度お試しください。");
+        } else if (body.error === "turnstile_failed") {
+          setError("認証に失敗しました。認証チェックをやり直してください。");
+          setTurnstileToken("");
         } else {
           setError(body.error ?? "権限エラー");
         }
+        setLoading(false);
+        return;
+      }
+      if (res.status === 400 && body.error === "turnstile_required") {
+        setError("認証チェックを完了してから送信してください。");
         setLoading(false);
         return;
       }
@@ -263,6 +281,25 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+      {/* honeypot (bot 用おとり、人間には不可視) */}
+      <input
+        type="text"
+        name="hp_url"
+        value={honeypot}
+        onChange={(e) => setHoneypot(e.target.value)}
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          left: "-9999px",
+          width: "1px",
+          height: "1px",
+          opacity: 0,
+          pointerEvents: "none",
+        }}
+      />
+
       {/* 1. ジャンル */}
       <div>
         <label className={labelClass}>
@@ -491,6 +528,17 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Cloudflare Turnstile (site key 未設定なら非表示) */}
+      {TURNSTILE_SITE_KEY && (
+        <div>
+          <TurnstileWidget
+            siteKey={TURNSTILE_SITE_KEY}
+            onVerify={setTurnstileToken}
+            onExpire={() => setTurnstileToken("")}
+          />
         </div>
       )}
 

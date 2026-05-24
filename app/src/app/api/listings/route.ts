@@ -5,6 +5,7 @@ import {
   type ListingWrite,
 } from "@/lib/db/queries/listings";
 import { countListingsByUserSince } from "@/lib/db/queries/profiles";
+import { verifyTurnstile, isTurnstileEnabled } from "@/lib/turnstile";
 
 // ロボットによる大量登録防止のためのユーザごとクォータ。
 // admin はバイパス。
@@ -62,27 +63,55 @@ export async function POST(request: Request) {
   // 公開側にログイン UI は無い。匿名で投稿要請を受け、管理者承認後に公開。
   // ログイン状態は admin (管理画面経由) のときだけありえる。
   const current = await getCurrentUser();
+  const isAdmin = current?.profile.role === "admin";
 
   // ログイン済みかつ admin 以外なら email 認証は必須 (旧 user の名残ガード)
-  if (
-    current &&
-    current.profile.role !== "admin" &&
-    !current.authUser.email_confirmed_at
-  ) {
+  if (current && !isAdmin && !current.authUser.email_confirmed_at) {
     return NextResponse.json(
       { error: "email_not_confirmed" },
       { status: 403 },
     );
   }
 
-  const body = await request.json().catch(() => null);
+  const body = (await request.json().catch(() => null)) as
+    | (Record<string, unknown> & { hp_url?: unknown; turnstile_token?: unknown })
+    | null;
+
+  // admin 以外には bot 防御を適用
+  if (!isAdmin) {
+    // honeypot: 値が入っていれば silently 受領 (bot を欺くため 200 を返すが DB 投入しない)
+    const hp = body?.hp_url;
+    if (typeof hp === "string" && hp.length > 0) {
+      return NextResponse.json({ id: "discarded", status: "pending" });
+    }
+
+    // Cloudflare Turnstile: secret key 設定済みのときだけ検証する
+    if (isTurnstileEnabled()) {
+      const token = body?.turnstile_token;
+      if (typeof token !== "string" || !token) {
+        return NextResponse.json(
+          { error: "turnstile_required" },
+          { status: 400 },
+        );
+      }
+      const ip = request.headers.get("CF-Connecting-IP");
+      const ok = await verifyTurnstile(token, ip);
+      if (!ok) {
+        return NextResponse.json(
+          { error: "turnstile_failed" },
+          { status: 403 },
+        );
+      }
+    }
+  }
+
   const parsed = parseBody(body);
   if (!parsed) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
   // logged-in non-admin のみウィンドウクォータでロボット連投を防止
-  if (current && current.profile.role !== "admin") {
+  if (current && !isAdmin) {
     const now = Date.now();
     const since24h = d1Timestamp(new Date(now - 24 * 60 * 60 * 1000));
     const since30d = d1Timestamp(new Date(now - 30 * 24 * 60 * 60 * 1000));
@@ -115,7 +144,6 @@ export async function POST(request: Request) {
   }
 
   // 匿名 → status='pending' / admin → 即時 'published'
-  const isAdmin = current?.profile.role === "admin";
   const userId = current?.authUser.id ?? null;
   const status = isAdmin ? "published" : "pending";
 

@@ -4,6 +4,7 @@ import { updateSession } from "@/lib/supabase/middleware";
 // 年齢ゲートをバイパスするパス。/api/* は個別に列挙する (一律バイパスはセキュリティ上 NG)。
 // /api/auth: ログイン/サインアップ系コールバック
 // /api/age-gate: 年齢確認 Cookie 設定エンドポイント
+// /google, /robots.txt: 検索エンジンの bot が直接取得するため age-gate 不可
 const AGE_GATE_BYPASS = [
   "/age-gate",
   "/auth",
@@ -14,6 +15,8 @@ const AGE_GATE_BYPASS = [
   "/sbbm-control",
   "/api/auth",
   "/api/age-gate",
+  "/google", // Google Search Console site verification (例: /googleb9e2163406392cc0.html)
+  "/robots.txt",
 ];
 
 // 停止ユーザ (admin 想定) でもアクセス可 (ログアウト・サポートのため)

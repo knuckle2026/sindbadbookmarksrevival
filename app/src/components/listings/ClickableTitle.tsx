@@ -61,11 +61,22 @@ export default function ClickableTitle({
 }: ClickableTitleProps) {
   const social = detectSocial(websiteUrl);
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     // Fire and forget - don't block navigation
     fetch(`/api/listings/${listingId}/click`, { method: "POST" }).catch(
       () => {},
     );
+
+    // LINE のアプリ内ブラウザは target="_blank" を内部 webview で開いてしまう。
+    // LINE 固有の `?openExternalBrowser=1` パラメータを付けると、LINE が
+    // 自動的に外部ブラウザ (Safari / Chrome) で開いてくれる。
+    if (!websiteUrl) return;
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    if (/Line\//i.test(ua)) {
+      e.preventDefault();
+      const separator = websiteUrl.includes("?") ? "&" : "?";
+      window.location.href = `${websiteUrl}${separator}openExternalBrowser=1`;
+    }
   };
 
   if (websiteUrl) {

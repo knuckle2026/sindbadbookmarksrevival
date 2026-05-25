@@ -15,7 +15,7 @@ export default async function OperatorPage() {
     <div className="mx-auto max-w-3xl space-y-10 px-6 py-8">
       <section>
         <h2 className="mb-4 text-xl font-bold text-zinc-900">
-          運営事務局からのご案内
+          Information
         </h2>
         {announcements.length > 0 ? (
           <ul className="space-y-4">

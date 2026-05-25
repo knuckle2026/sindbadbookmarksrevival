@@ -17,6 +17,7 @@ const AGE_GATE_BYPASS = [
   "/api/age-gate",
   "/google", // Google Search Console site verification (例: /googleb9e2163406392cc0.html)
   "/robots.txt",
+  "/sitemap.xml",
 ];
 
 // 停止ユーザ (admin 想定) でもアクセス可 (ログアウト・サポートのため)

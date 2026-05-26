@@ -9,3 +9,12 @@ node_modules/
 *.png
 !app/src/app/icon.png
 !app/src/app/apple-icon.png
+
+# Cloudflare Workers ローカルキャッシュ
+.wrangler/
+
+# D1 ダンプ等のローカルバックアップ
+/backups/
+
+# デザイン素材スタッシュ (公開用は app/public/images/ 配下にコピーする運用)
+/images/

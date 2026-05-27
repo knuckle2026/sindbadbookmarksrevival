@@ -35,6 +35,7 @@ export default function GenreFilters({
   // ニューハーフマッサージを通常カテゴリから分離
   const normalCategories = categories.filter((c) => c.slug !== "newhalf");
   const newhalfCategory = categories.find((c) => c.slug === "newhalf");
+  const lesCategory = categories.find((c) => c.slug === "les");
 
   // ローカルstate（URLから初期化）
   const [checkedCats, setCheckedCats] = useState<Set<string>>(() => {
@@ -85,38 +86,67 @@ export default function GenreFilters({
 
   // --- カテゴリ ---
   const normalSlugs = normalCategories.map((c) => c.slug);
-  const allNormalChecked =
-    normalSlugs.length > 0 && normalSlugs.every((s) => checkedCats.has(s));
-  const newhalfChecked = newhalfCategory
-    ? checkedCats.has(newhalfCategory.slug)
-    : false;
+  const newhalfSlug = newhalfCategory?.slug;
+  const lesSlug = lesCategory?.slug;
+  const newhalfChecked = newhalfSlug ? checkedCats.has(newhalfSlug) : false;
+  // 「すべて」は通常カテゴリ + ニューハーフ も含めて全 ON のときに ON 表示
+  const allChecked =
+    normalSlugs.length > 0 &&
+    normalSlugs.every((s) => checkedCats.has(s)) &&
+    (newhalfSlug ? checkedCats.has(newhalfSlug) : true);
 
   const toggleAll = () => {
-    const next = new Set(checkedCats);
-    if (allNormalChecked) {
-      normalSlugs.forEach((s) => next.delete(s));
-    } else {
+    const next = new Set<string>();
+    let nextExcludeNh = excludeNh;
+    if (!allChecked) {
+      // OFF→ON: 通常 + ニューハーフ も全 ON (全件表示)
       normalSlugs.forEach((s) => next.add(s));
+      if (newhalfSlug) next.add(newhalfSlug);
+      // ニューハーフを含めて全 ON にするとき、excludeNh は論理矛盾するので OFF
+      nextExcludeNh = false;
     }
+    // ON→OFF: 空セット (全 OFF)
     setCheckedCats(next);
-    syncToUrl(next, excludeNh, catOp);
+    if (nextExcludeNh !== excludeNh) setExcludeNh(nextExcludeNh);
+    syncToUrl(next, nextExcludeNh, catOp);
   };
 
   const toggleCat = (catSlug: string) => {
     const next = new Set(checkedCats);
-    if (next.has(catSlug)) {
-      next.delete(catSlug);
-    } else {
+    let nextExcludeNh = excludeNh;
+    const turningOn = !next.has(catSlug);
+
+    if (turningOn) {
+      // ニューハーフ or レズ ON → excludeNh を自動 OFF (mutex)
+      if (catSlug === newhalfSlug || catSlug === lesSlug) {
+        nextExcludeNh = false;
+      }
       next.add(catSlug);
+    } else {
+      next.delete(catSlug);
     }
+
     setCheckedCats(next);
-    syncToUrl(next, excludeNh, catOp);
+    if (nextExcludeNh !== excludeNh) setExcludeNh(nextExcludeNh);
+    syncToUrl(next, nextExcludeNh, catOp);
   };
 
   const toggleExcludeNh = () => {
     const nextExclude = !excludeNh;
+    let next = checkedCats;
+    if (nextExclude) {
+      // excludeNh ON → ニューハーフ・レズ を自動 OFF (mutex)
+      const willRemove: string[] = [];
+      if (newhalfSlug && checkedCats.has(newhalfSlug)) willRemove.push(newhalfSlug);
+      if (lesSlug && checkedCats.has(lesSlug)) willRemove.push(lesSlug);
+      if (willRemove.length > 0) {
+        next = new Set(checkedCats);
+        willRemove.forEach((s) => next.delete(s));
+        setCheckedCats(next);
+      }
+    }
     setExcludeNh(nextExclude);
-    syncToUrl(checkedCats, nextExclude, catOp);
+    syncToUrl(next, nextExclude, catOp);
   };
 
   const selectCatOp = (next: "or" | "and") => {
@@ -170,7 +200,7 @@ export default function GenreFilters({
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input
                 type="checkbox"
-                checked={allNormalChecked}
+                checked={allChecked}
                 onChange={toggleAll}
                 className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
               />

@@ -73,7 +73,6 @@ export default async function AdminEditListingPage({
           providerAges: listing.provider_ages
             ? (JSON.parse(listing.provider_ages) as string[])
             : [],
-          address: listing.address ?? "",
         }}
         redirectTo={redirectTo}
       />

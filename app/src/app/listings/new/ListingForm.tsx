@@ -39,7 +39,6 @@ export interface InitialValues {
   ward?: string;
   serviceAreas?: string[];
   providerAges?: string[];
-  address?: string;
 }
 
 interface Props {
@@ -109,7 +108,6 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
   const [ward, setWard] = useState(initialValues?.ward ?? "");
   const [serviceAreas, setServiceAreas] = useState<string[]>(initialValues?.serviceAreas ?? []);
   const [providerAges, setProviderAges] = useState<string[]>(initialValues?.providerAges ?? []);
-  const [address, setAddress] = useState(initialValues?.address ?? "");
 
   const selectedGenreSlug = useMemo(
     () => genres.find((g) => g.id === genreId)?.slug ?? "",
@@ -188,7 +186,6 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
         showServiceAreas && serviceAreas.length > 0 ? serviceAreas : null,
       provider_ages:
         showProviderAges && providerAges.length > 0 ? providerAges : null,
-      address: address.trim() || null,
       category_ids: selectedCategories,
       turnstile_token: turnstileToken,
       hp_url: honeypot,
@@ -517,21 +514,6 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
             )}
           </div>
 
-          {/* 住所詳細 */}
-          <div>
-            <label className={labelClass}>
-              住所詳細（任意）
-              <span className="ml-2 text-xs font-normal text-zinc-500">
-                以下は画面表示されません
-              </span>
-            </label>
-            <input
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className={inputClass}
-            />
-          </div>
         </>
       )}
 

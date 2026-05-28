@@ -1,5 +1,5 @@
 import { getDB } from "../client";
-import type { ReportRow } from "../types";
+import type { ReportRow, ReportStatus } from "../types";
 
 export async function insertReport(
   listingId: string,
@@ -42,4 +42,20 @@ export async function getReportsByListingIds(
     (map[r.listing_id] ??= []).push(r);
   }
   return map;
+}
+
+export async function updateReportStatus(
+  id: string,
+  status: ReportStatus
+): Promise<void> {
+  const db = await getDB();
+  await db
+    .prepare(`UPDATE reports SET status = ? WHERE id = ?`)
+    .bind(status, id)
+    .run();
+}
+
+export async function deleteReport(id: string): Promise<void> {
+  const db = await getDB();
+  await db.prepare(`DELETE FROM reports WHERE id = ?`).bind(id).run();
 }

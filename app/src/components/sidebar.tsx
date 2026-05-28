@@ -65,7 +65,7 @@ export function Sidebar({ onCloseSidebar }: SidebarProps) {
         </div>
         <button
           onClick={() => handleNav("/operator")}
-          className={`mt-auto block w-full border-t border-white/20 px-3 py-2 text-left text-xs cursor-pointer ${
+          className={`mt-24 block w-full border-t border-white/20 px-3 py-2 text-left text-xs cursor-pointer ${
             pendingHref === "/operator"
               ? "bg-white/25"
               : "text-white/80 hover:bg-white/10 active:bg-white/10"

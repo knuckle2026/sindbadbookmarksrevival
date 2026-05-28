@@ -46,6 +46,7 @@ export interface ListingRow {
   updated_by: string | null;
   created_at: string;
   updated_at: string;
+  published_at: string | null;
 }
 
 export interface ListingCategoryRow {

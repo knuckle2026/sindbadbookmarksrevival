@@ -64,6 +64,11 @@ export default async function SearchPage({ searchParams }: PageProps) {
                 key={l.id}
                 className="rounded-lg border border-zinc-200 bg-white p-4"
               >
+                <div className="mb-1 text-[10px] text-zinc-400">
+                  {l.published_at
+                    ? `承認 ${l.published_at.slice(0, 10)}`
+                    : `登録 ${l.created_at.slice(0, 10)}`}
+                </div>
                 <div className="flex items-start justify-between gap-2">
                   <ClickableTitle
                     listingId={l.id}

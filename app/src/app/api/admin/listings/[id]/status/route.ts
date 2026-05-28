@@ -21,9 +21,15 @@ export async function PATCH(
   }
 
   const db = await getDB();
+  // published に遷移するとき、初回承認日 (published_at) を NULL の場合のみ設定。
+  // 再公開しても初回承認日は保持される。
+  const setPublishedClause =
+    status === "published"
+      ? ", published_at = COALESCE(published_at, datetime('now'))"
+      : "";
   const result = await db
     .prepare(
-      `UPDATE listings SET status = ?, updated_by = ?, updated_at = (datetime('now'))
+      `UPDATE listings SET status = ?, updated_by = ?, updated_at = (datetime('now'))${setPublishedClause}
        WHERE id = ?`
     )
     .bind(status, auth.current.authUser.id, id)

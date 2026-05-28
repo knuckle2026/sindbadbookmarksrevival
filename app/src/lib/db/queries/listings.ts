@@ -220,7 +220,13 @@ export interface SearchGenreOpts {
 
 export type GenreListingRow = Pick<
   ListingRow,
-  "id" | "title" | "description" | "website_url" | "prefecture"
+  | "id"
+  | "title"
+  | "description"
+  | "website_url"
+  | "prefecture"
+  | "created_at"
+  | "published_at"
 >;
 
 function buildGenreFilter(opts: SearchGenreOpts): {
@@ -322,7 +328,7 @@ export async function searchGenreListings(
 
   const { results } = await db
     .prepare(
-      `SELECT id, title, description, website_url, prefecture
+      `SELECT id, title, description, website_url, prefecture, created_at, published_at
        FROM listings
        WHERE ${where}
        ORDER BY ${SORT_SQL[opts.sort]}
@@ -362,7 +368,7 @@ export async function searchListingsByKeyword(
   const total = countRow?.c ?? 0;
   const { results } = await db
     .prepare(
-      `SELECT id, title, description, website_url, prefecture
+      `SELECT id, title, description, website_url, prefecture, created_at, published_at
        FROM listings
        WHERE status = 'published'
          AND (title LIKE ? OR description LIKE ?)

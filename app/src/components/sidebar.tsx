@@ -39,31 +39,33 @@ export function Sidebar({ onCloseSidebar }: SidebarProps) {
 
   return (
     <aside
-      className="w-44 shrink-0 overflow-y-auto text-white"
+      className="flex w-44 shrink-0 flex-col overflow-y-auto text-white"
       style={{ backgroundColor: "#005766" }}
     >
-      <nav className="pt-3 pb-24">
-        <button
-          onClick={() => handleNav("/")}
-          className={`${linkBase} font-semibold ${pendingHref === "/" ? "bg-white/25" : "hover:bg-white/10 active:bg-white/10"}`}
-        >
-          トップ
-        </button>
-        {GENRES.map((g) => {
-          const href = `/genres/${g.slug}`;
-          return (
-            <button
-              key={g.slug}
-              onClick={() => handleNav(href)}
-              className={`${linkBase} font-medium ${pendingHref === href ? "bg-white/25" : "hover:bg-white/10 active:bg-white/10"}`}
-            >
-              {g.name}
-            </button>
-          );
-        })}
+      <nav className="flex flex-1 flex-col pt-3 pb-6">
+        <div>
+          <button
+            onClick={() => handleNav("/")}
+            className={`${linkBase} font-semibold ${pendingHref === "/" ? "bg-white/25" : "hover:bg-white/10 active:bg-white/10"}`}
+          >
+            トップ
+          </button>
+          {GENRES.map((g) => {
+            const href = `/genres/${g.slug}`;
+            return (
+              <button
+                key={g.slug}
+                onClick={() => handleNav(href)}
+                className={`${linkBase} font-medium ${pendingHref === href ? "bg-white/25" : "hover:bg-white/10 active:bg-white/10"}`}
+              >
+                {g.name}
+              </button>
+            );
+          })}
+        </div>
         <button
           onClick={() => handleNav("/operator")}
-          className={`block w-full border-b border-white/20 px-3 py-2 text-left text-xs cursor-pointer ${
+          className={`mt-auto block w-full border-t border-white/20 px-3 py-2 text-left text-xs cursor-pointer ${
             pendingHref === "/operator"
               ? "bg-white/25"
               : "text-white/80 hover:bg-white/10 active:bg-white/10"

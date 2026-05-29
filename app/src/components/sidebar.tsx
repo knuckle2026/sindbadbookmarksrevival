@@ -50,13 +50,15 @@ export function Sidebar({ onCloseSidebar }: SidebarProps) {
           >
             トップ
           </button>
-          {GENRES.map((g) => {
+          {GENRES.map((g, i) => {
             const href = `/genres/${g.slug}`;
+            const isLast = i === GENRES.length - 1;
+            const borderClass = isLast ? "" : "border-b border-white/20";
             return (
               <button
                 key={g.slug}
                 onClick={() => handleNav(href)}
-                className={`${linkBase} font-medium ${pendingHref === href ? "bg-white/25" : "hover:bg-white/10 active:bg-white/10"}`}
+                className={`block w-full ${borderClass} px-3 py-2.5 text-left text-sm cursor-pointer font-medium ${pendingHref === href ? "bg-white/25" : "hover:bg-white/10 active:bg-white/10"}`}
               >
                 {g.name}
               </button>
@@ -65,7 +67,7 @@ export function Sidebar({ onCloseSidebar }: SidebarProps) {
         </div>
         <button
           onClick={() => handleNav("/operator")}
-          className={`mt-auto block w-full px-3 py-2 text-left text-xs cursor-pointer ${
+          className={`mt-24 block w-full px-3 py-2 text-left text-xs cursor-pointer ${
             pendingHref === "/operator"
               ? "bg-white/25"
               : "text-white/80 hover:bg-white/10 active:bg-white/10"

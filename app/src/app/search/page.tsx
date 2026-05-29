@@ -68,7 +68,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                   {(() => {
                     const isUpdated = l.updated_at !== l.created_at;
                     const date = (isUpdated ? l.updated_at : l.created_at).slice(0, 10);
-                    return `${date} ${isUpdated ? "更新" : "登録"}`;
+                    return `${date} ${isUpdated ? "↻" : "↑"}`;
                   })()}
                 </div>
                 <div className="flex items-start justify-between gap-2">

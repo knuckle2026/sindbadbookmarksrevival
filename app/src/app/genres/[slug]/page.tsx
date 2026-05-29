@@ -403,7 +403,11 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
                   className="rounded-lg border border-zinc-200 bg-white p-4"
                 >
                   <div className="mb-1 text-[10px] text-zinc-400">
-                    {(l.published_at ?? l.created_at).slice(0, 10)}
+                    {(() => {
+                      const isUpdated = l.updated_at !== l.created_at;
+                      const date = (isUpdated ? l.updated_at : l.created_at).slice(0, 10);
+                      return `${date} ${isUpdated ? "更新" : "登録"}`;
+                    })()}
                   </div>
                   <div className="flex items-start justify-between gap-2">
                     <ClickableTitle

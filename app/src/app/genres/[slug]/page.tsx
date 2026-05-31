@@ -4,6 +4,7 @@ import { GENRES } from "@/lib/constants/genres";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import { TOKYO_OUTSIDE_SLUG } from "@/lib/constants/tokyo-wards";
 import { OSAKA_OUTSIDE_SLUG } from "@/lib/constants/osaka-areas";
+import { PROVIDER_AGES } from "@/lib/constants/provider-ages";
 import Pagination from "@/components/listings/Pagination";
 import SortSelect, { type SortKey } from "@/components/listings/SortSelect";
 import ClickableTitle from "@/components/listings/ClickableTitle";
@@ -145,11 +146,20 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     : [];
   const categoryIdsExclude = excludeIds.length > 0 ? excludeIds : null;
 
+  // 「サービス提供者の年代」フィルタは件数集計 (都道府県・区・サービスエリア) にも
+  // 反映させたいので countOpts より先に解決しておく。実際の listing 絞り込みは
+  // selectedProviderAges を後段で再利用 (重複定義しない)。
+  const selectedProviderAges = (providerAgeParam ?? "")
+    .split(",")
+    .filter(Boolean);
+
   const countOpts = {
     categoryIdsInclude,
     categoryIdsAndAll,
     categoryIdsExclude,
     createdSince,
+    providerAges:
+      selectedProviderAges.length > 0 ? selectedProviderAges : null,
   };
 
   const [prefCountMap, svcJsonRows, wardCountRawMap] = await Promise.all([
@@ -206,9 +216,7 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   const selectedServiceAreas = (serviceAreaParam ?? "")
     .split(",")
     .filter(Boolean);
-  const selectedProviderAges = (providerAgeParam ?? "")
-    .split(",")
-    .filter(Boolean);
+  // selectedProviderAges は countOpts の前で定義済み (件数連動のため)
 
   const selectedWardsRaw = (wardParam ?? "").split(",").filter(Boolean);
   const wardSupportedPref =
@@ -420,19 +428,49 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
                   {l.description && (
                     <p className="mt-1 text-sm text-zinc-600">{l.description}</p>
                   )}
-                  {(catMap[l.id]?.length ?? 0) > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {catMap[l.id].map((c) => (
-                        <span
-                          key={c.id}
-                          className="rounded-full bg-red-50 px-2 py-0.5 text-xs"
-                          style={{ color: "#005766" }}
-                        >
-                          {c.name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  {(() => {
+                    // provider_ages は DB 上 JSON 文字列 (例: ["20s","30s"])。
+                    // PROVIDER_AGES の順 (20s→60s_plus) で並べて薄緑バッジに変換。
+                    let ageSlugs: string[] = [];
+                    if (l.provider_ages) {
+                      try {
+                        const parsed = JSON.parse(l.provider_ages);
+                        if (Array.isArray(parsed)) {
+                          ageSlugs = parsed.filter(
+                            (x): x is string => typeof x === "string",
+                          );
+                        }
+                      } catch {
+                        // 壊れた JSON は無視
+                      }
+                    }
+                    const cats = catMap[l.id] ?? [];
+                    const ages = PROVIDER_AGES.filter((a) =>
+                      ageSlugs.includes(a.slug),
+                    );
+                    if (cats.length === 0 && ages.length === 0) return null;
+                    return (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {cats.map((c) => (
+                          <span
+                            key={c.id}
+                            className="rounded-full bg-red-50 px-2 py-0.5 text-xs"
+                            style={{ color: "#005766" }}
+                          >
+                            {c.name}
+                          </span>
+                        ))}
+                        {ages.map((a) => (
+                          <span
+                            key={a.slug}
+                            className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-800"
+                          >
+                            {a.label}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </li>
               ))}
             </ul>

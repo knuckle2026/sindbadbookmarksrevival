@@ -57,6 +57,8 @@ export interface CountFilterOpts {
   categoryIdsExclude?: string[] | null;
   /** "YYYY-MM-DD HH:MM:SS" 形式。これ以降に作られた listing のみ集計 (新着フィルタ用) */
   createdSince?: string | null;
+  /** サービス提供者の年代 slug (provider_ages JSON 配列のいずれかに含まれる listing のみ集計、OR) */
+  providerAges?: string[] | null;
 }
 
 function buildCountFilter(opts?: CountFilterOpts): { sql: string; binds: unknown[] } {
@@ -86,6 +88,16 @@ function buildCountFilter(opts?: CountFilterOpts): { sql: string; binds: unknown
       `id NOT IN (SELECT listing_id FROM listing_categories WHERE category_id IN (${ph}))`,
     );
     binds.push(...opts.categoryIdsExclude);
+  }
+  if (opts?.providerAges && opts.providerAges.length > 0) {
+    // provider_ages は JSON.stringify(string[]) で保存されているため、
+    // 各 slug を '"<slug>"' でラップした部分一致 (LIKE) を OR 連結する。
+    // buildGenreFilter の同一実装と整合させる。
+    const sub = opts.providerAges
+      .map(() => "provider_ages LIKE ?")
+      .join(" OR ");
+    parts.push(`(${sub})`);
+    for (const a of opts.providerAges) binds.push(`%"${a}"%`);
   }
   return { sql: parts.length > 0 ? " AND " + parts.join(" AND ") : "", binds };
 }
@@ -225,6 +237,7 @@ export type GenreListingRow = Pick<
   | "description"
   | "website_url"
   | "prefecture"
+  | "provider_ages"
   | "created_at"
   | "updated_at"
 >;
@@ -328,7 +341,7 @@ export async function searchGenreListings(
 
   const { results } = await db
     .prepare(
-      `SELECT id, title, description, website_url, prefecture, created_at, updated_at
+      `SELECT id, title, description, website_url, prefecture, provider_ages, created_at, updated_at
        FROM listings
        WHERE ${where}
        ORDER BY ${SORT_SQL[opts.sort]}
@@ -368,7 +381,7 @@ export async function searchListingsByKeyword(
   const total = countRow?.c ?? 0;
   const { results } = await db
     .prepare(
-      `SELECT id, title, description, website_url, prefecture, created_at, updated_at
+      `SELECT id, title, description, website_url, prefecture, provider_ages, created_at, updated_at
        FROM listings
        WHERE status = 'published'
          AND (title LIKE ? OR description LIKE ?)

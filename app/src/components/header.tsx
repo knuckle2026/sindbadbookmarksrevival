@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AccessCounter } from "@/components/access-counter";
@@ -57,17 +56,10 @@ export function Header({ onHamburgerClick, onCloseSidebar, genreName, genreSlug,
         ) : (
           /* 通常ページ: ロゴ（トップのみ） + sindbadbookmarks revival */
           <>
-            {/* ロゴ画像（トップページのみ、ヘッダー高さに合わせる） */}
+            {/* サイト名テキスト（トップページのみ、ジャンル見出しと同じスタイル） */}
             {showLogo && (
               <Link href="/" className="shrink-0">
-                <Image
-                  src="/images/gaks_logo3.jpg"
-                  alt="G-Ankers"
-                  width={300}
-                  height={300}
-                  className="object-contain h-[7.5rem] w-auto max-w-[10.5rem] sm:max-w-none"
-                  priority
-                />
+                <span className="text-lg font-bold tracking-tight">G-Ankers</span>
               </Link>
             )}
 

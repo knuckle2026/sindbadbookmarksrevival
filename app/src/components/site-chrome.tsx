@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Header } from "@/components/header";
 import { Sidebar } from "@/components/sidebar";
@@ -15,6 +15,17 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
   const isBare = BARE_PATHS.some((p) => pathname.startsWith(p));
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const mainRef = useRef<HTMLElement | null>(null);
+
+  // ページ遷移時、main の scrollTop を 0 にリセット。
+  // Next.js のルーターは <html> のスクロール位置はリセットするが、
+  // 内側スクロールコンテナ (main) の scrollTop は保持されてしまい、
+  // ジャンル変更で開いたページでバナーが見切れる (上半分が画面外) 不具合を防ぐ。
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+  }, [pathname]);
 
   // /genres/[slug] の場合にジャンル名・スラッグを取得
   const genreMatch = pathname.match(/^\/genres\/([^/?]+)/);
@@ -56,6 +67,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 overflow-hidden">
         {sidebarOpen && <Sidebar onCloseSidebar={() => setSidebarOpen(false)} />}
         <main
+          ref={mainRef}
           className="flex-1 overflow-y-auto overscroll-contain bg-zinc-50"
           onClick={sidebarOpen ? () => setSidebarOpen(false) : undefined}
         >

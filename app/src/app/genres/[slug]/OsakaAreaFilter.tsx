@@ -70,7 +70,7 @@ export default function OsakaAreaFilter({ wardCountMap }: Props) {
         <span className={`transition-transform ${isOpen ? "rotate-90" : ""}`}>
           ▶
         </span>
-        <span>大阪のエリアで絞り込み（複数選択可）{summary}</span>
+        <span><span className="text-red-700">大阪</span>のエリアで絞り込み（複数選択可）{summary}</span>
       </button>
 
       {isOpen && (

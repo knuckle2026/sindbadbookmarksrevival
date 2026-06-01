@@ -73,7 +73,7 @@ export default function TokyoWardFilter({ wardCountMap }: Props) {
         <span className={`transition-transform ${isOpen ? "rotate-90" : ""}`}>
           ▶
         </span>
-        <span>東京の区で絞り込み（複数選択可）{summary}</span>
+        <span><span className="text-red-700">東京</span>の区で絞り込み（複数選択可）{summary}</span>
       </button>
 
       {isOpen && (

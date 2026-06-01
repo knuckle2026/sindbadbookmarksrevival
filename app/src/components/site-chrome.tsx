@@ -53,17 +53,18 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
         hideRegisterButton={hideRegisterButton}
         showLogo={showLogo}
       />
-      {bannerPlacement && (
-        <div className="shrink-0">
-          <AdBannerSlider placement={bannerPlacement} />
-        </div>
-      )}
       <div className="flex flex-1 overflow-hidden">
         {sidebarOpen && <Sidebar onCloseSidebar={() => setSidebarOpen(false)} />}
         <main
           className="flex-1 overflow-y-auto overscroll-contain bg-zinc-50"
           onClick={sidebarOpen ? () => setSidebarOpen(false) : undefined}
         >
+          {/* バナーは main 内のコンテンツ先頭に置く → スクロールでヘッダー下に潜り込む */}
+          {bannerPlacement && (
+            <div>
+              <AdBannerSlider placement={bannerPlacement} />
+            </div>
+          )}
           {children}
           <Footer />
         </main>

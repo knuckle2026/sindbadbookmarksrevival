@@ -52,7 +52,19 @@ export function AdBannerSlider({ placement }: Props) {
     return () => clearInterval(id);
   }, [banners, paused]);
 
-  if (!banners || banners.length === 0) return null;
+  // ロード中 (banners === null): バナー領域を予約してレイアウトシフトを防ぐ。
+  //   placement にバナー設定がある可能性があるので、初期表示からヘッダー直下に
+  //   aspect-[5/1] の灰色プレースホルダーを置き、画像ロード後も位置がブレないようにする。
+  if (banners === null) {
+    return (
+      <div
+        aria-hidden
+        className="aspect-[5/1] w-full bg-zinc-100"
+      />
+    );
+  }
+  // ロード完了かつ空配列: バナー設定なし → 領域を消す
+  if (banners.length === 0) return null;
 
   const safeIndex = index % banners.length;
 

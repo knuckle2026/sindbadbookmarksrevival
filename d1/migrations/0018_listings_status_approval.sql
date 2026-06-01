@@ -1,4 +1,4 @@
--- 0017_listings_status_approval.sql
+-- 0018_listings_status_approval.sql
 -- Extend listings.status CHECK constraint to support approval workflow.
 -- Old: ('published', 'hidden')
 -- New: ('pending', 'published', 'hidden', 'rejected')

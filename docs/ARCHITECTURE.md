@@ -1,7 +1,7 @@
 # G-Ankers Architecture
 
 **Status:** 現状反映版 (Single source of truth)
-**Last reviewed:** 2026-05-14
+**Last reviewed:** 2026-05-31
 **Predecessors:** [legacy/](../legacy/) に旧 `sindbadbookmarks_requirements.md` / `reqest.md` / `implementation.md` を保存
 
 > このドキュメントは「**今動いているもの**」を記述する。設計意図の履歴は
@@ -81,10 +81,38 @@
 
 ### 2.4 年齢ゲート
 
-`/age-gate` で 18+ 確認後、`age_verified=1` cookie (max-age 24h, SameSite=Lax)
-を発行。middleware の `AGE_GATE_BYPASS = ["/age-gate", "/auth", "/api", "/_next",
-"/favicon", "/icon", "/apple-icon", "/sbbm-control"]` 以外は cookie 未設定なら
-`/age-gate` へ 307。
+`/age-gate` で 18+ 確認後、`age_verified=1` cookie (HttpOnly, Secure, SameSite=Lax,
+max-age 24h) を `/api/age-gate/enter` 経由で発行。`/api/age-gate/enter` は form POST
+(`application/x-www-form-urlencoded`) を受けた場合 **303 で `next` へ redirect**、
+旧 JSON fetch クライアントの場合は `{ ok: true }` を返す（両対応で互換維持）。
+
+middleware の `AGE_GATE_BYPASS` 以外は cookie 未設定なら `/age-gate` へ 307:
+
+```js
+// app/src/middleware.ts
+const AGE_GATE_BYPASS = [
+  "/age-gate", "/auth", "/_next", "/favicon", "/icon", "/apple-icon",
+  "/sbbm-control",
+  "/api/auth",        // ログイン/サインアップ系コールバック
+  "/api/age-gate",    // 年齢確認 Cookie 設定エンドポイント
+  "/google",          // Google Search Console verification (例: /googleb9e2163406392cc0.html)
+  "/robots.txt",
+  "/sitemap.xml",
+];
+```
+
+⚠️ `/api` 全体ではなく **`/api/auth` と `/api/age-gate` のみ bypass** する点に注意
+（他の `/api/*` も age-gate 対象）。
+
+**age-gate ページ自体は Server Component で完全 SSR + inline style hex 色固定**
+（[`app/src/app/age-gate/page.tsx`](../app/src/app/age-gate/page.tsx)）:
+旧 Client Component (`"use client"` + `useSearchParams` + `<Suspense fallback={null}>`)
+は LINE/Instagram/FB 等の in-app browser で JS 実行が不安定だと真っ白になっていた。
+さらに Tailwind v4 の `oklch()` を解釈できない古い WebView では `bg-zinc-950` が
+無効化されつつ `text-white` だけ効いて白背景白文字になる二重問題があった。
+対策として **(1) Server Component 化で完全 SSR**、**(2) `<form action="/api/age-gate/enter" method="POST">`
+で JS なしに Cookie 発行 + 遷移**、**(3) bg/text の主要色を hex の inline style で
+重ね指定** の 3 段で in-app browser 互換性を確保している。
 
 ### 2.5 admin 認証
 
@@ -155,19 +183,21 @@ CREATE TABLE listings (
   service_areas TEXT,                                    -- JSON 配列文字列
   provider_ages TEXT,                                    -- JSON 配列文字列
   status        TEXT NOT NULL DEFAULT 'published'
-                CHECK (status IN ('published', 'hidden')),
+                CHECK (status IN ('pending', 'published', 'hidden', 'rejected')),
   click_count   INTEGER NOT NULL DEFAULT 0,
   created_by    TEXT REFERENCES profiles(id) ON DELETE SET NULL,
   updated_by    TEXT REFERENCES profiles(id) ON DELETE SET NULL,
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  published_at  TEXT                                     -- 初回 published に遷移した日時
 )
 ```
 
 注意点:
 - `friendliness`, `listing_type`, `latitude/longitude` 列は **存在しない** (旧仕様にあったが採用しなかった)
 - 地域モデル: `listing_locations` テーブルは無く `prefecture` / `ward` を listings に直接持つ
-- ステータスは `published` / `hidden` の 2 値 (`flagged` は不採用、別途 `reports` テーブルで通報管理)
+- **ステータスは 4 値**: `pending` (承認待ち) / `published` (公開中) / `hidden` (一時非公開) / `rejected` (却下)。`flagged` は不採用 (別途 `reports` テーブルで通報管理)
+- **`published_at` は初回 `published` に遷移した日時のみ記録** (`COALESCE(published_at, datetime('now'))` で上書きしない仕様。再公開しても元日時を保持)。詳細は `app/src/app/api/admin/listings/[id]/status/route.ts`
 - title は 20 字、description は 100 字の上限
 
 ### 3.5 `listing_categories` (多対多)
@@ -265,7 +295,7 @@ CREATE INDEX idx_ad_banners_placement_enabled
 
 ```sql
 CREATE TABLE access_counter (
-  id         TEXT PRIMARY KEY,          -- 'top' or 'genres:<slug>'
+  id         TEXT PRIMARY KEY,          -- 'site' (全体) or 'genres:<slug>' ※migration 0016 で 'site' を初期挿入
   count      INTEGER NOT NULL DEFAULT 0,
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 )
@@ -326,6 +356,8 @@ CREATE TABLE access_counter (
 - `POST /api/client-error` — クライアント例外を Worker ログへ送信
 - `GET  /api/auth/check-email` — サインアップ前のメール重複/ブロック判定
 - `GET  /api/listings` / `/api/listings/[id]` — リスティング read API
+- `POST /api/listings` — 新規登録 (公開フォーム経由)。**status は `isAdmin ? 'published' (即時公開) : 'pending' (管理者承認待ち)`**（[`app/src/app/api/listings/route.ts`](../app/src/app/api/listings/route.ts) L153）。admin 以外には honeypot + Cloudflare Turnstile + 24h/30d 投稿クォータを適用。in-app browser (LINE/Instagram/FB/X) は UA で検出して Turnstile をスキップ
+- `POST /api/age-gate/enter` — 年齢確認 Cookie 発行。form POST は **303 で `next` へ redirect**、JSON fetch は `{ ok: true }` を返す（両対応）
 - `GET  /api/dev/d1-check` — D1 接続診断 (dev only 想定)
 
 認証必須:

@@ -376,7 +376,52 @@ admin 専用 (`checkAdminApi()` ガード):
 - `DELETE /api/admin/accounts/[userId]/force-delete`
 - `DELETE /api/admin/accounts/blocked/[email]`
 
-### 4.5 認証コールバック
+### 4.5 UI レイアウト構成 (SiteChrome)
+
+公開側の全ページは `app/src/components/site-chrome.tsx` の `SiteChrome` で
+ラップされ、以下の構造で描画する。
+
+```
+<div flex flex-col h-svh>           ← 親 (縦並びフレックス、ビューポート高さ固定)
+  <Header />                         ← shrink-0 (高さ h-24 = 96px、上部固定)
+  <div flex flex-1 overflow-hidden>  ← 残り領域 (横並びフレックス)
+    {sidebarOpen && <Sidebar />}     ← 開閉式サイドバー
+    <main flex-1 overflow-y-auto>    ← スクロール領域
+      <AdBannerSlider />              ← バナー (バナー設定済 placement のみ)
+      {children}
+      <Footer />
+    </main>
+  </div>
+</div>
+```
+
+#### バナー (`AdBannerSlider`) の挙動
+- バナーは `<main>` の **コンテンツ先頭** に配置。文書フローに乗るため
+  **スクロールするとヘッダーの下に潜り込む** (固定表示ではない)。
+- 表示対象 placement:
+  - `top` (トップページ `/`)
+  - `genres:<slug>` (ジャンル一覧ページ `/genres/<slug>`)
+  - それ以外のパスでは表示しない (`bannerPlacement = null`)
+- アスペクト比 `5:1` (`aspect-[5/1] w-full`)。
+- **ロード中もプレースホルダー (`aspect-[5/1]` 灰色) で領域を予約**し、
+  fetch 完了後の画像表示でレイアウトシフトが起きないようにする
+  (`AdBannerSlider.tsx` の `banners === null` 分岐)。
+- バナー設定が空配列のとき (`banners.length === 0`) は領域を消す。
+
+#### ページ遷移時の scroll リセット
+- Next.js のルーターは `<html>` のスクロール位置はリセットするが、
+  内側スクロールコンテナ (`<main>` の `overflow-y-auto`) の `scrollTop` は
+  保持されてしまう。
+- `SiteChrome` で `useEffect(() => { mainRef.current.scrollTop = 0 }, [pathname])`
+  を実装し、**ジャンル/ページ変更ごとに main をトップに戻す**。
+- これによりバナーが画面外にスクロールアウトした状態でジャンル遷移する不具合
+  (バナーがヘッダー下に潜り込んだまま見えない) を防ぐ。
+
+#### Bare paths
+`BARE_PATHS = ["/age-gate"]` に該当するパスは Header/Sidebar/Footer を出さず、
+`children` のみを描画する (年齢ゲート画面が単独表示になるよう)。
+
+### 4.6 認証コールバック
 
 - `/auth/callback` — Supabase OAuth コールバック (Google 用)
 

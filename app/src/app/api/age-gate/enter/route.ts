@@ -10,15 +10,14 @@ import { safeRedirectPath } from "@/lib/utils/safe-redirect";
 //     JS なしで動くため LINE 等の in-app browser で確実に通る。
 // (b) JSON fetch (既存クライアント互換):
 //     Set-Cookie + JSON {ok:true} を返す。呼出側が window.location 遷移する想定。
-
-// LINE 等の in-app browser はメッセージ内リンクから開くと埋め込み(サードパーティ)文脈になり、
-// SameSite=Lax の Cookie を送り返さず年齢確認がループする。本番は SameSite=None + Secure で
-// 全文脈送信にする。dev は http のため Secure 不可 → Lax + 非Secure にフォールバック。
-const IS_PROD = process.env.NODE_ENV === "production";
+//
+// ★ SameSite は "lax" を堅持する。LINE 等の in-app browser (iOS WKWebView) は
+//   SameSite=None の Cookie を三者扱いでブロックすることがあり、年齢確認が
+//   ループする。form POST → 303 → GET / は同一サイト遷移なので Lax で送られる。
 const COOKIE_OPTS = {
   httpOnly: true,
-  secure: IS_PROD,
-  sameSite: IS_PROD ? ("none" as const) : ("lax" as const),
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
   path: "/",
   maxAge: 60 * 60 * 24, // 1 日
 };
@@ -35,29 +34,9 @@ export async function POST(request: NextRequest) {
     const nextStr = typeof rawNext === "string" ? rawNext : null;
     const nextPath = safeRedirectPath(nextStr, "/");
     const target = nextPath.startsWith("/age-gate") ? "/" : nextPath;
-    const safeTarget = target.startsWith("/") ? target : "/";
-
-    // ★ LINE 等の in-app browser (WKWebView) は 303 リダイレクト応答の Set-Cookie を
-    //   保持しないことがあり、age_verified が立たず /age-gate に戻り続けてループする。
-    //   → 303 をやめ、200 の中間HTMLで Cookie を確実に確定させてから meta refresh + JS
-    //     で遷移する (Cookie 保存とナビゲーションを分離)。JS 無効でも meta refresh と
-    //     手動リンクで通れるため、通常ブラウザでも従来どおり機能する。
-    const escHtml = (s: string) =>
-      s
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-    const tAttr = escHtml(safeTarget);
-    const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=${tAttr}"><title>確認しました</title></head><body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#09090b;color:#ffffff;font-family:sans-serif;text-align:center"><div style="padding:1.5rem"><p style="font-size:1rem;margin:0 0 1rem">確認しました。移動しています…</p><p style="margin:0"><a href="${tAttr}" style="color:#a78bfa">表示されない場合はこちらをタップ</a></p></div><script>location.replace(${JSON.stringify(safeTarget)});</script></body></html>`;
-    const res = new NextResponse(html, {
-      status: 200,
-      headers: {
-        "content-type": "text/html; charset=utf-8",
-        "cache-control": "no-store",
-      },
-    });
+    const redirectUrl = new URL(target, request.url);
+    // 303 で GET にダウングレード (form POST → GET 遷移の標準)
+    const res = NextResponse.redirect(redirectUrl, 303);
     res.cookies.set("age_verified", "1", COOKIE_OPTS);
     return res;
   }

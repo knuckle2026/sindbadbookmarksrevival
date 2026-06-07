@@ -32,6 +32,39 @@ const SUSPENDED_BYPASS = [
 ];
 
 export async function middleware(request: NextRequest) {
+  // === HTTPS 強制 (HTTP アクセス時は https へ 308 リダイレクト) ===
+  // 独自ドメイン(g-ankers.com)は Cloudflare の "Always Use HTTPS" 相当をアプリ側で担保する。
+  // HTTP のままだと age_verified Cookie の Secure 属性によりブラウザが Cookie を保存できず、
+  // 年齢確認が無限ループ/無反応になる(workers.dev は HSTS preload で常時 HTTPS のため発生しない)。
+  // クライアントの実スキームは Cloudflare が付与する x-forwarded-proto / cf-visitor で判定し、
+  // 明示的に "http" の時のみリダイレクトするためループの危険はない。
+  const fwdProto = request.headers.get("x-forwarded-proto");
+  let clientScheme: string | null = fwdProto
+    ? fwdProto.split(",")[0]!.trim()
+    : null;
+  if (!clientScheme) {
+    const cfVisitor = request.headers.get("cf-visitor");
+    if (cfVisitor) {
+      try {
+        clientScheme =
+          (JSON.parse(cfVisitor) as { scheme?: string }).scheme ?? null;
+      } catch {
+        // malformed header は無視
+      }
+    }
+  }
+  if (clientScheme === "http") {
+    const httpsUrl = request.nextUrl.clone();
+    httpsUrl.protocol = "https:";
+    httpsUrl.port = "";
+    const httpsRedirect = NextResponse.redirect(httpsUrl, 308);
+    httpsRedirect.headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains",
+    );
+    return httpsRedirect;
+  }
+
   const { pathname } = request.nextUrl;
 
   const { response, isSuspended, isAuthenticated } = await updateSession(request);
@@ -72,6 +105,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  response.headers.set(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains",
+  );
   return response;
 }
 

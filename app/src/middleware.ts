@@ -61,7 +61,11 @@ export async function middleware(request: NextRequest) {
         "next",
         request.nextUrl.pathname + request.nextUrl.search,
       );
-      return NextResponse.redirect(url);
+      // in-app browser (LINE 等) が / → /age-gate のリダイレクトをキャッシュし、
+      // Cookie 設定後も /age-gate に戻り続ける(ループ)のを防ぐ。
+      const ageRedirect = NextResponse.redirect(url);
+      ageRedirect.headers.set("Cache-Control", "no-store");
+      return ageRedirect;
     }
   }
 

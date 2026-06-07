@@ -53,7 +53,10 @@ export async function POST(request: NextRequest) {
     const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="0;url=${tAttr}"><title>確認しました</title></head><body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#09090b;color:#ffffff;font-family:sans-serif;text-align:center"><div style="padding:1.5rem"><p style="font-size:1rem;margin:0 0 1rem">確認しました。移動しています…</p><p style="margin:0"><a href="${tAttr}" style="color:#a78bfa">表示されない場合はこちらをタップ</a></p></div><script>location.replace(${JSON.stringify(safeTarget)});</script></body></html>`;
     const res = new NextResponse(html, {
       status: 200,
-      headers: { "content-type": "text/html; charset=utf-8" },
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+      },
     });
     res.cookies.set("age_verified", "1", COOKIE_OPTS);
     return res;

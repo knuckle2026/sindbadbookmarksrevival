@@ -11,10 +11,14 @@ import { safeRedirectPath } from "@/lib/utils/safe-redirect";
 // (b) JSON fetch (既存クライアント互換):
 //     Set-Cookie + JSON {ok:true} を返す。呼出側が window.location 遷移する想定。
 
+// LINE 等の in-app browser はメッセージ内リンクから開くと埋め込み(サードパーティ)文脈になり、
+// SameSite=Lax の Cookie を送り返さず年齢確認がループする。本番は SameSite=None + Secure で
+// 全文脈送信にする。dev は http のため Secure 不可 → Lax + 非Secure にフォールバック。
+const IS_PROD = process.env.NODE_ENV === "production";
 const COOKIE_OPTS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
+  secure: IS_PROD,
+  sameSite: IS_PROD ? ("none" as const) : ("lax" as const),
   path: "/",
   maxAge: 60 * 60 * 24, // 1 日
 };

@@ -4,4 +4,4 @@ Disallow: /api/
 Disallow: /auth/
 Disallow: /listings/new
 
-Sitemap: https://g-ankers.yourportal.workers.dev/sitemap.xml
+Sitemap: https://g-ankers.com/sitemap.xml

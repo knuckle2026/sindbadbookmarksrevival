@@ -4,7 +4,7 @@ import { listGenres } from "@/lib/db/queries/genres";
 
 export const dynamic = "force-dynamic";
 
-const BASE_URL = "https://g-ankers.yourportal.workers.dev";
+const BASE_URL = "https://g-ankers.com";
 
 type ListingSitemapRow = { id: string; updated_at: string };
 

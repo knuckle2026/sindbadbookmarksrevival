@@ -32,6 +32,20 @@ const SUSPENDED_BYPASS = [
 ];
 
 export async function middleware(request: NextRequest) {
+  // === 正規ドメイン集約: 旧 workers.dev → g-ankers.com へ 301 ===
+  // 独自ドメイン移行後、旧 URL(g-ankers.yourportal.workers.dev)に着地すると、ナビは
+  // 相対リンクのため以後ずっと workers.dev に留まってしまう。入口で正規ドメイン
+  // (https://g-ankers.com)へ寄せて根絶し、SEO 評価も統合する。
+  // 完全一致のみ対象 → g-ankers.com / localhost / versioned preview(<ver>-g-ankers…)
+  // は対象外でループの危険なし。https を直接指すので workers.dev の http も 1 ホップ。
+  if (request.headers.get("host") === "g-ankers.yourportal.workers.dev") {
+    const canonical = request.nextUrl.clone();
+    canonical.protocol = "https:";
+    canonical.host = "g-ankers.com";
+    canonical.port = "";
+    return NextResponse.redirect(canonical, 301);
+  }
+
   // === HTTPS 強制 (HTTP アクセス時は https へ 308 リダイレクト) ===
   // 独自ドメイン(g-ankers.com)は Cloudflare の "Always Use HTTPS" 相当をアプリ側で担保する。
   // HTTP のままだと age_verified Cookie の Secure 属性によりブラウザが Cookie を保存できず、

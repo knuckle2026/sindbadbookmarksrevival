@@ -105,21 +105,37 @@ export default function RegionPrefectureNav({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {regionCounts
-          .filter((r) => r.slug !== selectedRegion)
-          .map((r) => (
+        {regionCounts.map((r) => {
+          const isActive = r.slug === selectedRegion;
+          // 選択中の地方をもう一度押したら解除 (region/prefecture とも未指定に戻す)
+          const href = isActive
+            ? buildHref(slug, categoryParam, catOpParam, serviceAreaParam)
+            : buildHref(
+                slug,
+                categoryParam,
+                catOpParam,
+                serviceAreaParam,
+                r.slug,
+              );
+          return (
             <Link
               key={r.slug}
-              href={buildHref(slug, categoryParam, catOpParam, serviceAreaParam, r.slug)}
+              href={href}
               scroll={false}
-              className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-700 transition-colors hover:border-red-400 hover:bg-red-50"
+              aria-pressed={isActive}
+              className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                isActive
+                  ? "border-red-500 bg-red-50 font-medium text-red-700"
+                  : "border-zinc-200 bg-white text-zinc-700 hover:border-red-400 hover:bg-red-50"
+              }`}
             >
               {r.name}{" "}
-              <span className="text-zinc-400">
+              <span className={isActive ? "text-red-500" : "text-zinc-400"}>
                 ({r.count})
               </span>
             </Link>
-          ))}
+          );
+        })}
       </div>
 
       {regionObj && (

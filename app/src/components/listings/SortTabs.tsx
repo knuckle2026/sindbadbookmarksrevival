@@ -22,7 +22,7 @@ export const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 interface SortTabsProps {
   currentSort: SortKey;
   basePath: string;
-  /** Extra query params to preserve (category, region, prefecture, service_area) */
+  /** Extra query params to preserve (category, region, prefecture) */
   extraParams?: Record<string, string>;
 }
 

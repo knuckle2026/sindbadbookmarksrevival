@@ -8,7 +8,6 @@ interface RegionPrefectureNavProps {
   selectedPrefecture: string;
   categoryParam: string;
   catOpParam: string;
-  serviceAreaParam: string;
 }
 
 const CITY_SHORTCUTS: { label: string; prefecture: string }[] = [
@@ -21,14 +20,12 @@ function buildHref(
   slug: string,
   categoryParam: string,
   catOpParam: string,
-  serviceAreaParam: string,
   region?: string,
   prefecture?: string,
 ): string {
   const params = new URLSearchParams();
   if (categoryParam) params.set("category", categoryParam);
   if (catOpParam === "and") params.set("cat_op", "and");
-  if (serviceAreaParam) params.set("service_area", serviceAreaParam);
   if (region) params.set("region", region);
   if (prefecture) params.set("prefecture", prefecture);
   const qs = params.toString();
@@ -42,7 +39,6 @@ export default function RegionPrefectureNav({
   selectedPrefecture,
   categoryParam,
   catOpParam,
-  serviceAreaParam,
 }: RegionPrefectureNavProps) {
   const regionObj = selectedRegion
     ? PREFECTURE_REGIONS.find((r) => r.slug === selectedRegion)
@@ -68,17 +64,11 @@ export default function RegionPrefectureNav({
             const count = prefCountMap[c.prefecture] ?? 0;
             // 選択中の都市をもう一度押したら解除 (region/prefecture とも未指定)
             const href = isActive
-              ? buildHref(
-                  slug,
-                  categoryParam,
-                  catOpParam,
-                  serviceAreaParam,
-                )
+              ? buildHref(slug, categoryParam, catOpParam)
               : buildHref(
                   slug,
                   categoryParam,
                   catOpParam,
-                  serviceAreaParam,
                   undefined,
                   c.prefecture,
                 );
@@ -109,14 +99,8 @@ export default function RegionPrefectureNav({
           const isActive = r.slug === selectedRegion;
           // 選択中の地方をもう一度押したら解除 (region/prefecture とも未指定に戻す)
           const href = isActive
-            ? buildHref(slug, categoryParam, catOpParam, serviceAreaParam)
-            : buildHref(
-                slug,
-                categoryParam,
-                catOpParam,
-                serviceAreaParam,
-                r.slug,
-              );
+            ? buildHref(slug, categoryParam, catOpParam)
+            : buildHref(slug, categoryParam, catOpParam, r.slug);
           return (
             <Link
               key={r.slug}
@@ -152,14 +136,12 @@ export default function RegionPrefectureNav({
                     slug,
                     categoryParam,
                     catOpParam,
-                    serviceAreaParam,
                     selectedRegion!,
                   )
                 : buildHref(
                     slug,
                     categoryParam,
                     catOpParam,
-                    serviceAreaParam,
                     selectedRegion!,
                     p.slug,
                   );

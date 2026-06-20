@@ -38,6 +38,7 @@ export interface ListingRow {
   website_url: string;
   prefecture: string | null;
   ward: string | null;
+  /** 廃止: 出張可能エリア機能は削除済み。読み書きされず、新規は常に NULL（既存値は休眠）。列は互換のため残置。 */
   service_areas: string | null;
   provider_ages: string | null;
   status: ListingStatus;

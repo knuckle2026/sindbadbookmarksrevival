@@ -46,9 +46,6 @@ function parseBody(b: unknown): {
     website_url: websiteUrl,
     prefecture: typeof o.prefecture === "string" && o.prefecture ? o.prefecture : null,
     ward: typeof o.ward === "string" && o.ward ? o.ward : null,
-    service_areas: Array.isArray(o.service_areas) && o.service_areas.length > 0
-      ? (o.service_areas as string[])
-      : null,
     provider_ages: Array.isArray(o.provider_ages) && o.provider_ages.length > 0
       ? (o.provider_ages as string[])
       : null,

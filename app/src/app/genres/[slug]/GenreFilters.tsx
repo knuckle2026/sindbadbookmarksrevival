@@ -73,8 +73,6 @@ export default function GenreFilters({
     if (currentRegion) params.set("region", currentRegion);
     const currentPref = searchParams.get("prefecture");
     if (currentPref) params.set("prefecture", currentPref);
-    const currentArea = searchParams.get("service_area");
-    if (currentArea) params.set("service_area", currentArea);
     const currentSort = searchParams.get("sort");
     if (currentSort) params.set("sort", currentSort);
     const qs = params.toString();

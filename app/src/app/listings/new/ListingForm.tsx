@@ -6,7 +6,6 @@ import { GENRES } from "@/lib/constants/genres";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import { TOKYO_WARD_FILTER_OPTIONS } from "@/lib/constants/tokyo-wards";
 import { OSAKA_AREAS } from "@/lib/constants/osaka-areas";
-import { SERVICE_AREA_GROUPS } from "@/lib/constants/service-areas";
 import { PROVIDER_AGES } from "@/lib/constants/provider-ages";
 import { safeRedirectPath } from "@/lib/utils/safe-redirect";
 import { TurnstileWidget } from "@/components/TurnstileWidget";
@@ -37,7 +36,6 @@ export interface InitialValues {
   selectedCategories?: string[];
   prefecture?: string;
   ward?: string;
-  serviceAreas?: string[];
   providerAges?: string[];
 }
 
@@ -106,7 +104,6 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
   const [selectedCategories, setSelectedCategories] = useState<string[]>(initialValues?.selectedCategories ?? []);
   const [prefecture, setPrefecture] = useState(initialValues?.prefecture ?? "");
   const [ward, setWard] = useState(initialValues?.ward ?? "");
-  const [serviceAreas, setServiceAreas] = useState<string[]>(initialValues?.serviceAreas ?? []);
   const [providerAges, setProviderAges] = useState<string[]>(initialValues?.providerAges ?? []);
 
   const selectedGenreSlug = useMemo(
@@ -130,12 +127,6 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
   const toggleCategory = (id: string) => {
     setSelectedCategories((prev) =>
       prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
-    );
-  };
-
-  const toggleServiceArea = (slug: string) => {
-    setServiceAreas((prev) =>
-      prev.includes(slug) ? prev.filter((c) => c !== slug) : [...prev, slug],
     );
   };
 
@@ -172,7 +163,6 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
     setLoading(true);
 
     const showWard = prefecture === "tokyo" || prefecture === "osaka";
-    const showServiceAreas = !!genreMeta?.hasServiceAreas;
     const showProviderAges = !!genreMeta?.hasProviderAges;
 
     const payload = {
@@ -182,8 +172,6 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
       website_url: websiteUrl.trim(),
       prefecture: prefecture || null,
       ward: showWard && ward ? ward : null,
-      service_areas:
-        showServiceAreas && serviceAreas.length > 0 ? serviceAreas : null,
       provider_ages:
         showProviderAges && providerAges.length > 0 ? providerAges : null,
       category_ids: selectedCategories,
@@ -285,7 +273,6 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
     "mb-1 block text-sm font-medium text-zinc-800";
 
   const showWard = prefecture === "tokyo" || prefecture === "osaka";
-  const showServiceAreas = !!genreMeta?.hasServiceAreas;
 
   if (submitted) {
     return (
@@ -346,7 +333,6 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
           onChange={(e) => {
             setGenreId(e.target.value);
             setSelectedCategories([]);
-            setServiceAreas([]);
           }}
           className={inputClass}
           required
@@ -515,41 +501,6 @@ export default function ListingForm({ genres, categories, mode = "new", initialV
           </div>
 
         </>
-      )}
-
-      {/* 出張エリア (hasServiceAreas=true ジャンルのみ) */}
-      {showServiceAreas && (
-        <div>
-          <label className={labelClass}>出張可能エリア（複数選択可）</label>
-          <p className="mb-2 text-xs text-zinc-500">
-            出張可能な場合はカテゴリで出張も選択してください。
-          </p>
-          <div className="space-y-4">
-            {SERVICE_AREA_GROUPS.map((group) => (
-              <div key={group.label}>
-                <p className="mb-1.5 text-xs font-semibold text-zinc-500">
-                  {group.label}
-                </p>
-                <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                  {group.areas.map((a) => {
-                    const active = serviceAreas.includes(a.slug);
-                    return (
-                      <label key={a.slug} className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={active}
-                          onChange={() => toggleServiceArea(a.slug)}
-                          className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
-                        />
-                        <span className="text-sm text-zinc-800">{a.name}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       )}
 
       {/* Cloudflare Turnstile (site key 未設定 or in-app browser なら非表示) */}

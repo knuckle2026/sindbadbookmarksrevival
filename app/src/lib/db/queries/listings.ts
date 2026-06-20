@@ -122,23 +122,6 @@ export async function getPrefectureCounts(
   return map;
 }
 
-export async function getServiceAreasJson(
-  genreId: string,
-  opts?: CountFilterOpts,
-): Promise<string[]> {
-  const db = await getDB();
-  const { sql: extra, binds } = buildCountFilter(opts);
-  const { results } = await db
-    .prepare(
-      `SELECT service_areas
-       FROM listings
-       WHERE genre_id = ? AND status = 'published' AND service_areas IS NOT NULL${extra}`,
-    )
-    .bind(genreId, ...binds)
-    .all<{ service_areas: string }>();
-  return results.map((r) => r.service_areas);
-}
-
 export async function getWardCounts(
   genreId: string,
   prefSlug: string,
@@ -221,7 +204,6 @@ export interface SearchGenreOpts {
   /** カテゴリ ID で NOT IN サブクエリを使って除外。 */
   categoryIdsExclude?: string[] | null;
   prefectures?: string[] | null;
-  serviceAreas?: string[] | null;
   providerAges?: string[] | null;
   wardSpecific?: string[] | null;
   wardIncludesNull?: boolean;
@@ -288,13 +270,6 @@ function buildGenreFilter(opts: SearchGenreOpts): {
       `prefecture IN (${opts.prefectures.map(() => "?").join(",")})`
     );
     binds.push(...opts.prefectures);
-  }
-  if (opts.serviceAreas && opts.serviceAreas.length > 0) {
-    const sub = opts.serviceAreas
-      .map(() => "service_areas LIKE ?")
-      .join(" OR ");
-    parts.push(`(${sub})`);
-    for (const a of opts.serviceAreas) binds.push(`%"${a}"%`);
   }
   if (opts.providerAges && opts.providerAges.length > 0) {
     const sub = opts.providerAges
@@ -436,7 +411,6 @@ export interface ListingWrite {
   website_url: string;
   prefecture: string | null;
   ward: string | null;
-  service_areas: string[] | null;
   provider_ages: string[] | null;
   address: string | null;
 }
@@ -453,9 +427,9 @@ export async function createListing(
     .prepare(
       `INSERT INTO listings (
          id, user_id, genre_id, title, description, website_url,
-         prefecture, ward, service_areas, provider_ages, address,
+         prefecture, ward, provider_ages, address,
          status, created_by, updated_by
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       id,
@@ -466,7 +440,6 @@ export async function createListing(
       input.website_url,
       input.prefecture,
       input.ward,
-      input.service_areas ? JSON.stringify(input.service_areas) : null,
       input.provider_ages ? JSON.stringify(input.provider_ages) : null,
       input.address,
       status,
@@ -489,7 +462,7 @@ export async function updateListing(
     .prepare(
       `UPDATE listings SET
          genre_id = ?, title = ?, description = ?, website_url = ?,
-         prefecture = ?, ward = ?, service_areas = ?, provider_ages = ?,
+         prefecture = ?, ward = ?, provider_ages = ?,
          address = ?, updated_by = ?, updated_at = (datetime('now'))
        WHERE id = ?`
     )
@@ -500,7 +473,6 @@ export async function updateListing(
       input.website_url,
       input.prefecture,
       input.ward,
-      input.service_areas ? JSON.stringify(input.service_areas) : null,
       input.provider_ages ? JSON.stringify(input.provider_ages) : null,
       input.address,
       userId,

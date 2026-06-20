@@ -180,7 +180,7 @@ CREATE TABLE listings (
                 CHECK (website_url LIKE 'http://%' OR website_url LIKE 'https://%'),
   prefecture    TEXT,
   ward          TEXT,
-  service_areas TEXT,                                    -- JSON 配列文字列
+  service_areas TEXT,                                    -- 廃止: 出張可能エリア機能は削除済み。読み書きせず新規は常に NULL (既存値は休眠/列は互換のため残置)
   provider_ages TEXT,                                    -- JSON 配列文字列
   status        TEXT NOT NULL DEFAULT 'published'
                 CHECK (status IN ('pending', 'published', 'hidden', 'rejected')),
@@ -440,23 +440,26 @@ admin 専用 (`checkAdminApi()` ガード):
 
 ### 5.2 ジャンル一覧 (sort_order 順)
 
-| sort | slug | 表示名 | hasPrefecture | hasServiceAreas | hasProviderAges |
-|---:|---|---|:-:|:-:|:-:|
-| 1 | `bar-restaurant` | バー・クラブ・飲食店 | ✓ | – | – |
-| 2 | `hattenba` | ハッテンバ | ✓ | – | – |
-| 3 | `massage-urisen` | マッサージ・売り専 | ✓ | ✓ | ✓ |
-| 4 | `video-gallery` | 動画・ギャラリー | – | – | – |
-| 5 | `media-sns` | メディア・SNS | – | – | – |
-| 6 | `org-consult` | 団体・相談先 | – | – | – |
-| 7 | `matching` | 出会い | – | – | – |
-| 8 | `fashion-beauty` | ファッション・美容 | – | – | – |
-| 9 | `mania` | マニア系 | – | – | – |
-| 10 | `other` | その他 | – | – | – |
+| sort | slug | 表示名 | hasPrefecture | hasProviderAges |
+|---:|---|---|:-:|:-:|
+| 1 | `bar-restaurant` | バー・クラブ・飲食店 | ✓ | – |
+| 2 | `hattenba` | ハッテンバ | ✓ | – |
+| 3 | `massage-urisen` | マッサージ・売り専 | ✓ | ✓ |
+| 4 | `video-gallery` | 動画・ギャラリー | – | – |
+| 5 | `media-sns` | メディア・SNS | – | – |
+| 6 | `org-consult` | 団体・相談先 | – | – |
+| 7 | `matching` | 出会い | – | – |
+| 8 | `fashion-beauty` | ファッション・美容 | – | – |
+| 9 | `mania` | マニア系 | – | – |
+| 10 | `other` | その他 | – | – |
 
 フラグの意味:
 - **hasPrefecture**: 所在地フィルタ(地方→都道府県ナビ)を表示 → §5.5。未指定時は所在地で絞り込まず全件(`prefecture=tokyo` への強制リダイレクトは無し)
-- **hasServiceAreas**: 「出張可能エリア」フィルタを表示。listings の `service_areas` JSON に格納
 - **hasProviderAges**: 「提供者年齢」フィルタを表示
+
+> 注: かつて `massage-urisen` に存在した `hasServiceAreas`「出張可能エリア」機能は削除済み。
+> `listings.service_areas` 列は互換のため残置するが、読み書きされず新規は常に NULL（§3 スキーマ注記参照）。
+> `delivery`(出張) **カテゴリ**(§5.3)は別機能で現役。
 
 ### 5.3 カテゴリ検索の特殊ルール (massage-urisen ジャンル)
 

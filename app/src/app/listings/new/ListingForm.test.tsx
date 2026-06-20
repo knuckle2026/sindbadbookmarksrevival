@@ -151,7 +151,7 @@ describe("ListingForm", () => {
     ).toBeNull();
   });
 
-  it("massage-urisen 選択時のみ出張エリアが表示される", async () => {
+  it("massage-urisen を選択しても出張エリアは表示されない（年代は表示される）", async () => {
     render(
       <ListingForm genres={GENRES_FIXTURE} categories={CATEGORIES_FIXTURE} />,
     );
@@ -159,8 +159,11 @@ describe("ListingForm", () => {
     fireEvent.change(screen.getAllByRole("combobox")[0], {
       target: { value: "g-massage" },
     });
+    // 出張可能エリアは廃止済み。選択後も表示されない。
+    expect(screen.queryByText("出張可能エリア（複数選択可）")).toBeNull();
+    // 年代 (provider_ages) は massage-urisen で引き続き表示される。
     expect(
-      screen.getByText("出張可能エリア（複数選択可）"),
+      screen.getByText("サービス提供者の年代（複数選択可）"),
     ).toBeInTheDocument();
   });
 

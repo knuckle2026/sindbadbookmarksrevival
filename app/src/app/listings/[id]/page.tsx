@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PREFECTURE_REGIONS } from "@/lib/constants/prefectures";
 import { TOKYO_WARDS } from "@/lib/constants/tokyo-wards";
-import { SERVICE_AREA_MAP } from "@/lib/constants/service-areas";
 import ReportButton from "@/components/listings/ReportButton";
 import { getDB } from "@/lib/db/client";
 import {
@@ -23,16 +22,6 @@ function prefectureName(slug: string | null): string | null {
 function wardName(slug: string | null): string | null {
   if (!slug) return null;
   return TOKYO_WARDS.find((w) => w.slug === slug)?.name ?? slug;
-}
-
-function parseJsonArray(value: string | null): string[] {
-  if (!value) return [];
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
-  } catch {
-    return [];
-  }
 }
 
 export default async function ListingDetailPage({
@@ -58,9 +47,6 @@ export default async function ListingDetailPage({
 
   const pref = prefectureName(listing.prefecture);
   const w = wardName(listing.ward);
-  const serviceAreaNames = parseJsonArray(listing.service_areas).map(
-    (s) => SERVICE_AREA_MAP[s] ?? s
-  );
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -117,21 +103,6 @@ export default async function ListingDetailPage({
             <p className="text-sm text-gray-700">
               {[pref, w, listing.address].filter(Boolean).join(" ")}
             </p>
-          </div>
-        )}
-
-        {serviceAreaNames.length > 0 && (
-          <div>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-              出張エリア
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {serviceAreaNames.map((name) => (
-                <span key={name} className="text-sm bg-blue-50 text-blue-700 px-3 py-1 rounded-full">
-                  {name}
-                </span>
-              ))}
-            </div>
           </div>
         )}
 

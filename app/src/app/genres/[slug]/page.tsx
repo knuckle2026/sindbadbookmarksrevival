@@ -16,14 +16,12 @@ import {
   countGenreListings,
   getCategoriesForListings,
   getPrefectureCounts,
-  getServiceAreasJson,
   getWardCounts,
   searchGenreListings,
   type SortKey as DbSortKey,
 } from "@/lib/db/queries/listings";
 import GenreFilters from "./GenreFilters";
 import RegionPrefectureNav from "./RegionPrefectureNav";
-import ServiceAreaFilter from "./ServiceAreaFilter";
 import ProviderAgeFilter from "./ProviderAgeFilter";
 import TokyoWardFilter from "./TokyoWardFilter";
 import OsakaAreaFilter from "./OsakaAreaFilter";
@@ -38,7 +36,6 @@ interface PageProps {
     category?: string;
     cat_op?: string;
     prefecture?: string;
-    service_area?: string;
     region?: string;
     sort?: string;
     exclude_nh?: string;
@@ -56,7 +53,6 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     category: categoryParam,
     cat_op: catOpParam,
     prefecture: prefectureParam,
-    service_area: serviceAreaParam,
     region: regionParam,
     sort: sortParam,
     exclude_nh: excludeNhParam,
@@ -162,34 +158,15 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
       selectedProviderAges.length > 0 ? selectedProviderAges : null,
   };
 
-  const [prefCountMap, svcJsonRows, wardCountRawMap] = await Promise.all([
+  const [prefCountMap, wardCountRawMap] = await Promise.all([
     genreMeta.hasPrefecture
       ? getPrefectureCounts(genreRow.id, countOpts)
       : Promise.resolve({} as Record<string, number>),
-    genreMeta.hasServiceAreas
-      ? getServiceAreasJson(genreRow.id, countOpts)
-      : Promise.resolve<string[]>([]),
     genreMeta.hasPrefecture &&
     (prefectureParam === "tokyo" || prefectureParam === "osaka")
       ? getWardCounts(genreRow.id, prefectureParam, countOpts)
       : Promise.resolve({} as Record<string, number>),
   ]);
-
-  const areaCountMap: Record<string, number> = {};
-  let serviceListingCount = 0;
-  for (const json of svcJsonRows) {
-    let arr: unknown;
-    try {
-      arr = JSON.parse(json);
-    } catch {
-      continue;
-    }
-    if (!Array.isArray(arr) || arr.length === 0) continue;
-    serviceListingCount++;
-    for (const v of arr) {
-      if (typeof v === "string") areaCountMap[v] = (areaCountMap[v] ?? 0) + 1;
-    }
-  }
 
   const outsideSlug =
     prefectureParam === "osaka" ? OSAKA_OUTSIDE_SLUG : TOKYO_OUTSIDE_SLUG;
@@ -213,9 +190,6 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     ? [prefectureFilter]
     : regionPrefectureSlugs;
 
-  const selectedServiceAreas = (serviceAreaParam ?? "")
-    .split(",")
-    .filter(Boolean);
   // selectedProviderAges は countOpts の前で定義済み (件数連動のため)
 
   const selectedWardsRaw = (wardParam ?? "").split(",").filter(Boolean);
@@ -237,7 +211,6 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     categoryIdsAndAll,
     categoryIdsExclude,
     prefectures,
-    serviceAreas: selectedServiceAreas.length > 0 ? selectedServiceAreas : null,
     providerAges: selectedProviderAges.length > 0 ? selectedProviderAges : null,
     wardSpecific: wardFilterActive && wardSpecificSlugs.length > 0
       ? wardSpecificSlugs
@@ -259,7 +232,6 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
     limit: 0,
     offset: 0,
     prefectures,
-    serviceAreas: selectedServiceAreas.length > 0 ? selectedServiceAreas : null,
     providerAges: selectedProviderAges.length > 0 ? selectedProviderAges : null,
     wardSpecific: wardFilterActive && wardSpecificSlugs.length > 0
       ? wardSpecificSlugs
@@ -321,7 +293,6 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
   if (catOp === "and") extraParams.cat_op = "and";
   if (regionParam) extraParams.region = regionParam;
   if (prefectureFilter) extraParams.prefecture = prefectureFilter;
-  if (serviceAreaParam) extraParams.service_area = serviceAreaParam;
   if (currentSort !== "created_desc") extraParams.sort = currentSort;
   if (excludeNhParam === "1") extraParams.exclude_nh = "1";
   if (providerAgeParam) extraParams.provider_age = providerAgeParam;
@@ -365,7 +336,6 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
             selectedPrefecture={prefectureFilter}
             categoryParam={categoryParam ?? ""}
             catOpParam={catOp === "and" ? "and" : ""}
-            serviceAreaParam={serviceAreaParam ?? ""}
           />
           {prefectureFilter === "tokyo" && (
             <TokyoWardFilter wardCountMap={wardCountMap} />
@@ -374,15 +344,6 @@ export default async function GenrePage({ params, searchParams }: PageProps) {
             <OsakaAreaFilter wardCountMap={wardCountMap} />
           )}
         </>
-      )}
-
-      {genreMeta.hasServiceAreas && (
-        <Suspense>
-          <ServiceAreaFilter
-            serviceListingCount={serviceListingCount}
-            areaCountMap={areaCountMap}
-          />
-        </Suspense>
       )}
 
       <SortSelect

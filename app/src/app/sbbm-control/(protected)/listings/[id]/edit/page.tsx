@@ -67,9 +67,6 @@ export default async function AdminEditListingPage({
           selectedCategories: selectedCategoryIds,
           prefecture: listing.prefecture ?? "",
           ward: listing.ward ?? "",
-          serviceAreas: listing.service_areas
-            ? (JSON.parse(listing.service_areas) as string[])
-            : [],
           providerAges: listing.provider_ages
             ? (JSON.parse(listing.provider_ages) as string[])
             : [],
